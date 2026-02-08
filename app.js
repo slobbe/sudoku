@@ -9,6 +9,7 @@ const HINTS_PER_GAME = 3;
 const SAVE_KEY = "sudoku-pwa-current-game-v1";
 
 const boardEl = document.querySelector("#board");
+const numpadEl = document.querySelector(".numpad");
 const settingsOpenEl = document.querySelector("#settings-open");
 const settingsModalEl = document.querySelector("#settings-modal");
 const difficultyEl = document.querySelector("#difficulty");
@@ -26,9 +27,13 @@ const state = {
   givens: new Set(),
   selected: null,
   highlightValue: null,
+  fillModeValue: null,
   hintsLeft: HINTS_PER_GAME,
   won: false,
 };
+
+let longPressTimer = null;
+let longPressTriggered = false;
 
 function isValidBoardShape(board) {
   if (!Array.isArray(board) || board.length !== 9) {
@@ -103,11 +108,13 @@ function loadSavedGame() {
   state.givens = buildGivens(parsed.puzzle);
   state.selected = null;
   state.highlightValue = null;
+  state.fillModeValue = null;
   state.hintsLeft = parsed.hintsLeft;
   state.won = parsed.won;
 
   difficultyEl.value = state.difficulty;
   updateHintsUi();
+  renderNumpadMode();
   renderBoard();
   setStatus("Restored your previous game.");
   return true;
@@ -131,6 +138,30 @@ function setStatus(message) {
 function updateHintsUi() {
   hintsLeftEl.textContent = String(state.hintsLeft);
   hintEl.disabled = state.hintsLeft <= 0 || state.won;
+}
+
+function renderNumpadMode() {
+  const buttons = numpadEl.querySelectorAll("button[data-value]");
+  for (const button of buttons) {
+    const value = Number(button.dataset.value);
+    button.classList.toggle("fill-mode", state.fillModeValue !== null && value === state.fillModeValue);
+  }
+}
+
+function activeHighlightValue() {
+  if (state.fillModeValue !== null) {
+    return state.fillModeValue;
+  }
+  return state.highlightValue;
+}
+
+function setFillMode(valueOrNull) {
+  state.fillModeValue = valueOrNull;
+  if (valueOrNull !== null) {
+    state.highlightValue = valueOrNull;
+  }
+  renderNumpadMode();
+  renderBoard();
 }
 
 function buildGivens(puzzle) {
@@ -198,6 +229,8 @@ function renderBoard() {
 
   const fragment = document.createDocumentFragment();
 
+  const highlighted = activeHighlightValue();
+
   for (let row = 0; row < 9; row += 1) {
     for (let col = 0; col < 9; col += 1) {
       const value = state.board[row][col];
@@ -231,7 +264,7 @@ function renderBoard() {
           cell.classList.add("peer-box");
         }
       }
-      if (state.highlightValue !== null && value === state.highlightValue) {
+      if (highlighted !== null && value === highlighted) {
         cell.classList.add("match");
       }
       if (value !== 0 && !isValidPlacement(state.board, row, col, value)) {
@@ -310,10 +343,12 @@ function startNewGame() {
   state.givens = buildGivens(puzzle);
   state.selected = null;
   state.highlightValue = null;
+  state.fillModeValue = null;
   state.won = false;
   state.hintsLeft = HINTS_PER_GAME;
 
   updateHintsUi();
+  renderNumpadMode();
   renderBoard();
   setStatus(`New ${state.difficulty} puzzle ready (${givens} givens).`);
   saveGame();
@@ -335,6 +370,16 @@ function onBoardClick(event) {
   if (!cell) {
     return;
   }
+
+  if (state.fillModeValue !== null && !state.won) {
+    const { row, col } = cell;
+    if (!isGiven(row, col) && state.board[row][col] === 0) {
+      state.selected = { row, col };
+      setCellValue(row, col, state.fillModeValue);
+      return;
+    }
+  }
+
   applySelection(cell.row, cell.col);
 }
 
@@ -343,8 +388,49 @@ function onNumpadClick(event) {
   if (!button) {
     return;
   }
+
+  if (longPressTriggered) {
+    longPressTriggered = false;
+    return;
+  }
+
   const value = Number(button.dataset.value);
   applyNumberInput(value);
+}
+
+function clearLongPressTimer() {
+  if (longPressTimer !== null) {
+    window.clearTimeout(longPressTimer);
+    longPressTimer = null;
+  }
+}
+
+function onNumpadPointerDown(event) {
+  const button = event.target.closest("button[data-value]");
+  if (!button) {
+    return;
+  }
+
+  const value = Number(button.dataset.value);
+  if (value < 1 || value > 9) {
+    return;
+  }
+
+  longPressTriggered = false;
+  clearLongPressTimer();
+  longPressTimer = window.setTimeout(() => {
+    if (state.fillModeValue === value) {
+      setFillMode(null);
+    } else {
+      setFillMode(value);
+    }
+    longPressTriggered = true;
+    clearLongPressTimer();
+  }, 430);
+}
+
+function onNumpadPointerRelease() {
+  clearLongPressTimer();
 }
 
 function moveSelection(deltaRow, deltaCol) {
@@ -380,6 +466,11 @@ function onKeyDown(event) {
 
   if (event.key >= "1" && event.key <= "9") {
     applyNumberInput(Number(event.key));
+    return;
+  }
+
+  if (event.key === "Escape" && state.fillModeValue !== null) {
+    setFillMode(null);
     return;
   }
 
@@ -425,7 +516,11 @@ function closeSettingsOnBackdrop(event) {
 }
 
 boardEl.addEventListener("click", onBoardClick);
-document.querySelector(".numpad").addEventListener("click", onNumpadClick);
+numpadEl.addEventListener("click", onNumpadClick);
+numpadEl.addEventListener("pointerdown", onNumpadPointerDown);
+numpadEl.addEventListener("pointerup", onNumpadPointerRelease);
+numpadEl.addEventListener("pointerleave", onNumpadPointerRelease);
+numpadEl.addEventListener("pointercancel", onNumpadPointerRelease);
 settingsOpenEl.addEventListener("click", openSettings);
 settingsModalEl.addEventListener("click", closeSettingsOnBackdrop);
 difficultyEl.addEventListener("change", (event) => {

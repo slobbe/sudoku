@@ -178,6 +178,12 @@ button:active {
   padding: 7px 0;
 }
 
+.numpad button.fill-mode {
+  background: #3a3a3a;
+  border-color: var(--line-bold);
+  box-shadow: inset 0 0 0 1px var(--selection-ring);
+}
+
 .settings-modal {
   padding: 0;
   border: 1px solid var(--line-bold);
