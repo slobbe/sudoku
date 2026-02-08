@@ -29,6 +29,10 @@ const numpadEl = document.querySelector(".numpad");
 const settingsOpenEl = document.querySelector("#settings-open");
 const settingsModalEl = document.querySelector("#settings-modal");
 const settingsCloseEl = document.querySelector("#settings-close");
+const winBannerEl = document.querySelector("#win-banner");
+const winModalEl = document.querySelector("#win-modal");
+const winNewGameEl = document.querySelector("#win-new-game");
+const winLaterEl = document.querySelector("#win-later");
 const undoEl = document.querySelector("#undo");
 const redoEl = document.querySelector("#redo");
 const difficultyEl = document.querySelector("#difficulty");
@@ -64,6 +68,7 @@ const state = {
 
 let longPressTimer = null;
 let longPressTriggered = false;
+let winPromptTimer = null;
 
 function isValidBoardShape(board) {
   if (!Array.isArray(board) || board.length !== 9) {
@@ -437,9 +442,45 @@ function updateWinState() {
   state.won = solved;
   if (solved && !wasWon) {
     recordWin();
-    setStatus("You solved it! Start a new game for another puzzle.");
+    showWinCelebration();
   }
   updateUndoRedoUi();
+}
+
+function clearWinPromptTimer() {
+  if (winPromptTimer !== null) {
+    window.clearTimeout(winPromptTimer);
+    winPromptTimer = null;
+  }
+}
+
+function closeWinPrompt() {
+  clearWinPromptTimer();
+  if (winModalEl.open) {
+    winModalEl.close();
+  }
+}
+
+function resetWinBanner() {
+  winBannerEl.classList.remove("show");
+}
+
+function showWinCelebration() {
+  clearWinPromptTimer();
+  resetWinBanner();
+  void winBannerEl.offsetWidth;
+  winBannerEl.classList.add("show");
+
+  winPromptTimer = window.setTimeout(() => {
+    if (!winModalEl.open) {
+      winModalEl.showModal();
+    }
+  }, 1150);
+}
+
+function clearWinUi() {
+  closeWinPrompt();
+  resetWinBanner();
 }
 
 function setCellValue(row, col, value) {
@@ -582,6 +623,7 @@ function useHint() {
 }
 
 function startNewGame() {
+  clearWinUi();
   setStatus("Generating puzzle...");
 
   markCurrentGameAsLossIfNeeded();
@@ -727,7 +769,7 @@ function onKeyDown(event) {
     return;
   }
 
-  if (settingsModalEl.open) {
+  if (settingsModalEl.open || winModalEl.open) {
     return;
   }
 
@@ -802,6 +844,17 @@ function closeSettingsOnBackdrop(event) {
   }
 }
 
+function closeWinOnBackdrop(event) {
+  if (event.target === winModalEl) {
+    closeWinPrompt();
+  }
+}
+
+function onWinNewGame() {
+  closeWinPrompt();
+  startNewGame();
+}
+
 function onShowMistakesChange(event) {
   state.showMistakes = event.target.checked;
   renderBoard();
@@ -819,6 +872,7 @@ redoEl.addEventListener("click", redoMove);
 settingsOpenEl.addEventListener("click", openSettings);
 settingsCloseEl.addEventListener("click", closeSettings);
 settingsModalEl.addEventListener("click", closeSettingsOnBackdrop);
+winModalEl.addEventListener("click", closeWinOnBackdrop);
 difficultyEl.addEventListener("change", (event) => {
   state.difficulty = event.target.value;
   startNewGame();
@@ -826,6 +880,8 @@ difficultyEl.addEventListener("change", (event) => {
 showMistakesEl.addEventListener("change", onShowMistakesChange);
 newGameEl.addEventListener("click", startNewGame);
 hintEl.addEventListener("click", useHint);
+winNewGameEl.addEventListener("click", onWinNewGame);
+winLaterEl.addEventListener("click", closeWinPrompt);
 window.addEventListener("keydown", onKeyDown);
 
 registerServiceWorker();

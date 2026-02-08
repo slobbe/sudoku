@@ -44,6 +44,19 @@
     </section>
   </main>
 
+  <div id="win-banner" class="win-banner" aria-live="polite">Puzzle Solved!</div>
+
+  <dialog id="win-modal" class="win-modal" aria-label="Puzzle completed">
+    <div class="win-card">
+      <h2>Great Solve</h2>
+      <p>Start a new game?</p>
+      <div class="win-actions">
+        <button id="win-new-game" type="button">New Game</button>
+        <button id="win-later" type="button">Later</button>
+      </div>
+    </div>
+  </dialog>
+
   <dialog id="settings-modal" class="settings-modal" aria-label="Game settings">
     <form method="dialog" class="settings-card">
       <div class="settings-header">
