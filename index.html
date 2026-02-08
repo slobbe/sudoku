@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#2d6a4f">
+  <meta name="description" content="Offline-capable Sudoku game with three difficulties and hints.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" href="./icons/icon-192.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="./icons/icon-192.svg">
+  <title>Sudoku PWA</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app">
+    <header class="header">
+      <h1>Sudoku</h1>
+      <p class="subtitle">Generate unique puzzles. Solve offline.</p>
+    </header>
+
+    <section class="controls" aria-label="Game controls">
+      <label for="difficulty">Difficulty</label>
+      <select id="difficulty">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+      </select>
+      <button id="new-game" type="button">New Game</button>
+      <button id="hint" type="button">Hint (<span id="hints-left">3</span>)</button>
+    </section>
+
+    <section class="status" aria-live="polite">
+      <p id="status-text">Generating puzzle...</p>
+    </section>
+
+    <section class="board-wrap" aria-label="Sudoku board">
+      <div id="board" class="board" role="grid" aria-label="Sudoku grid"></div>
+    </section>
+
+    <section class="numpad" aria-label="Number input">
+      <button type="button" data-value="1">1</button>
+      <button type="button" data-value="2">2</button>
+      <button type="button" data-value="3">3</button>
+      <button type="button" data-value="4">4</button>
+      <button type="button" data-value="5">5</button>
+      <button type="button" data-value="6">6</button>
+      <button type="button" data-value="7">7</button>
+      <button type="button" data-value="8">8</button>
+      <button type="button" data-value="9">9</button>
+      <button type="button" data-value="0" class="erase">Erase</button>
+    </section>
+  </main>
+
+  <script type="module" src="./app.js"></script>
+</body>
+</html>

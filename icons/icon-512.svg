@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Sudoku icon">
+  <rect width="512" height="512" rx="84" fill="#1b4332"/>
+  <rect x="64" y="64" width="384" height="384" rx="40" fill="#f7f4ea"/>
+  <g stroke="#2d6a4f" stroke-width="6">
+    <path d="M192 64v384M320 64v384M64 192h384M64 320h384"/>
+  </g>
+  <g fill="#1b4332" font-family="Trebuchet MS, Segoe UI, sans-serif" font-weight="700" font-size="70" text-anchor="middle">
+    <text x="139" y="171">5</text>
+    <text x="256" y="287">9</text>
+    <text x="373" y="404">3</text>
+  </g>
+</svg>
