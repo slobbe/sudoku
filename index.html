@@ -61,8 +61,15 @@
           <input id="show-mistakes" type="checkbox" checked>
           Show mistakes immediately
         </label>
+        <section class="stats" aria-label="Game stats">
+          <h3>Stats</h3>
+          <p>Overall: <span id="stats-overall">0/0 (0%)</span></p>
+          <p>Streak: <span id="stats-streak">0</span> (Best: <span id="stats-best-streak">0</span>)</p>
+          <p>Easy: <span id="stats-easy">0/0 (0%)</span></p>
+          <p>Medium: <span id="stats-medium">0/0 (0%)</span></p>
+          <p>Hard: <span id="stats-hard">0/0 (0%)</span></p>
+        </section>
         <button id="new-game" type="button">New Game</button>
-        <button id="erase-selected" type="button">Erase Selected Cell</button>
       </div>
     </form>
   </dialog>

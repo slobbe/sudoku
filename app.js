@@ -8,6 +8,22 @@ import {
 const HINTS_PER_GAME = 3;
 const SAVE_KEY = "sudoku-pwa-current-game-v1";
 
+const DIFFICULTIES = ["easy", "medium", "hard"];
+
+function createDefaultStats() {
+  return {
+    gamesStarted: 0,
+    gamesWon: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    byDifficulty: {
+      easy: { started: 0, won: 0 },
+      medium: { started: 0, won: 0 },
+      hard: { started: 0, won: 0 },
+    },
+  };
+}
+
 const boardEl = document.querySelector("#board");
 const numpadEl = document.querySelector(".numpad");
 const settingsOpenEl = document.querySelector("#settings-open");
@@ -18,9 +34,14 @@ const difficultyEl = document.querySelector("#difficulty");
 const showMistakesEl = document.querySelector("#show-mistakes");
 const newGameEl = document.querySelector("#new-game");
 const hintEl = document.querySelector("#hint");
-const eraseSelectedEl = document.querySelector("#erase-selected");
 const hintsLeftEl = document.querySelector("#hints-left");
 const statusTextEl = document.querySelector("#status-text");
+const statsOverallEl = document.querySelector("#stats-overall");
+const statsStreakEl = document.querySelector("#stats-streak");
+const statsBestStreakEl = document.querySelector("#stats-best-streak");
+const statsEasyEl = document.querySelector("#stats-easy");
+const statsMediumEl = document.querySelector("#stats-medium");
+const statsHardEl = document.querySelector("#stats-hard");
 
 const state = {
   difficulty: "medium",
@@ -34,6 +55,8 @@ const state = {
   showMistakes: true,
   undoStack: [],
   redoStack: [],
+  stats: createDefaultStats(),
+  winRecorded: false,
   hintsLeft: HINTS_PER_GAME,
   won: false,
 };
@@ -53,6 +76,43 @@ function isValidBoardShape(board) {
   );
 }
 
+function isNonNegativeInteger(value) {
+  return Number.isInteger(value) && value >= 0;
+}
+
+function normalizeStats(rawStats) {
+  const fallback = createDefaultStats();
+  if (!rawStats || typeof rawStats !== "object") {
+    return fallback;
+  }
+
+  const stats = {
+    gamesStarted: isNonNegativeInteger(rawStats.gamesStarted) ? rawStats.gamesStarted : 0,
+    gamesWon: isNonNegativeInteger(rawStats.gamesWon) ? rawStats.gamesWon : 0,
+    currentStreak: isNonNegativeInteger(rawStats.currentStreak) ? rawStats.currentStreak : 0,
+    bestStreak: isNonNegativeInteger(rawStats.bestStreak) ? rawStats.bestStreak : 0,
+    byDifficulty: {
+      easy: { started: 0, won: 0 },
+      medium: { started: 0, won: 0 },
+      hard: { started: 0, won: 0 },
+    },
+  };
+
+  for (const difficulty of DIFFICULTIES) {
+    const entry = rawStats.byDifficulty && rawStats.byDifficulty[difficulty];
+    stats.byDifficulty[difficulty] = {
+      started: isNonNegativeInteger(entry && entry.started) ? entry.started : 0,
+      won: isNonNegativeInteger(entry && entry.won) ? entry.won : 0,
+    };
+  }
+
+  if (stats.bestStreak < stats.currentStreak) {
+    stats.bestStreak = stats.currentStreak;
+  }
+
+  return stats;
+}
+
 function saveGame() {
   if (!state.puzzle || !state.solution || !state.board) {
     return;
@@ -65,6 +125,7 @@ function saveGame() {
     board: state.board,
     hintsLeft: state.hintsLeft,
     showMistakes: state.showMistakes,
+    stats: state.stats,
     won: state.won,
   };
 
@@ -122,13 +183,16 @@ function loadSavedGame() {
   state.showMistakes = parsed.showMistakes !== undefined ? parsed.showMistakes : true;
   state.undoStack = [];
   state.redoStack = [];
+  state.stats = normalizeStats(parsed.stats);
   state.hintsLeft = parsed.hintsLeft;
   state.won = parsed.won;
+  state.winRecorded = state.won;
 
   difficultyEl.value = state.difficulty;
   showMistakesEl.checked = state.showMistakes;
   updateHintsUi();
   updateUndoRedoUi();
+  renderStats();
   renderNumpadMode();
   renderBoard();
   setStatus("Restored your previous game.");
@@ -153,6 +217,28 @@ function setStatus(message) {
 function updateHintsUi() {
   hintsLeftEl.textContent = String(state.hintsLeft);
   hintEl.disabled = state.hintsLeft <= 0 || state.won;
+}
+
+function formatRate(won, started) {
+  if (started === 0) {
+    return "0%";
+  }
+  return `${Math.round((won / started) * 100)}%`;
+}
+
+function formatLine(won, started) {
+  return `${won}/${started} (${formatRate(won, started)})`;
+}
+
+function renderStats() {
+  const { gamesStarted, gamesWon, currentStreak, bestStreak, byDifficulty } = state.stats;
+
+  statsOverallEl.textContent = formatLine(gamesWon, gamesStarted);
+  statsStreakEl.textContent = String(currentStreak);
+  statsBestStreakEl.textContent = String(bestStreak);
+  statsEasyEl.textContent = formatLine(byDifficulty.easy.won, byDifficulty.easy.started);
+  statsMediumEl.textContent = formatLine(byDifficulty.medium.won, byDifficulty.medium.started);
+  statsHardEl.textContent = formatLine(byDifficulty.hard.won, byDifficulty.hard.started);
 }
 
 function updateUndoRedoUi() {
@@ -185,6 +271,34 @@ function pushUndoSnapshot() {
   }
   state.redoStack = [];
   updateUndoRedoUi();
+}
+
+function markCurrentGameAsLossIfNeeded() {
+  if (!state.puzzle || state.won) {
+    return;
+  }
+  state.stats.currentStreak = 0;
+}
+
+function recordGameStart(difficulty) {
+  state.stats.gamesStarted += 1;
+  state.stats.byDifficulty[difficulty].started += 1;
+}
+
+function recordWin() {
+  if (state.winRecorded) {
+    return;
+  }
+
+  const difficulty = state.difficulty;
+  state.stats.gamesWon += 1;
+  state.stats.byDifficulty[difficulty].won += 1;
+  state.stats.currentStreak += 1;
+  if (state.stats.currentStreak > state.stats.bestStreak) {
+    state.stats.bestStreak = state.stats.currentStreak;
+  }
+  state.winRecorded = true;
+  renderStats();
 }
 
 function undoMove() {
@@ -273,9 +387,11 @@ function updateWinState() {
   if (!state.board) {
     return;
   }
+  const wasWon = state.won;
   const solved = boardComplete(state.board);
   state.won = solved;
-  if (solved) {
+  if (solved && !wasWon) {
+    recordWin();
     setStatus("You solved it! Start a new game for another puzzle.");
   }
   updateUndoRedoUi();
@@ -419,6 +535,9 @@ function useHint() {
 function startNewGame() {
   setStatus("Generating puzzle...");
 
+  markCurrentGameAsLossIfNeeded();
+  recordGameStart(state.difficulty);
+
   const { puzzle, solution, givens } = generatePuzzle(state.difficulty);
   state.puzzle = puzzle;
   state.solution = solution;
@@ -428,11 +547,13 @@ function startNewGame() {
   state.highlightValue = null;
   state.fillModeValue = null;
   state.won = false;
+  state.winRecorded = false;
   state.undoStack = [];
   state.redoStack = [];
   state.hintsLeft = HINTS_PER_GAME;
 
   showMistakesEl.checked = state.showMistakes;
+  renderStats();
   updateHintsUi();
   updateUndoRedoUi();
   renderNumpadMode();
@@ -446,10 +567,6 @@ function applyNumberInput(value) {
     return;
   }
   setCellValue(state.selected.row, state.selected.col, value);
-}
-
-function eraseSelectedCell() {
-  applyNumberInput(0);
 }
 
 function onBoardClick(event) {
@@ -641,7 +758,6 @@ difficultyEl.addEventListener("change", (event) => {
 showMistakesEl.addEventListener("change", onShowMistakesChange);
 newGameEl.addEventListener("click", startNewGame);
 hintEl.addEventListener("click", useHint);
-eraseSelectedEl.addEventListener("click", eraseSelectedCell);
 window.addEventListener("keydown", onKeyDown);
 
 registerServiceWorker();

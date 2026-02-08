@@ -100,7 +100,6 @@ button:active {
 #undo,
 #redo,
 #hint,
-#erase-selected,
 #settings-open {
   border-color: var(--line-bold);
 }
@@ -253,6 +252,27 @@ button:disabled {
 
 .settings-toggle input {
   accent-color: #ffffff;
+}
+
+.stats {
+  border: 1px solid var(--line);
+  padding: 8px;
+}
+
+.stats h3 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.stats p {
+  margin: 0;
+  font-size: 0.9rem;
+}
+
+.stats p + p {
+  margin-top: 4px;
 }
 
 @media (max-width: 600px) {
