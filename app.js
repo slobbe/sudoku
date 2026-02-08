@@ -8,6 +8,7 @@ import {
 const HINTS_PER_GAME = 3;
 const SAVE_KEY = "sudoku-pwa-current-game-v1";
 const FILL_MODE_ENTRY_TYPES = ["long-press", "double-tap"];
+const THEMES = ["green", "blue", "amber"];
 const DOUBLE_TAP_MS = 300;
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
@@ -39,6 +40,7 @@ const redoEl = document.querySelector("#redo");
 const difficultyEl = document.querySelector("#difficulty");
 const showMistakesEl = document.querySelector("#show-mistakes");
 const fillModeEntryEl = document.querySelector("#fill-mode-entry");
+const themeEl = document.querySelector("#theme");
 const newGameEl = document.querySelector("#new-game");
 const hintEl = document.querySelector("#hint");
 const hintsLeftEl = document.querySelector("#hints-left");
@@ -52,6 +54,13 @@ const statsHardEl = document.querySelector("#stats-hard");
 const updateStatusEl = document.querySelector("#update-status");
 const checkUpdateEl = document.querySelector("#check-update");
 const applyUpdateEl = document.querySelector("#apply-update");
+const themeColorMetaEl = document.querySelector('meta[name="theme-color"]');
+
+const THEME_COLORS = {
+  green: "#141a18",
+  blue: "#141822",
+  amber: "#1d1913",
+};
 
 const state = {
   difficulty: "medium",
@@ -64,6 +73,7 @@ const state = {
   fillModeValue: null,
   showMistakes: true,
   fillModeEntry: "long-press",
+  theme: "green",
   undoStack: [],
   redoStack: [],
   stats: createDefaultStats(),
@@ -142,6 +152,7 @@ function saveGame() {
     hintsLeft: state.hintsLeft,
     showMistakes: state.showMistakes,
     fillModeEntry: state.fillModeEntry,
+    theme: state.theme,
     stats: state.stats,
     won: state.won,
   };
@@ -191,6 +202,9 @@ function loadSavedGame() {
   if (parsed.fillModeEntry !== undefined && !FILL_MODE_ENTRY_TYPES.includes(parsed.fillModeEntry)) {
     return false;
   }
+  if (parsed.theme !== undefined && !THEMES.includes(parsed.theme)) {
+    return false;
+  }
 
   state.difficulty = parsed.difficulty;
   state.puzzle = parsed.puzzle;
@@ -202,6 +216,7 @@ function loadSavedGame() {
   state.fillModeValue = null;
   state.showMistakes = parsed.showMistakes !== undefined ? parsed.showMistakes : true;
   state.fillModeEntry = parsed.fillModeEntry || "long-press";
+  state.theme = parsed.theme || "green";
   state.undoStack = [];
   state.redoStack = [];
   state.stats = normalizeStats(parsed.stats);
@@ -212,6 +227,10 @@ function loadSavedGame() {
   difficultyEl.value = state.difficulty;
   showMistakesEl.checked = state.showMistakes;
   fillModeEntryEl.value = state.fillModeEntry;
+  if (themeEl) {
+    themeEl.value = state.theme;
+  }
+  applyTheme(state.theme);
   updateHintsUi();
   updateUndoRedoUi();
   renderStats();
@@ -234,6 +253,18 @@ function setStatus(message) {
     return;
   }
   statusTextEl.textContent = message;
+}
+
+function applyTheme(theme) {
+  if (!THEMES.includes(theme)) {
+    return;
+  }
+
+  document.documentElement.dataset.theme = theme;
+  const color = THEME_COLORS[theme];
+  if (themeColorMetaEl && color) {
+    themeColorMetaEl.setAttribute("content", color);
+  }
 }
 
 function updateHintsUi() {
@@ -1018,6 +1049,12 @@ function onFillModeEntryChange(event) {
   saveGame();
 }
 
+function onThemeChange(event) {
+  state.theme = event.target.value;
+  applyTheme(state.theme);
+  saveGame();
+}
+
 boardEl.addEventListener("click", onBoardClick);
 numpadEl.addEventListener("click", onNumpadClick);
 numpadEl.addEventListener("pointerdown", onNumpadPointerDown);
@@ -1036,6 +1073,9 @@ difficultyEl.addEventListener("change", (event) => {
 });
 showMistakesEl.addEventListener("change", onShowMistakesChange);
 fillModeEntryEl.addEventListener("change", onFillModeEntryChange);
+if (themeEl) {
+  themeEl.addEventListener("change", onThemeChange);
+}
 newGameEl.addEventListener("click", startNewGame);
 hintEl.addEventListener("click", useHint);
 winNewGameEl.addEventListener("click", onWinNewGame);
@@ -1050,5 +1090,9 @@ if (!loadSavedGame()) {
   difficultyEl.value = state.difficulty;
   showMistakesEl.checked = state.showMistakes;
   fillModeEntryEl.value = state.fillModeEntry;
+  if (themeEl) {
+    themeEl.value = state.theme;
+  }
+  applyTheme(state.theme);
   startNewGame();
 }

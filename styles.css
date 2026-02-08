@@ -1,6 +1,8 @@
 :root {
   color-scheme: dark;
   --bg: #141a18;
+  --bg-glow: #1f2a25;
+  --bg-deep: #111614;
   --paper: #1b2421;
   --ink: #e7efe9;
   --muted: #b4c1ba;
@@ -20,6 +22,59 @@
   --selection-ring: #8cb5a088;
   --fill-mode-bg: #385046;
   --fill-mode-active: #3f5b4f;
+  --match-ink: #b4d8c0;
+}
+
+:root[data-theme="blue"] {
+  --bg: #141822;
+  --bg-glow: #202b3f;
+  --bg-deep: #11151e;
+  --paper: #1b2230;
+  --ink: #e8edf6;
+  --muted: #b6bfcd;
+  --accent: #89a7d6;
+  --line: #4a576e;
+  --line-bold: #62738f;
+  --given: #222c3d;
+  --active: #2b3950;
+  --peer: #1f2836;
+  --peer-box: #1c2431;
+  --error: #e19393;
+  --control-bg: #243046;
+  --control-hover: #2c3a54;
+  --control-active: #364667;
+  --board-bg: #1a2332;
+  --cell-bg: #1a2332;
+  --selection-ring: #89a7d688;
+  --fill-mode-bg: #3a4d73;
+  --fill-mode-active: #445a86;
+  --match-ink: #b8c9f1;
+}
+
+:root[data-theme="amber"] {
+  --bg: #1d1913;
+  --bg-glow: #342819;
+  --bg-deep: #15110c;
+  --paper: #282116;
+  --ink: #f1e6d5;
+  --muted: #cbb79a;
+  --accent: #c5a36f;
+  --line: #695845;
+  --line-bold: #8b7458;
+  --given: #33291b;
+  --active: #433521;
+  --peer: #2d2418;
+  --peer-box: #291f15;
+  --error: #ef9a8f;
+  --control-bg: #3a2d1d;
+  --control-hover: #483723;
+  --control-active: #59452c;
+  --board-bg: #261f15;
+  --cell-bg: #261f15;
+  --selection-ring: #c5a36f88;
+  --fill-mode-bg: #5b452a;
+  --fill-mode-active: #6b5131;
+  --match-ink: #f1d7a5;
 }
 
 * {
@@ -30,7 +85,7 @@ html {
   min-height: calc(100% + env(safe-area-inset-top));
   padding: env(safe-area-inset-top) env(safe-area-inset-right)
     env(safe-area-inset-bottom) env(safe-area-inset-left);
-  background: radial-gradient(circle at top, #1f2a25 0%, var(--bg) 62%, #111614 100%);
+  background: radial-gradient(circle at top, var(--bg-glow) 0%, var(--bg) 62%, var(--bg-deep) 100%);
 }
 
 body {
@@ -38,7 +93,7 @@ body {
   min-height: 100svh;
   font-family: "Georgia", "Times New Roman", serif;
   color: var(--ink);
-  background: radial-gradient(circle at top, #1f2a25 0%, var(--bg) 62%, #111614 100%);
+  background: radial-gradient(circle at top, var(--bg-glow) 0%, var(--bg) 62%, var(--bg-deep) 100%);
   display: grid;
   place-items: center;
   padding: 4px;
@@ -177,7 +232,7 @@ button:disabled {
 
 .cell.match {
   font-weight: 800;
-  color: #b4d8c0;
+  color: var(--match-ink);
 }
 
 .cell.selected {
@@ -317,7 +372,7 @@ button:disabled {
 }
 
 .settings-toggle input {
-  accent-color: #ffffff;
+  accent-color: var(--accent);
 }
 
 .stats {
