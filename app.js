@@ -392,6 +392,7 @@ function syncFillModeAvailability() {
 
 function renderNumpadMode() {
   const buttons = numpadEl.querySelectorAll("button[data-value]");
+  numpadEl.classList.toggle("fill-mode-active", state.fillModeValue !== null);
   for (const button of buttons) {
     const value = Number(button.dataset.value);
     const filledCount = countDigitOnBoard(value);
