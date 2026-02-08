@@ -411,8 +411,11 @@ button:disabled {
   .app {
     width: 100%;
     max-height: none;
-    min-height: 100svh;
-    padding: 6px;
+    min-height: calc(100svh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    padding-top: 6px;
+    padding-right: 6px;
+    padding-bottom: max(12px, calc(env(safe-area-inset-bottom) + 6px));
+    padding-left: 6px;
     border-radius: 0;
   }
 
@@ -441,7 +444,7 @@ button:disabled {
   }
 
   .board {
-    width: min(100%, calc(100svh - 198px));
+    width: min(100%, calc(100svh - 214px));
   }
 
   .cell {
@@ -451,6 +454,7 @@ button:disabled {
   .numpad {
     margin-top: 5px;
     gap: 3px;
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
   }
 
   .numpad button {
