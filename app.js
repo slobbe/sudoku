@@ -350,13 +350,25 @@ function countDigitOnBoard(digit) {
   return count;
 }
 
+function findNextIncompleteDigit(fromDigit) {
+  for (let step = 1; step <= 9; step += 1) {
+    const candidate = ((fromDigit - 1 + step) % 9) + 1;
+    if (countDigitOnBoard(candidate) < 9) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
 function syncFillModeAvailability() {
   if (state.fillModeValue === null) {
     return;
   }
 
   if (countDigitOnBoard(state.fillModeValue) >= 9) {
-    state.fillModeValue = null;
+    const next = findNextIncompleteDigit(state.fillModeValue);
+    state.fillModeValue = next;
+    state.highlightValue = next;
   }
 }
 
