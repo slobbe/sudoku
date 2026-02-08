@@ -14,24 +14,16 @@
 <body>
   <main class="app">
     <header class="header">
-      <h1>Sudoku</h1>
-      <p class="subtitle">Generate unique puzzles. Solve offline.</p>
+      <div class="header-row">
+        <h1>Sudoku</h1>
+        <div class="header-actions" aria-label="Quick actions">
+          <button id="hint" type="button">Hint (<span id="hints-left">3</span>)</button>
+          <button id="settings-open" type="button" aria-haspopup="dialog" aria-controls="settings-modal">
+            Settings
+          </button>
+        </div>
+      </div>
     </header>
-
-    <section class="controls" aria-label="Game controls">
-      <label for="difficulty">Difficulty</label>
-      <select id="difficulty">
-        <option value="easy">Easy</option>
-        <option value="medium" selected>Medium</option>
-        <option value="hard">Hard</option>
-      </select>
-      <button id="new-game" type="button">New Game</button>
-      <button id="hint" type="button">Hint (<span id="hints-left">3</span>)</button>
-    </section>
-
-    <section class="status" aria-live="polite">
-      <p id="status-text">Generating puzzle...</p>
-    </section>
 
     <section class="board-wrap" aria-label="Sudoku board">
       <div id="board" class="board" role="grid" aria-label="Sudoku grid"></div>
@@ -47,9 +39,27 @@
       <button type="button" data-value="7">7</button>
       <button type="button" data-value="8">8</button>
       <button type="button" data-value="9">9</button>
-      <button type="button" data-value="0" class="erase">Erase</button>
     </section>
   </main>
+
+  <dialog id="settings-modal" class="settings-modal" aria-label="Game settings">
+    <form method="dialog" class="settings-card">
+      <div class="settings-header">
+        <h2>Settings</h2>
+        <button id="settings-close" type="submit" value="close">Close</button>
+      </div>
+      <div class="settings-grid">
+        <label for="difficulty">Difficulty</label>
+        <select id="difficulty">
+          <option value="easy">Easy</option>
+          <option value="medium" selected>Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+        <button id="new-game" type="button">New Game</button>
+        <button id="erase-selected" type="button">Erase Selected Cell</button>
+      </div>
+    </form>
+  </dialog>
 
   <script type="module" src="./app.js"></script>
 </body>

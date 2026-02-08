@@ -9,9 +9,12 @@ const HINTS_PER_GAME = 3;
 const SAVE_KEY = "sudoku-pwa-current-game-v1";
 
 const boardEl = document.querySelector("#board");
+const settingsOpenEl = document.querySelector("#settings-open");
+const settingsModalEl = document.querySelector("#settings-modal");
 const difficultyEl = document.querySelector("#difficulty");
 const newGameEl = document.querySelector("#new-game");
 const hintEl = document.querySelector("#hint");
+const eraseSelectedEl = document.querySelector("#erase-selected");
 const hintsLeftEl = document.querySelector("#hints-left");
 const statusTextEl = document.querySelector("#status-text");
 
@@ -119,6 +122,9 @@ function isGiven(row, col) {
 }
 
 function setStatus(message) {
+  if (!statusTextEl) {
+    return;
+  }
   statusTextEl.textContent = message;
 }
 
@@ -320,6 +326,10 @@ function applyNumberInput(value) {
   setCellValue(state.selected.row, state.selected.col, value);
 }
 
+function eraseSelectedCell() {
+  applyNumberInput(0);
+}
+
 function onBoardClick(event) {
   const cell = cellFromEventTarget(event.target);
   if (!cell) {
@@ -364,6 +374,10 @@ function onKeyDown(event) {
     return;
   }
 
+  if (settingsModalEl.open) {
+    return;
+  }
+
   if (event.key >= "1" && event.key <= "9") {
     applyNumberInput(Number(event.key));
     return;
@@ -400,14 +414,27 @@ function registerServiceWorker() {
   });
 }
 
+function openSettings() {
+  settingsModalEl.showModal();
+}
+
+function closeSettingsOnBackdrop(event) {
+  if (event.target === settingsModalEl) {
+    settingsModalEl.close();
+  }
+}
+
 boardEl.addEventListener("click", onBoardClick);
 document.querySelector(".numpad").addEventListener("click", onNumpadClick);
+settingsOpenEl.addEventListener("click", openSettings);
+settingsModalEl.addEventListener("click", closeSettingsOnBackdrop);
 difficultyEl.addEventListener("change", (event) => {
   state.difficulty = event.target.value;
   startNewGame();
 });
 newGameEl.addEventListener("click", startNewGame);
 hintEl.addEventListener("click", useHint);
+eraseSelectedEl.addEventListener("click", eraseSelectedCell);
 window.addEventListener("keydown", onKeyDown);
 
 registerServiceWorker();
