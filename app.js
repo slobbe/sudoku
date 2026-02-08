@@ -382,10 +382,33 @@ function countDigitOnBoard(digit) {
   return count;
 }
 
+function isDigitCompletedCorrectly(digit) {
+  if (!state.board || !state.solution) {
+    return false;
+  }
+
+  let count = 0;
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      if (state.board[row][col] !== digit) {
+        continue;
+      }
+
+      if (state.solution[row][col] !== digit) {
+        return false;
+      }
+
+      count += 1;
+    }
+  }
+
+  return count === 9;
+}
+
 function findNextIncompleteDigit(fromDigit) {
   for (let step = 1; step <= 9; step += 1) {
     const candidate = ((fromDigit - 1 + step) % 9) + 1;
-    if (countDigitOnBoard(candidate) < 9) {
+    if (!isDigitCompletedCorrectly(candidate)) {
       return candidate;
     }
   }
@@ -397,7 +420,7 @@ function syncFillModeAvailability() {
     return;
   }
 
-  if (countDigitOnBoard(state.fillModeValue) >= 9) {
+  if (isDigitCompletedCorrectly(state.fillModeValue)) {
     const next = findNextIncompleteDigit(state.fillModeValue);
     state.fillModeValue = next;
     state.highlightValue = next;
@@ -409,8 +432,7 @@ function renderNumpadMode() {
   numpadEl.classList.toggle("fill-mode-active", state.fillModeValue !== null);
   for (const button of buttons) {
     const value = Number(button.dataset.value);
-    const filledCount = countDigitOnBoard(value);
-    button.disabled = filledCount >= 9;
+    button.disabled = isDigitCompletedCorrectly(value);
     button.classList.toggle("fill-mode", state.fillModeValue !== null && value === state.fillModeValue);
   }
 }

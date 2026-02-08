@@ -454,7 +454,7 @@ button:disabled {
   .numpad {
     margin-top: 5px;
     gap: 3px;
-    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    padding-bottom: 34px;
   }
 
   .numpad button {
