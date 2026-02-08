@@ -28,6 +28,7 @@ const boardEl = document.querySelector("#board");
 const numpadEl = document.querySelector(".numpad");
 const settingsOpenEl = document.querySelector("#settings-open");
 const settingsModalEl = document.querySelector("#settings-modal");
+const settingsCloseEl = document.querySelector("#settings-close");
 const undoEl = document.querySelector("#undo");
 const redoEl = document.querySelector("#redo");
 const difficultyEl = document.querySelector("#difficulty");
@@ -779,6 +780,10 @@ function openSettings() {
   settingsModalEl.showModal();
 }
 
+function closeSettings() {
+  settingsModalEl.close();
+}
+
 function closeSettingsOnBackdrop(event) {
   if (event.target === settingsModalEl) {
     settingsModalEl.close();
@@ -800,6 +805,7 @@ numpadEl.addEventListener("pointercancel", onNumpadPointerRelease);
 undoEl.addEventListener("click", undoMove);
 redoEl.addEventListener("click", redoMove);
 settingsOpenEl.addEventListener("click", openSettings);
+settingsCloseEl.addEventListener("click", closeSettings);
 settingsModalEl.addEventListener("click", closeSettingsOnBackdrop);
 difficultyEl.addEventListener("change", (event) => {
   state.difficulty = event.target.value;
