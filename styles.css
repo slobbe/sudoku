@@ -10,19 +10,23 @@
   --line: #4b5b53;
   --line-bold: #64786d;
   --given: #22302a;
-  --active: #2b3d35;
-  --peer: #1f2a25;
-  --peer-box: #1c2622;
+  --active: #30483c;
+  --peer: #22302a;
+  --peer-box: #1f2c26;
+  --peer-ring: #8cb5a018;
+  --peer-box-ring: #8cb5a010;
   --error: #e78d8d;
   --control-bg: #24312c;
   --control-hover: #2b3a34;
   --control-active: #33453d;
   --board-bg: #1a2320;
   --cell-bg: #1a2320;
-  --selection-ring: #8cb5a088;
+  --selection-ring: #9fcdb7aa;
   --fill-mode-bg: #385046;
   --fill-mode-active: #3f5b4f;
-  --match-ink: #b4d8c0;
+  --match-ink: #d7f1e3;
+  --match-glow: #8cb5a0b8;
+  --match-ring: #8cb5a078;
 }
 
 :root[data-theme="blue"] {
@@ -36,19 +40,23 @@
   --line: #4a576e;
   --line-bold: #62738f;
   --given: #222c3d;
-  --active: #2b3950;
-  --peer: #1f2836;
-  --peer-box: #1c2431;
+  --active: #30425d;
+  --peer: #233044;
+  --peer-box: #202c3f;
+  --peer-ring: #89a7d618;
+  --peer-box-ring: #89a7d610;
   --error: #e19393;
   --control-bg: #243046;
   --control-hover: #2c3a54;
   --control-active: #364667;
   --board-bg: #1a2332;
   --cell-bg: #1a2332;
-  --selection-ring: #89a7d688;
+  --selection-ring: #9db9e1aa;
   --fill-mode-bg: #3a4d73;
   --fill-mode-active: #445a86;
-  --match-ink: #b8c9f1;
+  --match-ink: #d7e2fb;
+  --match-glow: #89a7d6b8;
+  --match-ring: #89a7d678;
 }
 
 :root[data-theme="amber"] {
@@ -62,19 +70,23 @@
   --line: #695845;
   --line-bold: #8b7458;
   --given: #33291b;
-  --active: #433521;
-  --peer: #2d2418;
-  --peer-box: #291f15;
+  --active: #503d25;
+  --peer: #3a2d1c;
+  --peer-box: #332818;
+  --peer-ring: #c5a36f18;
+  --peer-box-ring: #c5a36f10;
   --error: #ef9a8f;
   --control-bg: #3a2d1d;
   --control-hover: #483723;
   --control-active: #59452c;
   --board-bg: #261f15;
   --cell-bg: #261f15;
-  --selection-ring: #c5a36f88;
+  --selection-ring: #d8b987aa;
   --fill-mode-bg: #5b452a;
   --fill-mode-active: #6b5131;
-  --match-ink: #f1d7a5;
+  --match-ink: #f7e5c1;
+  --match-glow: #c5a36fb8;
+  --match-ring: #c5a36f78;
 }
 
 * {
@@ -224,20 +236,30 @@ button:disabled {
 
 .cell.peer {
   background: var(--peer);
+  box-shadow: inset 0 0 0 1px var(--peer-ring);
 }
 
 .cell.peer-box {
   background: var(--peer-box);
+  box-shadow: inset 0 0 0 1px var(--peer-box-ring);
 }
 
 .cell.match {
   font-weight: 800;
   color: var(--match-ink);
+  text-shadow: 0 0 5px var(--match-glow), 0 0 2px var(--match-glow);
+  box-shadow: inset 0 0 0 1px var(--match-ring);
 }
 
 .cell.selected {
   background: var(--active);
-  box-shadow: inset 0 0 0 1px var(--selection-ring);
+  box-shadow: inset 0 0 0 1px var(--selection-ring), 0 0 7px -5px var(--selection-ring);
+}
+
+.cell.selected.match {
+  box-shadow: inset 0 0 0 1px var(--selection-ring),
+    inset 0 0 0 2px var(--match-ring),
+    0 0 9px -5px var(--match-glow);
 }
 
 .cell.invalid {
