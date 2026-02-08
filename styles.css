@@ -11,10 +11,10 @@
   --line-bold: #64786d;
   --given: #22302a;
   --active: #30483c;
-  --peer: #22302a;
-  --peer-box: #1f2c26;
-  --peer-ring: #8cb5a018;
-  --peer-box-ring: #8cb5a010;
+  --peer: #1e2a24;
+  --peer-box: #1c2722;
+  --peer-ring: #8cb5a010;
+  --peer-box-ring: #8cb5a008;
   --error: #e78d8d;
   --control-bg: #24312c;
   --control-hover: #2b3a34;
@@ -24,9 +24,9 @@
   --selection-ring: #9fcdb7aa;
   --fill-mode-bg: #385046;
   --fill-mode-active: #3f5b4f;
-  --match-ink: #d7f1e3;
-  --match-glow: #8cb5a0b8;
-  --match-ring: #8cb5a078;
+  --match-ink: #e3f8ec;
+  --match-glow: #8cb5a0d2;
+  --match-ring: #8cb5a096;
 }
 
 :root[data-theme="blue"] {
@@ -41,10 +41,10 @@
   --line-bold: #62738f;
   --given: #222c3d;
   --active: #30425d;
-  --peer: #233044;
-  --peer-box: #202c3f;
-  --peer-ring: #89a7d618;
-  --peer-box-ring: #89a7d610;
+  --peer: #202b3d;
+  --peer-box: #1d2738;
+  --peer-ring: #89a7d610;
+  --peer-box-ring: #89a7d608;
   --error: #e19393;
   --control-bg: #243046;
   --control-hover: #2c3a54;
@@ -54,9 +54,9 @@
   --selection-ring: #9db9e1aa;
   --fill-mode-bg: #3a4d73;
   --fill-mode-active: #445a86;
-  --match-ink: #d7e2fb;
-  --match-glow: #89a7d6b8;
-  --match-ring: #89a7d678;
+  --match-ink: #e6edff;
+  --match-glow: #89a7d6d2;
+  --match-ring: #89a7d696;
 }
 
 :root[data-theme="amber"] {
@@ -71,10 +71,10 @@
   --line-bold: #8b7458;
   --given: #33291b;
   --active: #503d25;
-  --peer: #3a2d1c;
-  --peer-box: #332818;
-  --peer-ring: #c5a36f18;
-  --peer-box-ring: #c5a36f10;
+  --peer: #312619;
+  --peer-box: #2c2217;
+  --peer-ring: #c5a36f10;
+  --peer-box-ring: #c5a36f08;
   --error: #ef9a8f;
   --control-bg: #3a2d1d;
   --control-hover: #483723;
@@ -84,9 +84,9 @@
   --selection-ring: #d8b987aa;
   --fill-mode-bg: #5b452a;
   --fill-mode-active: #6b5131;
-  --match-ink: #f7e5c1;
-  --match-glow: #c5a36fb8;
-  --match-ring: #c5a36f78;
+  --match-ink: #fff0d1;
+  --match-glow: #c5a36fd2;
+  --match-ring: #c5a36f96;
 }
 
 * {
@@ -245,9 +245,9 @@ button:disabled {
 }
 
 .cell.match {
-  font-weight: 800;
+  font-weight: 900;
   color: var(--match-ink);
-  text-shadow: 0 0 5px var(--match-glow), 0 0 2px var(--match-glow);
+  text-shadow: 0 0 6px var(--match-glow), 0 0 3px var(--match-glow);
   box-shadow: inset 0 0 0 1px var(--match-ring);
 }
 
@@ -259,7 +259,7 @@ button:disabled {
 .cell.selected.match {
   box-shadow: inset 0 0 0 1px var(--selection-ring),
     inset 0 0 0 2px var(--match-ring),
-    0 0 9px -5px var(--match-glow);
+    0 0 11px -5px var(--match-glow);
 }
 
 .cell.invalid {

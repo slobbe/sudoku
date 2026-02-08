@@ -621,6 +621,7 @@ function renderBoard() {
   const fragment = document.createDocumentFragment();
 
   const highlighted = activeHighlightValue();
+  const showSelectionHighlights = state.fillModeValue === null;
 
   for (let row = 0; row < 9; row += 1) {
     for (let col = 0; col < 9; col += 1) {
@@ -643,9 +644,9 @@ function renderBoard() {
       if (isGiven(row, col)) {
         cell.classList.add("given");
       }
-      if (state.selected && state.selected.row === row && state.selected.col === col) {
+      if (showSelectionHighlights && state.selected && state.selected.row === row && state.selected.col === col) {
         cell.classList.add("selected");
-      } else if (state.selected) {
+      } else if (showSelectionHighlights && state.selected) {
         const sameRowOrCol = state.selected.row === row || state.selected.col === col;
         const sameBox = Math.floor(state.selected.row / 3) === Math.floor(row / 3)
           && Math.floor(state.selected.col / 3) === Math.floor(col / 3);
