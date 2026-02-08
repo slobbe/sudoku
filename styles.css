@@ -378,6 +378,30 @@ button:disabled {
   margin-top: 4px;
 }
 
+.updates {
+  border: 0;
+  padding: 2px 0 0;
+}
+
+.updates h3 {
+  margin: 0 0 6px;
+  font-size: 0.95rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.update-status {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--muted);
+}
+
+.update-actions {
+  margin-top: 8px;
+  display: flex;
+  gap: 8px;
+}
+
 @media (max-width: 600px) {
   body {
     place-items: stretch;

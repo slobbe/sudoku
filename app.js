@@ -50,6 +50,9 @@ const statsBestStreakEl = document.querySelector("#stats-best-streak");
 const statsEasyEl = document.querySelector("#stats-easy");
 const statsMediumEl = document.querySelector("#stats-medium");
 const statsHardEl = document.querySelector("#stats-hard");
+const updateStatusEl = document.querySelector("#update-status");
+const checkUpdateEl = document.querySelector("#check-update");
+const applyUpdateEl = document.querySelector("#apply-update");
 
 const state = {
   difficulty: "medium",
@@ -76,6 +79,8 @@ let winPromptTimer = null;
 let lastTapDigit = null;
 let lastTapAt = 0;
 let pendingTapTimer = null;
+let swRegistration = null;
+let reloadTriggeredByUpdate = false;
 
 function isValidBoardShape(board) {
   if (!Array.isArray(board) || board.length !== 9) {
@@ -236,6 +241,15 @@ function setStatus(message) {
 function updateHintsUi() {
   hintsLeftEl.textContent = String(state.hintsLeft);
   hintEl.disabled = state.hintsLeft <= 0 || state.won;
+}
+
+function setUpdateStatus(message) {
+  updateStatusEl.textContent = message;
+}
+
+function updateUpdateButtons() {
+  const waiting = Boolean(swRegistration && swRegistration.waiting);
+  applyUpdateEl.disabled = !waiting;
 }
 
 function formatRate(won, started) {
@@ -887,13 +901,83 @@ function onKeyDown(event) {
 
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) {
+    setUpdateStatus("Updates unavailable in this browser.");
+    checkUpdateEl.disabled = true;
+    applyUpdateEl.disabled = true;
     return;
   }
-  window.addEventListener("load", () => {
-    navigator.serviceWorker.register("./sw.js").catch(() => {
-      setStatus("Game works, but offline mode could not be enabled.");
-    });
+
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (reloadTriggeredByUpdate) {
+      return;
+    }
+    reloadTriggeredByUpdate = true;
+    window.location.reload();
   });
+
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then((registration) => {
+        swRegistration = registration;
+        updateUpdateButtons();
+        setUpdateStatus(registration.waiting ? "Update available." : "Up to date.");
+
+        registration.addEventListener("updatefound", () => {
+          const newWorker = registration.installing;
+          if (!newWorker) {
+            return;
+          }
+          setUpdateStatus("Downloading update...");
+          newWorker.addEventListener("statechange", () => {
+            if (newWorker.state === "installed") {
+              updateUpdateButtons();
+              if (navigator.serviceWorker.controller) {
+                setUpdateStatus("Update available.");
+              } else {
+                setUpdateStatus("Up to date.");
+              }
+            }
+          });
+        });
+      })
+      .catch(() => {
+        setStatus("Game works, but offline mode could not be enabled.");
+        setUpdateStatus("Service worker setup failed.");
+        checkUpdateEl.disabled = true;
+        applyUpdateEl.disabled = true;
+      });
+  });
+}
+
+function checkForUpdates() {
+  if (!swRegistration) {
+    setUpdateStatus("Checking unavailable right now.");
+    return;
+  }
+
+  setUpdateStatus("Checking for updates...");
+  swRegistration.update()
+    .then(() => {
+      updateUpdateButtons();
+      if (swRegistration.waiting) {
+        setUpdateStatus("Update available.");
+      } else {
+        setUpdateStatus("Up to date.");
+      }
+    })
+    .catch(() => {
+      setUpdateStatus("Could not check for updates.");
+    });
+}
+
+function applyUpdateNow() {
+  if (!swRegistration || !swRegistration.waiting) {
+    setUpdateStatus("No update ready.");
+    return;
+  }
+
+  setUpdateStatus("Applying update...");
+  swRegistration.waiting.postMessage({ type: "SKIP_WAITING" });
 }
 
 function openSettings() {
@@ -956,6 +1040,8 @@ newGameEl.addEventListener("click", startNewGame);
 hintEl.addEventListener("click", useHint);
 winNewGameEl.addEventListener("click", onWinNewGame);
 winLaterEl.addEventListener("click", closeWinPrompt);
+checkUpdateEl.addEventListener("click", checkForUpdates);
+applyUpdateEl.addEventListener("click", applyUpdateNow);
 window.addEventListener("keydown", onKeyDown);
 
 registerServiceWorker();
