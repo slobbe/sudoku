@@ -309,8 +309,10 @@ function undoMove() {
   state.redoStack.push(createSnapshot());
   const snapshot = state.undoStack.pop();
   applySnapshot(snapshot);
+  syncFillModeAvailability();
   updateHintsUi();
   updateUndoRedoUi();
+  renderNumpadMode();
   renderBoard();
   saveGame();
 }
@@ -323,16 +325,46 @@ function redoMove() {
   state.undoStack.push(createSnapshot());
   const snapshot = state.redoStack.pop();
   applySnapshot(snapshot);
+  syncFillModeAvailability();
   updateHintsUi();
   updateUndoRedoUi();
+  renderNumpadMode();
   renderBoard();
   saveGame();
+}
+
+function countDigitOnBoard(digit) {
+  if (!state.board) {
+    return 0;
+  }
+
+  let count = 0;
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      if (state.board[row][col] === digit) {
+        count += 1;
+      }
+    }
+  }
+  return count;
+}
+
+function syncFillModeAvailability() {
+  if (state.fillModeValue === null) {
+    return;
+  }
+
+  if (countDigitOnBoard(state.fillModeValue) >= 9) {
+    state.fillModeValue = null;
+  }
 }
 
 function renderNumpadMode() {
   const buttons = numpadEl.querySelectorAll("button[data-value]");
   for (const button of buttons) {
     const value = Number(button.dataset.value);
+    const filledCount = countDigitOnBoard(value);
+    button.disabled = filledCount >= 9;
     button.classList.toggle("fill-mode", state.fillModeValue !== null && value === state.fillModeValue);
   }
 }
@@ -410,6 +442,8 @@ function setCellValue(row, col, value) {
 
   state.board[row][col] = value;
   state.highlightValue = value === 0 ? null : value;
+  syncFillModeAvailability();
+  renderNumpadMode();
   renderBoard();
   updateWinState();
 
@@ -521,7 +555,9 @@ function useHint() {
   state.highlightValue = state.solution[row][col];
   state.hintsLeft -= 1;
   state.selected = { row, col };
+  syncFillModeAvailability();
   updateHintsUi();
+  renderNumpadMode();
   renderBoard();
   updateWinState();
 
@@ -593,6 +629,10 @@ function onNumpadClick(event) {
     return;
   }
 
+  if (button.disabled) {
+    return;
+  }
+
   if (longPressTriggered) {
     longPressTriggered = false;
     return;
@@ -616,6 +656,10 @@ function clearLongPressTimer() {
 function onNumpadPointerDown(event) {
   const button = event.target.closest("button[data-value]");
   if (!button) {
+    return;
+  }
+
+  if (button.disabled) {
     return;
   }
 
