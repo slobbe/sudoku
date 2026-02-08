@@ -33,6 +33,11 @@ Then open `http://localhost:8080`.
 
 The app uses relative paths (`./...`) so it works on both user and project Pages URLs.
 
+## PWA Update Notes
+
+- When releasing a new version, bump `APP_VERSION` in `sw.js`.
+- This forces a new cache name so installed PWAs fetch fresh files instead of staying on an older cached build.
+
 ## Structure
 
 - `index.html` - app shell
