@@ -7,6 +7,8 @@ import {
 
 const HINTS_PER_GAME = 3;
 const SAVE_KEY = "sudoku-pwa-current-game-v1";
+const FILL_MODE_ENTRY_TYPES = ["long-press", "double-tap"];
+const DOUBLE_TAP_MS = 300;
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
 
@@ -37,6 +39,7 @@ const undoEl = document.querySelector("#undo");
 const redoEl = document.querySelector("#redo");
 const difficultyEl = document.querySelector("#difficulty");
 const showMistakesEl = document.querySelector("#show-mistakes");
+const fillModeEntryEl = document.querySelector("#fill-mode-entry");
 const newGameEl = document.querySelector("#new-game");
 const hintEl = document.querySelector("#hint");
 const hintsLeftEl = document.querySelector("#hints-left");
@@ -58,6 +61,7 @@ const state = {
   highlightValue: null,
   fillModeValue: null,
   showMistakes: true,
+  fillModeEntry: "long-press",
   undoStack: [],
   redoStack: [],
   stats: createDefaultStats(),
@@ -69,6 +73,9 @@ const state = {
 let longPressTimer = null;
 let longPressTriggered = false;
 let winPromptTimer = null;
+let lastTapDigit = null;
+let lastTapAt = 0;
+let pendingTapTimer = null;
 
 function isValidBoardShape(board) {
   if (!Array.isArray(board) || board.length !== 9) {
@@ -131,6 +138,7 @@ function saveGame() {
     board: state.board,
     hintsLeft: state.hintsLeft,
     showMistakes: state.showMistakes,
+    fillModeEntry: state.fillModeEntry,
     stats: state.stats,
     won: state.won,
   };
@@ -177,6 +185,9 @@ function loadSavedGame() {
   if (parsed.showMistakes !== undefined && typeof parsed.showMistakes !== "boolean") {
     return false;
   }
+  if (parsed.fillModeEntry !== undefined && !FILL_MODE_ENTRY_TYPES.includes(parsed.fillModeEntry)) {
+    return false;
+  }
 
   state.difficulty = parsed.difficulty;
   state.puzzle = parsed.puzzle;
@@ -187,6 +198,7 @@ function loadSavedGame() {
   state.highlightValue = null;
   state.fillModeValue = null;
   state.showMistakes = parsed.showMistakes !== undefined ? parsed.showMistakes : true;
+  state.fillModeEntry = parsed.fillModeEntry || "long-press";
   state.undoStack = [];
   state.redoStack = [];
   state.stats = normalizeStats(parsed.stats);
@@ -196,6 +208,7 @@ function loadSavedGame() {
 
   difficultyEl.value = state.difficulty;
   showMistakesEl.checked = state.showMistakes;
+  fillModeEntryEl.value = state.fillModeEntry;
   updateHintsUi();
   updateUndoRedoUi();
   renderStats();
@@ -403,6 +416,14 @@ function setFillMode(valueOrNull) {
   renderBoard();
 }
 
+function toggleFillModeForDigit(value) {
+  if (state.fillModeValue === value) {
+    setFillMode(null);
+  } else {
+    setFillMode(value);
+  }
+}
+
 function buildGivens(puzzle) {
   const givens = new Set();
   for (let row = 0; row < 9; row += 1) {
@@ -476,6 +497,44 @@ function showWinCelebration() {
       winModalEl.showModal();
     }
   }, 1150);
+}
+
+function clearPendingTapTimer() {
+  if (pendingTapTimer !== null) {
+    window.clearTimeout(pendingTapTimer);
+    pendingTapTimer = null;
+  }
+}
+
+function resetDoubleTapTracking() {
+  clearPendingTapTimer();
+  lastTapDigit = null;
+  lastTapAt = 0;
+}
+
+function handleDoubleTapEntry(value) {
+  const now = Date.now();
+  const isSecondTap = lastTapDigit === value && now - lastTapAt <= DOUBLE_TAP_MS;
+
+  if (isSecondTap) {
+    resetDoubleTapTracking();
+    toggleFillModeForDigit(value);
+    return;
+  }
+
+  lastTapDigit = value;
+  lastTapAt = now;
+  clearPendingTapTimer();
+  pendingTapTimer = window.setTimeout(() => {
+    pendingTapTimer = null;
+    if (state.fillModeEntry === "double-tap" && state.fillModeValue === null) {
+      applyNumberInput(value);
+    }
+    if (lastTapDigit === value) {
+      lastTapDigit = null;
+      lastTapAt = 0;
+    }
+  }, DOUBLE_TAP_MS);
 }
 
 function clearWinUi() {
@@ -693,11 +752,17 @@ function onNumpadClick(event) {
     return;
   }
 
+  const value = Number(button.dataset.value);
+
+  if (state.fillModeEntry === "double-tap") {
+    handleDoubleTapEntry(value);
+    return;
+  }
+
   if (state.fillModeValue !== null) {
     return;
   }
 
-  const value = Number(button.dataset.value);
   applyNumberInput(value);
 }
 
@@ -718,6 +783,10 @@ function onNumpadPointerDown(event) {
     return;
   }
 
+  if (state.fillModeEntry !== "long-press") {
+    return;
+  }
+
   event.preventDefault();
 
   const value = Number(button.dataset.value);
@@ -728,11 +797,7 @@ function onNumpadPointerDown(event) {
   longPressTriggered = false;
   clearLongPressTimer();
   longPressTimer = window.setTimeout(() => {
-    if (state.fillModeValue === value) {
-      setFillMode(null);
-    } else {
-      setFillMode(value);
-    }
+    toggleFillModeForDigit(value);
     longPressTriggered = true;
     clearLongPressTimer();
   }, 430);
@@ -861,6 +926,13 @@ function onShowMistakesChange(event) {
   saveGame();
 }
 
+function onFillModeEntryChange(event) {
+  state.fillModeEntry = event.target.value;
+  clearLongPressTimer();
+  resetDoubleTapTracking();
+  saveGame();
+}
+
 boardEl.addEventListener("click", onBoardClick);
 numpadEl.addEventListener("click", onNumpadClick);
 numpadEl.addEventListener("pointerdown", onNumpadPointerDown);
@@ -878,6 +950,7 @@ difficultyEl.addEventListener("change", (event) => {
   startNewGame();
 });
 showMistakesEl.addEventListener("change", onShowMistakesChange);
+fillModeEntryEl.addEventListener("change", onFillModeEntryChange);
 newGameEl.addEventListener("click", startNewGame);
 hintEl.addEventListener("click", useHint);
 winNewGameEl.addEventListener("click", onWinNewGame);
@@ -889,5 +962,6 @@ registerServiceWorker();
 if (!loadSavedGame()) {
   difficultyEl.value = state.difficulty;
   showMistakesEl.checked = state.showMistakes;
+  fillModeEntryEl.value = state.fillModeEntry;
   startNewGame();
 }
