@@ -33,15 +33,15 @@ body {
   background: var(--bg);
   display: grid;
   place-items: center;
-  padding: 6px;
+  padding: 4px;
 }
 
 .app {
   width: min(640px, 100%);
   max-height: calc(100dvh - 12px);
   background: var(--paper);
-  border: 1px solid var(--line-bold);
-  border-radius: 2px;
+  border: 0;
+  border-radius: 0;
   padding: 8px;
   display: flex;
   flex-direction: column;
@@ -52,8 +52,7 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  border-bottom: 2px solid var(--line-bold);
-  padding-bottom: 4px;
+  padding-bottom: 2px;
 }
 
 .header h1 {
@@ -86,6 +85,10 @@ select {
 button {
   cursor: pointer;
   transition: background-color 120ms ease;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 button:hover {
@@ -139,12 +142,15 @@ button:disabled {
 
 .cell {
   border: 1px solid var(--line);
-  font-size: clamp(1.02rem, 3.2vw, 1.55rem);
+  font-size: clamp(1.15rem, 3.8vw, 1.9rem);
   font-weight: 700;
   display: grid;
   place-items: center;
   background: var(--cell-bg);
   user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  touch-action: manipulation;
 }
 
 .cell.given {
@@ -190,7 +196,7 @@ button:disabled {
 
 .numpad button {
   font-weight: 700;
-  min-height: 42px;
+  min-height: 50px;
   padding: 6px 0;
 }
 
@@ -255,8 +261,8 @@ button:disabled {
 }
 
 .stats {
-  border: 1px solid var(--line);
-  padding: 8px;
+  border: 0;
+  padding: 2px 0 0;
 }
 
 .stats h3 {
@@ -276,9 +282,20 @@ button:disabled {
 }
 
 @media (max-width: 600px) {
+  body {
+    place-items: stretch;
+    padding: 0;
+  }
+
   .app {
-    padding: 6px;
-    border-radius: 2px;
+    width: 100%;
+    max-height: none;
+    min-height: 100dvh;
+    padding-top: max(6px, env(safe-area-inset-top));
+    padding-right: max(6px, env(safe-area-inset-right));
+    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    padding-left: max(6px, env(safe-area-inset-left));
+    border-radius: 0;
   }
 
   .header-row {
@@ -287,7 +304,7 @@ button:disabled {
   }
 
   .header h1 {
-    font-size: clamp(1.25rem, 6vw, 1.6rem);
+    font-size: clamp(1.5rem, 7vw, 1.9rem);
   }
 
   .header-actions {
@@ -297,20 +314,20 @@ button:disabled {
   }
 
   .header-actions button {
-    padding: 5px 7px;
-    font-size: 0.86rem;
+    padding: 7px 9px;
+    font-size: 0.95rem;
   }
 
   .board-wrap {
-    margin-top: 5px;
+    margin-top: 6px;
   }
 
   .board {
-    width: min(100%, calc(100dvh - 182px));
+    width: min(100%, calc(100dvh - 198px));
   }
 
   .cell {
-    font-size: clamp(0.95rem, 4.4vw, 1.25rem);
+    font-size: clamp(1.25rem, 5.4vw, 1.95rem);
   }
 
   .numpad {
@@ -319,9 +336,9 @@ button:disabled {
   }
 
   .numpad button {
-    min-height: 40px;
+    min-height: 52px;
     padding: 4px 0;
-    font-size: 1rem;
+    font-size: 1.2rem;
   }
 
   .settings-card {

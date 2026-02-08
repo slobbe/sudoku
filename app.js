@@ -598,6 +598,10 @@ function onNumpadClick(event) {
     return;
   }
 
+  if (state.fillModeValue !== null) {
+    return;
+  }
+
   const value = Number(button.dataset.value);
   applyNumberInput(value);
 }
@@ -614,6 +618,8 @@ function onNumpadPointerDown(event) {
   if (!button) {
     return;
   }
+
+  event.preventDefault();
 
   const value = Number(button.dataset.value);
   if (value < 1 || value > 9) {
