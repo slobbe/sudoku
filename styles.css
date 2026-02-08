@@ -27,7 +27,7 @@
 
 body {
   margin: 0;
-  min-height: 100dvh;
+  min-height: 100svh;
   font-family: "Georgia", "Times New Roman", serif;
   color: var(--ink);
   background: var(--bg);
@@ -38,7 +38,7 @@ body {
 
 .app {
   width: min(640px, 100%);
-  max-height: calc(100dvh - 12px);
+  max-height: calc(100svh - 12px);
   background: var(--paper);
   border: 0;
   border-radius: 0;
@@ -128,7 +128,7 @@ button:disabled {
 }
 
 .board {
-  width: min(540px, 100%, calc(100dvh - 190px));
+  width: min(540px, 100%, calc(100svh - 190px));
   margin: 0 auto;
   aspect-ratio: 1 / 1;
   border: 2px solid #7f7f7f;
@@ -259,7 +259,7 @@ button:disabled {
 }
 
 .win-modal {
-  width: min(360px, calc(100vw - 20px));
+  width: min(360px, calc(100svw - 20px));
   border: 1px solid var(--line-bold);
   padding: 0;
   background: transparent;
@@ -295,8 +295,8 @@ button:disabled {
 
 .settings-modal {
   margin: auto;
-  width: min(460px, calc(100vw - 16px));
-  max-width: calc(100vw - 16px);
+  width: min(460px, calc(100svw - 16px));
+  max-width: calc(100svw - 16px);
   padding: 0;
   border: 1px solid var(--line-bold);
   background: transparent;
@@ -378,9 +378,9 @@ button:disabled {
   }
 
   .app {
-    width: 100%;
+    width: 100svw;
     max-height: none;
-    min-height: 100dvh;
+    min-height: 100svh;
     padding-top: max(6px, env(safe-area-inset-top));
     padding-right: max(6px, env(safe-area-inset-right));
     padding-bottom: max(6px, env(safe-area-inset-bottom));
@@ -413,7 +413,7 @@ button:disabled {
   }
 
   .board {
-    width: min(100%, calc(100dvh - 198px));
+    width: min(100%, calc(100svh - 198px));
   }
 
   .cell {
@@ -432,7 +432,7 @@ button:disabled {
   }
 
   .settings-card {
-    max-height: calc(100dvh - 20px);
+    max-height: calc(100svh - 20px);
     overflow: auto;
     padding-top: 10px;
     padding-right: 10px;
@@ -448,7 +448,7 @@ button:disabled {
   }
 
   .settings-modal[open] {
-    min-height: 100dvh;
+    min-height: 100svh;
     display: flex;
     align-items: flex-end;
   }
@@ -458,7 +458,7 @@ button:disabled {
   }
 
   .win-modal {
-    width: calc(100vw - 12px);
+    width: calc(100svw - 12px);
     max-width: 100%;
   }
 }
