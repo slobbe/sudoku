@@ -5,8 +5,8 @@
   --ink: #fafafa;
   --muted: #d3d3d3;
   --accent: #ffffff;
-  --line: #8f8f8f;
-  --line-bold: #f2f2f2;
+  --line: #6e6e6e;
+  --line-bold: #9a9a9a;
   --given: #1c1c1c;
   --active: #2f2f2f;
   --peer: #1f1f1f;
@@ -18,7 +18,7 @@
   --control-active: #383838;
   --board-bg: #121212;
   --cell-bg: #121212;
-  --selection-ring: #ffffffb3;
+  --selection-ring: #d8d8d899;
 }
 
 * {
@@ -131,7 +131,7 @@ button:disabled {
   width: min(540px, 100%, calc(100dvh - 190px));
   margin: 0 auto;
   aspect-ratio: 1 / 1;
-  border: 3px solid var(--line-bold);
+  border: 2px solid #7f7f7f;
   border-radius: 0;
   overflow: hidden;
   display: grid;
