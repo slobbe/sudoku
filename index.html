@@ -17,6 +17,8 @@
       <div class="header-row">
         <h1>Sudoku</h1>
         <div class="header-actions" aria-label="Quick actions">
+          <button id="undo" type="button" title="Undo">Undo</button>
+          <button id="redo" type="button" title="Redo">Redo</button>
           <button id="hint" type="button">Hint (<span id="hints-left">3</span>)</button>
           <button id="settings-open" type="button" aria-haspopup="dialog" aria-controls="settings-modal">
             Settings
@@ -55,6 +57,10 @@
           <option value="medium" selected>Medium</option>
           <option value="hard">Hard</option>
         </select>
+        <label for="show-mistakes" class="settings-toggle">
+          <input id="show-mistakes" type="checkbox" checked>
+          Show mistakes immediately
+        </label>
         <button id="new-game" type="button">New Game</button>
         <button id="erase-selected" type="button">Erase Selected Cell</button>
       </div>

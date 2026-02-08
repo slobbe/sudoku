@@ -94,15 +94,24 @@ button:active {
 }
 
 #new-game,
+#undo,
+#redo,
 #hint,
 #erase-selected,
 #settings-open {
   border-color: var(--line-bold);
 }
 
+#undo,
+#redo,
 #hint,
 #settings-open {
   flex-shrink: 0;
+}
+
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 .board-wrap {
@@ -169,7 +178,7 @@ button:active {
 .numpad {
   margin-top: 6px;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(9, minmax(0, 1fr));
   gap: 5px;
 }
 
@@ -225,6 +234,17 @@ button:active {
 
 .settings-grid label {
   font-weight: 700;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 400;
+}
+
+.settings-toggle input {
+  accent-color: #ffffff;
 }
 
 @media (max-width: 600px) {

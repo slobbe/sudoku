@@ -12,7 +12,10 @@ const boardEl = document.querySelector("#board");
 const numpadEl = document.querySelector(".numpad");
 const settingsOpenEl = document.querySelector("#settings-open");
 const settingsModalEl = document.querySelector("#settings-modal");
+const undoEl = document.querySelector("#undo");
+const redoEl = document.querySelector("#redo");
 const difficultyEl = document.querySelector("#difficulty");
+const showMistakesEl = document.querySelector("#show-mistakes");
 const newGameEl = document.querySelector("#new-game");
 const hintEl = document.querySelector("#hint");
 const eraseSelectedEl = document.querySelector("#erase-selected");
@@ -28,6 +31,9 @@ const state = {
   selected: null,
   highlightValue: null,
   fillModeValue: null,
+  showMistakes: true,
+  undoStack: [],
+  redoStack: [],
   hintsLeft: HINTS_PER_GAME,
   won: false,
 };
@@ -58,6 +64,7 @@ function saveGame() {
     solution: state.solution,
     board: state.board,
     hintsLeft: state.hintsLeft,
+    showMistakes: state.showMistakes,
     won: state.won,
   };
 
@@ -100,6 +107,9 @@ function loadSavedGame() {
   if (typeof parsed.won !== "boolean") {
     return false;
   }
+  if (parsed.showMistakes !== undefined && typeof parsed.showMistakes !== "boolean") {
+    return false;
+  }
 
   state.difficulty = parsed.difficulty;
   state.puzzle = parsed.puzzle;
@@ -109,11 +119,16 @@ function loadSavedGame() {
   state.selected = null;
   state.highlightValue = null;
   state.fillModeValue = null;
+  state.showMistakes = parsed.showMistakes !== undefined ? parsed.showMistakes : true;
+  state.undoStack = [];
+  state.redoStack = [];
   state.hintsLeft = parsed.hintsLeft;
   state.won = parsed.won;
 
   difficultyEl.value = state.difficulty;
+  showMistakesEl.checked = state.showMistakes;
   updateHintsUi();
+  updateUndoRedoUi();
   renderNumpadMode();
   renderBoard();
   setStatus("Restored your previous game.");
@@ -138,6 +153,66 @@ function setStatus(message) {
 function updateHintsUi() {
   hintsLeftEl.textContent = String(state.hintsLeft);
   hintEl.disabled = state.hintsLeft <= 0 || state.won;
+}
+
+function updateUndoRedoUi() {
+  undoEl.disabled = state.undoStack.length === 0;
+  redoEl.disabled = state.redoStack.length === 0;
+}
+
+function createSnapshot() {
+  return {
+    board: clone(state.board),
+    selected: state.selected ? { ...state.selected } : null,
+    highlightValue: state.highlightValue,
+    hintsLeft: state.hintsLeft,
+    won: state.won,
+  };
+}
+
+function applySnapshot(snapshot) {
+  state.board = clone(snapshot.board);
+  state.selected = snapshot.selected ? { ...snapshot.selected } : null;
+  state.highlightValue = snapshot.highlightValue;
+  state.hintsLeft = snapshot.hintsLeft;
+  state.won = snapshot.won;
+}
+
+function pushUndoSnapshot() {
+  state.undoStack.push(createSnapshot());
+  if (state.undoStack.length > 300) {
+    state.undoStack.shift();
+  }
+  state.redoStack = [];
+  updateUndoRedoUi();
+}
+
+function undoMove() {
+  if (state.undoStack.length === 0) {
+    return;
+  }
+
+  state.redoStack.push(createSnapshot());
+  const snapshot = state.undoStack.pop();
+  applySnapshot(snapshot);
+  updateHintsUi();
+  updateUndoRedoUi();
+  renderBoard();
+  saveGame();
+}
+
+function redoMove() {
+  if (state.redoStack.length === 0) {
+    return;
+  }
+
+  state.undoStack.push(createSnapshot());
+  const snapshot = state.redoStack.pop();
+  applySnapshot(snapshot);
+  updateHintsUi();
+  updateUndoRedoUi();
+  renderBoard();
+  saveGame();
 }
 
 function renderNumpadMode() {
@@ -203,12 +278,19 @@ function updateWinState() {
   if (solved) {
     setStatus("You solved it! Start a new game for another puzzle.");
   }
+  updateUndoRedoUi();
 }
 
 function setCellValue(row, col, value) {
   if (state.won || isGiven(row, col)) {
     return;
   }
+
+  if (state.board[row][col] === value) {
+    return;
+  }
+
+  pushUndoSnapshot();
 
   state.board[row][col] = value;
   state.highlightValue = value === 0 ? null : value;
@@ -267,7 +349,7 @@ function renderBoard() {
       if (highlighted !== null && value === highlighted) {
         cell.classList.add("match");
       }
-      if (value !== 0 && !isValidPlacement(state.board, row, col, value)) {
+      if (state.showMistakes && value !== 0 && !isValidPlacement(state.board, row, col, value)) {
         cell.classList.add("invalid");
       }
 
@@ -318,6 +400,7 @@ function useHint() {
   }
 
   const { row, col } = cell;
+  pushUndoSnapshot();
   state.board[row][col] = state.solution[row][col];
   state.highlightValue = state.solution[row][col];
   state.hintsLeft -= 1;
@@ -345,9 +428,13 @@ function startNewGame() {
   state.highlightValue = null;
   state.fillModeValue = null;
   state.won = false;
+  state.undoStack = [];
+  state.redoStack = [];
   state.hintsLeft = HINTS_PER_GAME;
 
+  showMistakesEl.checked = state.showMistakes;
   updateHintsUi();
+  updateUndoRedoUi();
   renderNumpadMode();
   renderBoard();
   setStatus(`New ${state.difficulty} puzzle ready (${givens} givens).`);
@@ -469,6 +556,22 @@ function onKeyDown(event) {
     return;
   }
 
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
+    event.preventDefault();
+    if (event.shiftKey) {
+      redoMove();
+    } else {
+      undoMove();
+    }
+    return;
+  }
+
+  if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "y") {
+    event.preventDefault();
+    redoMove();
+    return;
+  }
+
   if (event.key === "Escape" && state.fillModeValue !== null) {
     setFillMode(null);
     return;
@@ -515,18 +618,27 @@ function closeSettingsOnBackdrop(event) {
   }
 }
 
+function onShowMistakesChange(event) {
+  state.showMistakes = event.target.checked;
+  renderBoard();
+  saveGame();
+}
+
 boardEl.addEventListener("click", onBoardClick);
 numpadEl.addEventListener("click", onNumpadClick);
 numpadEl.addEventListener("pointerdown", onNumpadPointerDown);
 numpadEl.addEventListener("pointerup", onNumpadPointerRelease);
 numpadEl.addEventListener("pointerleave", onNumpadPointerRelease);
 numpadEl.addEventListener("pointercancel", onNumpadPointerRelease);
+undoEl.addEventListener("click", undoMove);
+redoEl.addEventListener("click", redoMove);
 settingsOpenEl.addEventListener("click", openSettings);
 settingsModalEl.addEventListener("click", closeSettingsOnBackdrop);
 difficultyEl.addEventListener("change", (event) => {
   state.difficulty = event.target.value;
   startNewGame();
 });
+showMistakesEl.addEventListener("change", onShowMistakesChange);
 newGameEl.addEventListener("click", startNewGame);
 hintEl.addEventListener("click", useHint);
 eraseSelectedEl.addEventListener("click", eraseSelectedCell);
@@ -536,5 +648,6 @@ registerServiceWorker();
 
 if (!loadSavedGame()) {
   difficultyEl.value = state.difficulty;
+  showMistakesEl.checked = state.showMistakes;
   startNewGame();
 }
