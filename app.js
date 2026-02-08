@@ -31,7 +31,6 @@ const numpadEl = document.querySelector(".numpad");
 const settingsOpenEl = document.querySelector("#settings-open");
 const settingsModalEl = document.querySelector("#settings-modal");
 const settingsCloseEl = document.querySelector("#settings-close");
-const winBannerEl = document.querySelector("#win-banner");
 const winModalEl = document.querySelector("#win-modal");
 const winNewGameEl = document.querySelector("#win-new-game");
 const winLaterEl = document.querySelector("#win-later");
@@ -75,7 +74,6 @@ const state = {
 
 let longPressTimer = null;
 let longPressTriggered = false;
-let winPromptTimer = null;
 let lastTapDigit = null;
 let lastTapAt = 0;
 let pendingTapTimer = null;
@@ -505,35 +503,16 @@ function updateWinState() {
   updateUndoRedoUi();
 }
 
-function clearWinPromptTimer() {
-  if (winPromptTimer !== null) {
-    window.clearTimeout(winPromptTimer);
-    winPromptTimer = null;
-  }
-}
-
 function closeWinPrompt() {
-  clearWinPromptTimer();
   if (winModalEl.open) {
     winModalEl.close();
   }
 }
 
-function resetWinBanner() {
-  winBannerEl.classList.remove("show");
-}
-
 function showWinCelebration() {
-  clearWinPromptTimer();
-  resetWinBanner();
-  void winBannerEl.offsetWidth;
-  winBannerEl.classList.add("show");
-
-  winPromptTimer = window.setTimeout(() => {
-    if (!winModalEl.open) {
-      winModalEl.showModal();
-    }
-  }, 1150);
+  if (!winModalEl.open) {
+    winModalEl.showModal();
+  }
 }
 
 function clearPendingTapTimer() {
@@ -576,7 +555,6 @@ function handleDoubleTapEntry(value) {
 
 function clearWinUi() {
   closeWinPrompt();
-  resetWinBanner();
 }
 
 function setCellValue(row, col, value) {
