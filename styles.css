@@ -247,9 +247,9 @@ body {
 .board-actions {
     width: min(540px, 100%, calc(100svh - 190px));
     margin: 0 auto 2px;
-    display: flex;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
-    justify-content: space-between;
     gap: 8px;
     position: sticky;
     top: 0;
@@ -260,6 +260,44 @@ body {
     display: flex;
     align-items: center;
     gap: 6px;
+    justify-self: start;
+}
+
+.lives {
+    margin: 0;
+    justify-self: center;
+    color: var(--ink);
+    font-size: 1.45rem;
+    font-weight: 700;
+    line-height: 1;
+    letter-spacing: 0.12em;
+}
+
+#lives-display {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.14em;
+}
+
+.lives-heart {
+    display: inline-block;
+    font-size: 1.12em;
+    line-height: 1;
+}
+
+.lives-miss {
+    display: inline-block;
+    font-size: 0.62em;
+    line-height: 1;
+    transform: translateY(-0.08em);
+}
+
+#hint {
+    justify-self: end;
+}
+
+.lives.empty {
+    color: var(--error);
 }
 
 #settings-open {
@@ -672,6 +710,10 @@ button:disabled {
         gap: 3px;
     }
 
+    .lives {
+        font-size: 1.28rem;
+    }
+
     .board-wrap {
         min-height: 0;
         margin: 0;
@@ -789,6 +831,10 @@ button:disabled {
         gap: 2px;
     }
 
+    .lives {
+        font-size: 1.2rem;
+    }
+
     .numpad {
         gap: 1px;
         padding-bottom: max(34px, calc(env(safe-area-inset-bottom) + 4px));
@@ -804,6 +850,10 @@ button:disabled {
 @media (max-width: 380px) {
     .cell {
         font-size: clamp(1.18rem, 5.2vw, 1.7rem);
+    }
+
+    .lives {
+        font-size: 1.08rem;
     }
 }
 
@@ -837,6 +887,10 @@ button:disabled {
 
     .board-actions-left {
         gap: 1px;
+    }
+
+    .lives {
+        font-size: 1rem;
     }
 
     .board-wrap {

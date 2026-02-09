@@ -6,12 +6,13 @@ import {
 } from "./sudoku.js";
 
 const HINTS_PER_GAME = 3;
+const LIVES_PER_GAME = 3;
 const SAVE_KEY = "sudoku-pwa-current-game-v1";
 const FILL_MODE_ENTRY_TYPES = ["long-press", "double-tap"];
 const THEMES = ["slate", "dusk", "mist", "amber"];
 const DOUBLE_TAP_MS = 300;
 const APP_NAME = "Sudoku";
-const APP_VERSION = "0.1.5";
+const APP_VERSION = "0.1.6";
 const APP_AUTHOR = "slobbe";
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
@@ -43,6 +44,9 @@ const settingsCloseEl = document.querySelector("#settings-close");
 const winModalEl = document.querySelector("#win-modal");
 const winNewGameEl = document.querySelector("#win-new-game");
 const winLaterEl = document.querySelector("#win-later");
+const loseModalEl = document.querySelector("#lose-modal");
+const loseNewGameEl = document.querySelector("#lose-new-game");
+const loseLaterEl = document.querySelector("#lose-later");
 const undoEl = document.querySelector("#undo");
 const redoEl = document.querySelector("#redo");
 const resetGameEl = document.querySelector("#reset-game");
@@ -53,6 +57,8 @@ const themeEl = document.querySelector("#theme");
 const newGameEl = document.querySelector("#new-game");
 const hintEl = document.querySelector("#hint");
 const hintsLeftEl = document.querySelector("#hints-left");
+const livesEl = document.querySelector("#lives");
+const livesDisplayEl = document.querySelector("#lives-display");
 const statusTextEl = document.querySelector("#status-text");
 const statsOverallEl = document.querySelector("#stats-overall");
 const statsStreakEl = document.querySelector("#stats-streak");
@@ -104,6 +110,8 @@ const state = {
   winRecorded: false,
   currentGameStarted: false,
   hintsLeft: HINTS_PER_GAME,
+  livesLeft: LIVES_PER_GAME,
+  lost: false,
   won: false,
 };
 
@@ -241,11 +249,13 @@ function saveGame() {
     solution: state.solution,
     board: state.board,
     hintsLeft: state.hintsLeft,
+    livesLeft: state.livesLeft,
     showMistakes: state.showMistakes,
     fillModeEntry: state.fillModeEntry,
     theme: state.theme,
     stats: state.stats,
     won: state.won,
+    lost: state.lost,
     currentGameStarted: state.currentGameStarted,
   };
 
@@ -285,7 +295,16 @@ function loadSavedGame() {
   if (!Number.isInteger(parsed.hintsLeft) || parsed.hintsLeft < 0 || parsed.hintsLeft > HINTS_PER_GAME) {
     return false;
   }
+  if (
+    parsed.livesLeft !== undefined
+    && (!Number.isInteger(parsed.livesLeft) || parsed.livesLeft < 0 || parsed.livesLeft > LIVES_PER_GAME)
+  ) {
+    return false;
+  }
   if (typeof parsed.won !== "boolean") {
+    return false;
+  }
+  if (parsed.lost !== undefined && typeof parsed.lost !== "boolean") {
     return false;
   }
   if (parsed.currentGameStarted !== undefined && typeof parsed.currentGameStarted !== "boolean") {
@@ -319,7 +338,9 @@ function loadSavedGame() {
   state.redoStack = [];
   state.stats = normalizeStats(parsed.stats);
   state.hintsLeft = parsed.hintsLeft;
+  state.livesLeft = parsed.livesLeft !== undefined ? parsed.livesLeft : LIVES_PER_GAME;
   state.won = parsed.won;
+  state.lost = parsed.lost === true || (!state.won && state.livesLeft === 0);
   state.winRecorded = state.won;
   const inferredStarted = hasUserProgressOnBoard(parsed.board, parsed.puzzle);
   state.currentGameStarted = parsed.currentGameStarted === true || inferredStarted;
@@ -331,12 +352,16 @@ function loadSavedGame() {
     themeEl.value = state.theme;
   }
   applyTheme(state.theme);
+  updateLivesUi();
   updateHintsUi();
   updateUndoRedoUi();
   renderStats();
   renderNumpadMode();
   renderBoard();
   setStatus("Restored your previous game.");
+  if (state.lost) {
+    showGameOverPrompt();
+  }
   return true;
 }
 
@@ -439,9 +464,45 @@ function applyTheme(theme) {
   }
 }
 
+function isInputLocked() {
+  return state.won || state.lost;
+}
+
+function updateLivesUi() {
+  if (!livesDisplayEl) {
+    return;
+  }
+
+  const symbols = document.createDocumentFragment();
+  for (let i = 0; i < LIVES_PER_GAME; i += 1) {
+    const symbol = document.createElement("span");
+    if (i < state.livesLeft) {
+      symbol.textContent = "\u2665";
+      symbol.className = "lives-heart";
+    } else {
+      symbol.textContent = "\u2022";
+      symbol.className = "lives-miss";
+    }
+    symbols.appendChild(symbol);
+  }
+  livesDisplayEl.replaceChildren(symbols);
+
+  if (livesEl) {
+    livesEl.classList.toggle("empty", state.livesLeft === 0);
+    livesEl.setAttribute("aria-label", `Lives ${state.livesLeft} of ${LIVES_PER_GAME}`);
+  }
+}
+
+function updateResetUi() {
+  if (!resetGameEl) {
+    return;
+  }
+  resetGameEl.disabled = state.lost;
+}
+
 function updateHintsUi() {
   hintsLeftEl.textContent = String(state.hintsLeft);
-  hintEl.disabled = state.hintsLeft <= 0 || state.won;
+  hintEl.disabled = state.hintsLeft <= 0 || isInputLocked();
 }
 
 function setUpdateStatus(message) {
@@ -482,8 +543,9 @@ function renderStats() {
 }
 
 function updateUndoRedoUi() {
-  undoEl.disabled = state.undoStack.length === 0;
-  redoEl.disabled = state.redoStack.length === 0;
+  undoEl.disabled = state.lost || state.undoStack.length === 0;
+  redoEl.disabled = state.lost || state.redoStack.length === 0;
+  updateResetUi();
 }
 
 function createSnapshot() {
@@ -530,6 +592,32 @@ function markCurrentGameStartedIfNeeded() {
   state.currentGameStarted = true;
   recordGameStart(state.difficulty);
   renderStats();
+}
+
+function loseLifeForWrongEntry() {
+  if (state.lost || state.livesLeft <= 0) {
+    return;
+  }
+
+  state.livesLeft -= 1;
+  updateLivesUi();
+
+  if (state.livesLeft > 0) {
+    const label = state.livesLeft === 1 ? "life" : "lives";
+    setStatus(`Wrong number. ${state.livesLeft} ${label} left.`);
+    return;
+  }
+
+  state.lost = true;
+  state.fillModeValue = null;
+  markCurrentGameAsLossIfNeeded();
+  renderStats();
+  updateHintsUi();
+  updateUndoRedoUi();
+  renderNumpadMode();
+  renderBoard();
+  setStatus("Out of lives. Start a new game.");
+  showGameOverPrompt();
 }
 
 function recordWin() {
@@ -646,7 +734,7 @@ function renderNumpadMode() {
   numpadEl.classList.toggle("fill-mode-active", state.fillModeValue !== null);
   for (const button of buttons) {
     const value = Number(button.dataset.value);
-    button.disabled = isDigitCompletedCorrectly(value);
+    button.disabled = state.lost || isDigitCompletedCorrectly(value);
     button.classList.toggle("fill-mode", state.fillModeValue !== null && value === state.fillModeValue);
   }
 }
@@ -725,9 +813,21 @@ function closeWinPrompt() {
   }
 }
 
+function closeLosePrompt() {
+  if (loseModalEl && loseModalEl.open) {
+    loseModalEl.close();
+  }
+}
+
 function showWinCelebration() {
   if (!winModalEl.open) {
     winModalEl.showModal();
+  }
+}
+
+function showGameOverPrompt() {
+  if (loseModalEl && !loseModalEl.open) {
+    loseModalEl.showModal();
   }
 }
 
@@ -771,10 +871,11 @@ function handleDoubleTapEntry(value) {
 
 function clearWinUi() {
   closeWinPrompt();
+  closeLosePrompt();
 }
 
 function setCellValue(row, col, value) {
-  if (state.won || isGiven(row, col)) {
+  if (isInputLocked() || isGiven(row, col)) {
     return;
   }
 
@@ -786,6 +887,8 @@ function setCellValue(row, col, value) {
     markCurrentGameStartedIfNeeded();
   }
 
+  const wrongEntry = value !== 0 && value !== state.solution[row][col];
+
   pushUndoSnapshot();
 
   state.board[row][col] = value;
@@ -795,7 +898,9 @@ function setCellValue(row, col, value) {
   renderBoard();
   updateWinState();
 
-  if (!state.won) {
+  if (wrongEntry) {
+    loseLifeForWrongEntry();
+  } else if (!state.won) {
     setStatus("Keep going.");
   }
 
@@ -897,7 +1002,7 @@ function pickHintCell() {
 }
 
 function useHint() {
-  if (state.hintsLeft <= 0 || state.won) {
+  if (state.hintsLeft <= 0 || isInputLocked()) {
     return;
   }
 
@@ -947,9 +1052,12 @@ function startNewGame() {
   state.undoStack = [];
   state.redoStack = [];
   state.hintsLeft = HINTS_PER_GAME;
+  state.livesLeft = LIVES_PER_GAME;
+  state.lost = false;
 
   showMistakesEl.checked = state.showMistakes;
   renderStats();
+  updateLivesUi();
   updateHintsUi();
   updateUndoRedoUi();
   renderNumpadMode();
@@ -963,16 +1071,24 @@ function resetCurrentGame() {
     return;
   }
 
+  if (state.lost) {
+    setStatus("Out of lives. Start a new game.");
+    return;
+  }
+
   clearWinUi();
   state.board = clone(state.puzzle);
   state.selected = null;
   state.highlightValue = null;
   state.fillModeValue = null;
   state.won = false;
+  state.lost = false;
   state.undoStack = [];
   state.redoStack = [];
   state.hintsLeft = HINTS_PER_GAME;
+  state.livesLeft = LIVES_PER_GAME;
 
+  updateLivesUi();
   updateHintsUi();
   updateUndoRedoUi();
   renderNumpadMode();
@@ -982,19 +1098,23 @@ function resetCurrentGame() {
 }
 
 function applyNumberInput(value) {
-  if (!state.selected || state.won) {
+  if (!state.selected || isInputLocked()) {
     return;
   }
   setCellValue(state.selected.row, state.selected.col, value);
 }
 
 function onBoardClick(event) {
+  if (state.lost) {
+    return;
+  }
+
   const cell = cellFromEventTarget(event.target);
   if (!cell) {
     return;
   }
 
-  if (state.fillModeValue !== null && !state.won) {
+  if (state.fillModeValue !== null && !isInputLocked()) {
     const { row, col } = cell;
     if (!isGiven(row, col) && state.board[row][col] === 0) {
       state.selected = { row, col };
@@ -1007,6 +1127,10 @@ function onBoardClick(event) {
 }
 
 function onNumpadClick(event) {
+  if (state.lost) {
+    return;
+  }
+
   const button = event.target.closest("button[data-value]");
   if (!button) {
     return;
@@ -1043,6 +1167,10 @@ function clearLongPressTimer() {
 }
 
 function onNumpadPointerDown(event) {
+  if (state.lost) {
+    return;
+  }
+
   const button = event.target.closest("button[data-value]");
   if (!button) {
     return;
@@ -1077,7 +1205,7 @@ function onNumpadPointerRelease() {
 }
 
 function moveSelection(deltaRow, deltaCol) {
-  if (!state.board || state.won) {
+  if (!state.board || isInputLocked()) {
     return;
   }
 
@@ -1103,7 +1231,11 @@ function onKeyDown(event) {
     return;
   }
 
-  if (settingsModalEl.open || (statsModalEl && statsModalEl.open) || winModalEl.open) {
+  if (settingsModalEl.open || (statsModalEl && statsModalEl.open) || winModalEl.open || (loseModalEl && loseModalEl.open)) {
+    return;
+  }
+
+  if (state.lost) {
     return;
   }
 
@@ -1287,8 +1419,19 @@ function closeWinOnBackdrop(event) {
   }
 }
 
+function closeLoseOnBackdrop(event) {
+  if (event.target === loseModalEl) {
+    closeLosePrompt();
+  }
+}
+
 function onWinNewGame() {
   closeWinPrompt();
+  startNewGame();
+}
+
+function onLoseNewGame() {
+  closeLosePrompt();
   startNewGame();
 }
 
@@ -1335,6 +1478,9 @@ settingsOpenEl.addEventListener("click", openSettings);
 settingsCloseEl.addEventListener("click", closeSettings);
 settingsModalEl.addEventListener("click", closeSettingsOnBackdrop);
 winModalEl.addEventListener("click", closeWinOnBackdrop);
+if (loseModalEl) {
+  loseModalEl.addEventListener("click", closeLoseOnBackdrop);
+}
 difficultyEl.addEventListener("change", (event) => {
   state.difficulty = event.target.value;
   startNewGame();
@@ -1348,6 +1494,12 @@ newGameEl.addEventListener("click", startNewGame);
 hintEl.addEventListener("click", useHint);
 winNewGameEl.addEventListener("click", onWinNewGame);
 winLaterEl.addEventListener("click", closeWinPrompt);
+if (loseNewGameEl) {
+  loseNewGameEl.addEventListener("click", onLoseNewGame);
+}
+if (loseLaterEl) {
+  loseLaterEl.addEventListener("click", closeLosePrompt);
+}
 if (updateActionEl) {
   updateActionEl.addEventListener("click", runUpdateAction);
 }

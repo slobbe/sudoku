@@ -39,6 +39,9 @@
           <button id="undo" type="button" title="Undo">Undo</button>
           <button id="redo" type="button" title="Redo">Redo</button>
         </div>
+        <p id="lives" class="lives" aria-label="Lives 3 of 3">
+          <span id="lives-display">&#9829;&#9829;&#9829;</span>
+        </p>
         <button id="hint" type="button">Hint (<span id="hints-left">3</span>)</button>
       </div>
       <div id="board" class="board" role="grid" aria-label="Sudoku grid"></div>
@@ -64,6 +67,17 @@
       <div class="win-actions">
         <button id="win-new-game" type="button">New Game</button>
         <button id="win-later" type="button">Later</button>
+      </div>
+    </div>
+  </dialog>
+
+  <dialog id="lose-modal" class="win-modal" aria-label="Game over">
+    <div class="win-card">
+      <h2>Game Over</h2>
+      <p>You are out of lives. Start a new game?</p>
+      <div class="win-actions">
+        <button id="lose-new-game" type="button">New Game</button>
+        <button id="lose-later" type="button">Later</button>
       </div>
     </div>
   </dialog>
@@ -100,7 +114,7 @@
         <div class="settings-footer" aria-label="App info and updates">
           <p class="app-info-inline">
             <span id="app-info-name">Sudoku</span>
-            v<span id="app-info-version">0.1.5</span>
+            v<span id="app-info-version">0.1.6</span>
             by <span id="app-info-author">slobbe</span>
           </p>
           <button id="update-action" type="button">Check for updates</button>
