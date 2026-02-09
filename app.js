@@ -321,7 +321,6 @@ function createSnapshot() {
     board: clone(state.board),
     selected: state.selected ? { ...state.selected } : null,
     highlightValue: state.highlightValue,
-    hintsLeft: state.hintsLeft,
     won: state.won,
   };
 }
@@ -330,7 +329,6 @@ function applySnapshot(snapshot) {
   state.board = clone(snapshot.board);
   state.selected = snapshot.selected ? { ...snapshot.selected } : null;
   state.highlightValue = snapshot.highlightValue;
-  state.hintsLeft = snapshot.hintsLeft;
   state.won = snapshot.won;
 }
 
