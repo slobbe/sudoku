@@ -176,10 +176,10 @@ body {
   width: min(540px, 100%, calc(100svh - 190px));
   margin-top: 4px;
   margin-bottom: 2px;
-  margin-left: auto;
+  margin-left: 0;
   margin-right: auto;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
   gap: 6px;
 }
@@ -582,7 +582,7 @@ button:disabled {
     margin: 0;
     display: flex;
     flex-wrap: wrap;
-    justify-content: center;
+    justify-content: flex-start;
     gap: 3px;
   }
 
