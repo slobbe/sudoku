@@ -10,6 +10,9 @@ const SAVE_KEY = "sudoku-pwa-current-game-v1";
 const FILL_MODE_ENTRY_TYPES = ["long-press", "double-tap"];
 const THEMES = ["slate", "green", "blue", "amber"];
 const DOUBLE_TAP_MS = 300;
+const APP_NAME = "Sudoku";
+const APP_VERSION = "0.1.1";
+const APP_AUTHOR = "slobbe";
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
 
@@ -57,6 +60,9 @@ const statsMediumEl = document.querySelector("#stats-medium");
 const statsHardEl = document.querySelector("#stats-hard");
 const updateActionEl = document.querySelector("#update-action");
 const themeColorMetaEl = document.querySelector('meta[name="theme-color"]');
+const appInfoNameEl = document.querySelector("#app-info-name");
+const appInfoVersionEl = document.querySelector("#app-info-version");
+const appInfoAuthorEl = document.querySelector("#app-info-author");
 
 const THEME_COLORS = {
   slate: "#151a21",
@@ -313,6 +319,18 @@ function setStatus(message) {
     return;
   }
   statusTextEl.textContent = message;
+}
+
+function renderAppInfo() {
+  if (appInfoNameEl) {
+    appInfoNameEl.textContent = APP_NAME;
+  }
+  if (appInfoVersionEl) {
+    appInfoVersionEl.textContent = APP_VERSION;
+  }
+  if (appInfoAuthorEl) {
+    appInfoAuthorEl.textContent = APP_AUTHOR;
+  }
 }
 
 function applyTheme(theme) {
@@ -1224,6 +1242,7 @@ if (updateActionEl) {
 }
 window.addEventListener("keydown", onKeyDown);
 
+renderAppInfo();
 registerServiceWorker();
 
 if (!loadSavedGame()) {

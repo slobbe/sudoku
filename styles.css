@@ -487,8 +487,29 @@ button:disabled {
   padding: 12px;
 }
 
-.updates {
-  margin-top: 2px;
+.settings-footer {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.app-info-inline {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#update-action {
+  flex-shrink: 0;
 }
 
 @media (max-width: 600px) {
@@ -572,8 +593,16 @@ button:disabled {
     overflow: auto;
     padding-top: 10px;
     padding-right: 10px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding-bottom: max(34px, calc(env(safe-area-inset-bottom) + 10px));
     padding-left: 10px;
+  }
+
+  .settings-footer {
+    gap: 6px;
+  }
+
+  .app-info-inline {
+    font-size: 0.8rem;
   }
 
   .settings-modal {
@@ -594,8 +623,12 @@ button:disabled {
     overflow: auto;
     padding-top: 10px;
     padding-right: 10px;
-    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding-bottom: max(34px, calc(env(safe-area-inset-bottom) + 10px));
     padding-left: 10px;
+  }
+
+  .win-card {
+    padding-bottom: max(34px, calc(env(safe-area-inset-bottom) + 12px));
   }
 
   .stats-modal {

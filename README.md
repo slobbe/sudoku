@@ -35,8 +35,9 @@ The app uses relative paths (`./...`) so it works on both user and project Pages
 
 ## PWA Update Notes
 
-- When releasing a new version, bump `APP_VERSION` in `sw.js`.
-- This forces a new cache name so installed PWAs fetch fresh files instead of staying on an older cached build.
+- This project uses semantic versioning while in the `0.1.x` line.
+- When releasing a new version, bump the `APP_VERSION` patch in `sw.js` (for example `0.1.1` to `0.1.2`).
+- Each bump forces a new cache name so installed PWAs fetch fresh files instead of staying on an older cached build.
 
 ## Structure
 
