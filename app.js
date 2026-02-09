@@ -102,6 +102,7 @@ const state = {
   redoStack: [],
   stats: createDefaultStats(),
   winRecorded: false,
+  currentGameStarted: false,
   hintsLeft: HINTS_PER_GAME,
   won: false,
 };
@@ -160,6 +161,17 @@ function boardMatchesSolution(board, solution) {
     }
   }
   return true;
+}
+
+function hasUserProgressOnBoard(board, puzzle) {
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      if (puzzle[row][col] === 0 && board[row][col] !== 0) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 function isSavedGameIntegrityValid(parsed) {
@@ -234,6 +246,7 @@ function saveGame() {
     theme: state.theme,
     stats: state.stats,
     won: state.won,
+    currentGameStarted: state.currentGameStarted,
   };
 
   try {
@@ -275,6 +288,9 @@ function loadSavedGame() {
   if (typeof parsed.won !== "boolean") {
     return false;
   }
+  if (parsed.currentGameStarted !== undefined && typeof parsed.currentGameStarted !== "boolean") {
+    return false;
+  }
   if (parsed.showMistakes !== undefined && typeof parsed.showMistakes !== "boolean") {
     return false;
   }
@@ -305,6 +321,8 @@ function loadSavedGame() {
   state.hintsLeft = parsed.hintsLeft;
   state.won = parsed.won;
   state.winRecorded = state.won;
+  const inferredStarted = hasUserProgressOnBoard(parsed.board, parsed.puzzle);
+  state.currentGameStarted = parsed.currentGameStarted === true || inferredStarted;
 
   difficultyEl.value = state.difficulty;
   showMistakesEl.checked = state.showMistakes;
@@ -494,7 +512,7 @@ function pushUndoSnapshot() {
 }
 
 function markCurrentGameAsLossIfNeeded() {
-  if (!state.puzzle || state.won) {
+  if (!state.puzzle || state.won || !state.currentGameStarted) {
     return;
   }
   state.stats.currentStreak = 0;
@@ -503,6 +521,15 @@ function markCurrentGameAsLossIfNeeded() {
 function recordGameStart(difficulty) {
   state.stats.gamesStarted += 1;
   state.stats.byDifficulty[difficulty].started += 1;
+}
+
+function markCurrentGameStartedIfNeeded() {
+  if (state.currentGameStarted) {
+    return;
+  }
+  state.currentGameStarted = true;
+  recordGameStart(state.difficulty);
+  renderStats();
 }
 
 function recordWin() {
@@ -755,6 +782,10 @@ function setCellValue(row, col, value) {
     return;
   }
 
+  if (value !== 0 && state.board[row][col] === 0) {
+    markCurrentGameStartedIfNeeded();
+  }
+
   pushUndoSnapshot();
 
   state.board[row][col] = value;
@@ -877,6 +908,7 @@ function useHint() {
   }
 
   const { row, col } = cell;
+  markCurrentGameStartedIfNeeded();
   pushUndoSnapshot();
   state.board[row][col] = state.solution[row][col];
   state.highlightValue = state.solution[row][col];
@@ -900,7 +932,6 @@ function startNewGame() {
   setStatus("Generating puzzle...");
 
   markCurrentGameAsLossIfNeeded();
-  recordGameStart(state.difficulty);
 
   const { puzzle, solution, givens } = generatePuzzle(state.difficulty);
   state.puzzle = puzzle;
@@ -912,6 +943,7 @@ function startNewGame() {
   state.fillModeValue = null;
   state.won = false;
   state.winRecorded = false;
+  state.currentGameStarted = false;
   state.undoStack = [];
   state.redoStack = [];
   state.hintsLeft = HINTS_PER_GAME;
