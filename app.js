@@ -11,7 +11,7 @@ const FILL_MODE_ENTRY_TYPES = ["long-press", "double-tap"];
 const THEMES = ["slate", "green", "blue", "amber"];
 const DOUBLE_TAP_MS = 300;
 const APP_NAME = "Sudoku";
-const APP_VERSION = "0.1.1";
+const APP_VERSION = "0.1.2";
 const APP_AUTHOR = "slobbe";
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
@@ -30,6 +30,8 @@ function createDefaultStats() {
   };
 }
 
+const boardWrapEl = document.querySelector(".board-wrap");
+const boardActionsEl = document.querySelector(".board-actions");
 const boardEl = document.querySelector("#board");
 const numpadEl = document.querySelector(".numpad");
 const statsOpenEl = document.querySelector("#stats-open");
@@ -98,6 +100,7 @@ let lastTapAt = 0;
 let pendingTapTimer = null;
 let swRegistration = null;
 let reloadTriggeredByUpdate = false;
+let mobileLayoutRaf = null;
 
 function isValidBoardShape(board) {
   if (!Array.isArray(board) || board.length !== 9) {
@@ -331,6 +334,66 @@ function renderAppInfo() {
   if (appInfoAuthorEl) {
     appInfoAuthorEl.textContent = APP_AUTHOR;
   }
+}
+
+function syncMobileViewportHeight() {
+  const viewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  if (viewportHeight > 0) {
+    document.documentElement.style.setProperty("--app-vh", `${viewportHeight * 0.01}px`);
+  }
+}
+
+function syncMobileBoardSize() {
+  if (!boardWrapEl || !boardEl) {
+    return;
+  }
+
+  if (!window.matchMedia("(max-width: 600px)").matches) {
+    boardEl.style.width = "";
+    boardEl.style.height = "";
+    if (boardActionsEl) {
+      boardActionsEl.style.width = "";
+    }
+    boardWrapEl.style.justifyContent = "";
+    return;
+  }
+
+  const availableWidth = boardWrapEl.clientWidth;
+  const wrapStyles = window.getComputedStyle(boardWrapEl);
+  const wrapGap = parseFloat(wrapStyles.gap) || 0;
+  const actionsHeight = boardActionsEl ? boardActionsEl.getBoundingClientRect().height : 0;
+  const availableHeight = boardWrapEl.clientHeight - actionsHeight - wrapGap;
+  const size = Math.floor(Math.min(availableWidth, availableHeight));
+  if (size > 0) {
+    boardEl.style.width = `${size}px`;
+    boardEl.style.height = `${size}px`;
+    if (boardActionsEl) {
+      boardActionsEl.style.width = `${size}px`;
+    }
+    boardWrapEl.style.justifyContent = availableHeight - size >= 10 ? "center" : "flex-start";
+  } else {
+    boardEl.style.width = "";
+    boardEl.style.height = "";
+    if (boardActionsEl) {
+      boardActionsEl.style.width = "";
+    }
+    boardWrapEl.style.justifyContent = "";
+  }
+}
+
+function scheduleMobileLayoutSync() {
+  if (mobileLayoutRaf !== null) {
+    return;
+  }
+  mobileLayoutRaf = window.requestAnimationFrame(() => {
+    mobileLayoutRaf = null;
+    syncMobileViewportHeight();
+    syncMobileBoardSize();
+    window.setTimeout(() => {
+      syncMobileViewportHeight();
+      syncMobileBoardSize();
+    }, 80);
+  });
 }
 
 function applyTheme(theme) {
@@ -756,6 +819,7 @@ function renderBoard() {
   }
 
   boardEl.replaceChildren(fragment);
+  scheduleMobileLayoutSync();
 }
 
 function pickHintCell() {
@@ -1241,8 +1305,17 @@ if (updateActionEl) {
   updateActionEl.addEventListener("click", runUpdateAction);
 }
 window.addEventListener("keydown", onKeyDown);
+window.addEventListener("resize", scheduleMobileLayoutSync);
+window.addEventListener("orientationchange", scheduleMobileLayoutSync);
+window.addEventListener("pageshow", scheduleMobileLayoutSync);
+if (window.visualViewport) {
+  window.visualViewport.addEventListener("resize", scheduleMobileLayoutSync);
+  window.visualViewport.addEventListener("scroll", scheduleMobileLayoutSync);
+}
+window.addEventListener("load", scheduleMobileLayoutSync);
 
 renderAppInfo();
+scheduleMobileLayoutSync();
 registerServiceWorker();
 
 if (!loadSavedGame()) {

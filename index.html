@@ -29,14 +29,18 @@
     </header>
 
     <div class="header-controls" aria-label="Quick actions">
-      <button id="undo" type="button" title="Undo">Undo</button>
-      <button id="redo" type="button" title="Redo">Redo</button>
       <button id="reset-game" type="button">Reset</button>
       <button id="new-game" type="button">New Game</button>
-      <button id="hint" type="button">Hint (<span id="hints-left">3</span>)</button>
     </div>
 
     <section class="board-wrap" aria-label="Sudoku board">
+      <div class="board-actions" aria-label="Board actions">
+        <div class="board-actions-left">
+          <button id="undo" type="button" title="Undo">Undo</button>
+          <button id="redo" type="button" title="Redo">Redo</button>
+        </div>
+        <button id="hint" type="button">Hint (<span id="hints-left">3</span>)</button>
+      </div>
       <div id="board" class="board" role="grid" aria-label="Sudoku grid"></div>
     </section>
 
@@ -96,7 +100,7 @@
         <div class="settings-footer" aria-label="App info and updates">
           <p class="app-info-inline">
             <span id="app-info-name">Sudoku</span>
-            v<span id="app-info-version">0.1.1</span>
+            v<span id="app-info-version">0.1.2</span>
             by <span id="app-info-author">slobbe</span>
           </p>
           <button id="update-action" type="button">Check for updates</button>
