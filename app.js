@@ -1,8 +1,8 @@
 import {
   boardComplete,
   clone,
+  countSolutions,
   generatePuzzle,
-  isValidPlacement,
 } from "./sudoku.js";
 
 const HINTS_PER_GAME = 3;
@@ -102,6 +102,60 @@ function isValidBoardShape(board) {
       && row.length === 9
       && row.every((value) => Number.isInteger(value) && value >= 0 && value <= 9)
   );
+}
+
+function puzzleMatchesSolution(puzzle, solution) {
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      const value = puzzle[row][col];
+      if (value !== 0 && value !== solution[row][col]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function boardRespectsGivens(board, puzzle) {
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      const given = puzzle[row][col];
+      if (given !== 0 && board[row][col] !== given) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function boardMatchesSolution(board, solution) {
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      if (board[row][col] !== solution[row][col]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function isSavedGameIntegrityValid(parsed) {
+  if (!boardComplete(parsed.solution)) {
+    return false;
+  }
+  if (!puzzleMatchesSolution(parsed.puzzle, parsed.solution)) {
+    return false;
+  }
+  if (!boardRespectsGivens(parsed.board, parsed.puzzle)) {
+    return false;
+  }
+  if (countSolutions(parsed.puzzle, 2) !== 1) {
+    return false;
+  }
+  if (parsed.won && !boardMatchesSolution(parsed.board, parsed.solution)) {
+    return false;
+  }
+  return true;
 }
 
 function isNonNegativeInteger(value) {
@@ -205,6 +259,9 @@ function loadSavedGame() {
     return false;
   }
   if (parsed.theme !== undefined && !THEMES.includes(parsed.theme)) {
+    return false;
+  }
+  if (!isSavedGameIntegrityValid(parsed)) {
     return false;
   }
 
@@ -665,7 +722,13 @@ function renderBoard() {
       if (highlighted !== null && value === highlighted) {
         cell.classList.add("match");
       }
-      if (state.showMistakes && value !== 0 && !isValidPlacement(state.board, row, col, value)) {
+      if (
+        state.showMistakes
+        && value !== 0
+        && !isGiven(row, col)
+        && state.solution
+        && value !== state.solution[row][col]
+      ) {
         cell.classList.add("invalid");
       }
 

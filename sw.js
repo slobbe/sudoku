@@ -1,4 +1,4 @@
-const APP_VERSION = "v21";
+const APP_VERSION = "v22";
 const CACHE_NAME = `sudoku-pwa-${APP_VERSION}`;
 const APP_SHELL = [
   "./",

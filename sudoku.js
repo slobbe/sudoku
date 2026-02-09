@@ -344,6 +344,31 @@ export function generateSolvedBoard() {
   return gridToBoard(generateSolvedGrid());
 }
 
+function puzzleMatchesSolution(puzzle, solution) {
+  for (let row = 0; row < 9; row += 1) {
+    for (let col = 0; col < 9; col += 1) {
+      const value = puzzle[row][col];
+      if (value !== 0 && value !== solution[row][col]) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
+function isPuzzleSolutionPairValid(puzzle, solution) {
+  if (!isValidBoardShape(puzzle) || !isValidBoardShape(solution)) {
+    return false;
+  }
+  if (!boardComplete(solution)) {
+    return false;
+  }
+  if (!puzzleMatchesSolution(puzzle, solution)) {
+    return false;
+  }
+  return countSolutions(puzzle, 2) === 1;
+}
+
 function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -397,6 +422,10 @@ export function generatePuzzle(difficulty = "medium") {
       continue;
     }
 
+    if (!isPuzzleSolutionPairValid(puzzle, solved)) {
+      continue;
+    }
+
     const candidate = {
       puzzle,
       solution: solved,
@@ -419,13 +448,24 @@ export function generatePuzzle(difficulty = "medium") {
 
   const emergencySolution = generateSolvedBoard();
   const emergency = carveUniquePuzzle(emergencySolution, 70);
-  const solved = solveBoard(emergency.puzzle) || emergencySolution;
+  const solved = solveBoard(emergency.puzzle);
+
+  if (solved && isPuzzleSolutionPairValid(emergency.puzzle, solved)) {
+    return {
+      puzzle: emergency.puzzle,
+      solution: solved,
+      difficulty,
+      givens: emergency.givens,
+    };
+  }
+
+  const safeSolution = cloneBoard(emergencySolution);
 
   return {
-    puzzle: emergency.puzzle,
-    solution: solved,
+    puzzle: cloneBoard(safeSolution),
+    solution: safeSolution,
     difficulty,
-    givens: emergency.givens,
+    givens: SIZE,
   };
 }
 
