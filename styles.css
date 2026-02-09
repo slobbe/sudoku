@@ -625,13 +625,13 @@ button:disabled {
   .numpad {
     margin-top: 0;
     gap: 2px;
-    padding-bottom: max(10px, calc(env(safe-area-inset-bottom) + 4px));
+    padding-bottom: max(34px, calc(env(safe-area-inset-bottom) + 4px));
   }
 
   .numpad button {
-    min-height: 38px;
-    padding: 3px 0;
-    font-size: 1rem;
+    min-height: 52px;
+    padding: 4px 0;
+    font-size: 1.3rem;
   }
 
   .settings-card {
@@ -718,12 +718,13 @@ button:disabled {
 
   .numpad {
     gap: 1px;
-    padding-bottom: max(6px, env(safe-area-inset-bottom));
+    padding-bottom: max(34px, calc(env(safe-area-inset-bottom) + 4px));
   }
 
   .numpad button {
-    min-height: 32px;
-    font-size: 0.9rem;
+    min-height: 48px;
+    font-size: 1.18rem;
+    padding: 4px 0;
   }
 }
 
@@ -769,12 +770,12 @@ button:disabled {
 
   .numpad {
     gap: 1px;
-    padding-bottom: max(4px, env(safe-area-inset-bottom));
+    padding-bottom: max(34px, calc(env(safe-area-inset-bottom) + 4px));
   }
 
   .numpad button {
-    min-height: 26px;
-    font-size: 0.82rem;
-    padding: 2px 0;
+    min-height: 42px;
+    font-size: 1.05rem;
+    padding: 3px 0;
   }
 }
