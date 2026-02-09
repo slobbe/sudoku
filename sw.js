@@ -1,4 +1,4 @@
-const APP_VERSION = "v18";
+const APP_VERSION = "v21";
 const CACHE_NAME = `sudoku-pwa-${APP_VERSION}`;
 const APP_SHELL = [
   "./",
@@ -7,6 +7,10 @@ const APP_SHELL = [
   "./app.js",
   "./sudoku.js",
   "./manifest.webmanifest",
+  "./icons/apple-touch-icon.png",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./icons/icon-maskable.png",
   "./icons/icon-192.svg",
   "./icons/icon-512.svg",
   "./icons/icon-maskable.svg",

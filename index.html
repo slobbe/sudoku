@@ -1,13 +1,14 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="blue">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#141a18">
+  <meta name="theme-color" content="#141822">
   <meta name="description" content="Offline-capable Sudoku game with three difficulties and hints.">
+  <meta name="apple-mobile-web-app-title" content="Sudoku">
   <link rel="manifest" href="./manifest.webmanifest">
   <link rel="icon" href="./icons/icon-192.svg" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="./icons/icon-192.svg">
+  <link rel="apple-touch-icon" sizes="180x180" href="./icons/apple-touch-icon.png">
   <title>Sudoku PWA</title>
   <link rel="stylesheet" href="./styles.css">
 </head>
@@ -82,13 +83,13 @@
         </label>
         <label for="fill-mode-entry">Fill mode trigger</label>
         <select id="fill-mode-entry">
-          <option value="long-press" selected>Long press</option>
-          <option value="double-tap">Double tap</option>
+          <option value="long-press">Long press</option>
+          <option value="double-tap" selected>Double tap</option>
         </select>
         <label for="theme">Theme</label>
         <select id="theme">
-          <option value="green" selected>Green</option>
-          <option value="blue">Blue</option>
+          <option value="green">Green</option>
+          <option value="blue" selected>Blue</option>
           <option value="amber">Amber</option>
         </select>
         <section class="updates" aria-label="App updates">

@@ -74,8 +74,8 @@ const state = {
   highlightValue: null,
   fillModeValue: null,
   showMistakes: true,
-  fillModeEntry: "long-press",
-  theme: "green",
+  fillModeEntry: "double-tap",
+  theme: "blue",
   undoStack: [],
   redoStack: [],
   stats: createDefaultStats(),
@@ -217,8 +217,8 @@ function loadSavedGame() {
   state.highlightValue = null;
   state.fillModeValue = null;
   state.showMistakes = parsed.showMistakes !== undefined ? parsed.showMistakes : true;
-  state.fillModeEntry = parsed.fillModeEntry || "long-press";
-  state.theme = parsed.theme || "green";
+  state.fillModeEntry = parsed.fillModeEntry || "double-tap";
+  state.theme = parsed.theme || "blue";
   state.undoStack = [];
   state.redoStack = [];
   state.stats = normalizeStats(parsed.stats);
