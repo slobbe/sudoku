@@ -1,50 +1,40 @@
 # Sudoku PWA
 
-Vanilla JavaScript Sudoku game built for GitHub Pages.
+A simple, offline-capable Sudoku game built with vanilla JavaScript.
 
-## MVP Features
+## Features
 
-- Unique puzzle generator (exactly one solution)
-- Three difficulties: easy, medium, hard
+- Unique puzzle generation (exactly one solution)
+- Three difficulties: Easy, Medium, Hard
 - Hints (3 per game)
-- Auto-save and restore current game in localStorage
-- Installable PWA with offline support
+- Undo/redo support
+- Fill mode with configurable trigger:
+  - Double tap (default)
+  - Long press
+- Optional immediate mistake highlighting (checked against the true solution)
+- Eye-friendly themes:
+  - Slate (default)
+  - Dusk
+  - Mist
+  - Amber
+- Stats tracking (overall, by difficulty, streaks)
+- Auto-save and restore of your current game
+- Installable PWA with offline support and update checks
 
-## Local Run
+## Controls
 
-Because this app uses a service worker, serve it with a local web server instead of opening `index.html` directly.
+- Select a cell, then enter `1-9`
+- Clear a cell with `Backspace`, `Delete`, or `0`
+- Move with arrow keys
+- Undo: `Ctrl/Cmd + Z`
+- Redo: `Ctrl/Cmd + Shift + Z` or `Ctrl/Cmd + Y`
+- Use Hint to reveal one correct cell
 
-Examples:
+## Data & Privacy
 
-```bash
-python3 -m http.server 8080
-```
+- Game progress and stats are stored locally in your browser (`localStorage`)
+- No account or server backend is required
 
-Then open `http://localhost:8080`.
+## Contributing
 
-## Deploy To GitHub Pages
-
-1. Push this repository to GitHub.
-2. Open repository **Settings -> Pages**.
-3. Under **Build and deployment**, choose:
-   - **Source**: `Deploy from a branch`
-   - **Branch**: `main` (or your default branch), `/ (root)`
-4. Save and wait for Pages to publish.
-
-The app uses relative paths (`./...`) so it works on both user and project Pages URLs.
-
-## PWA Update Notes
-
-- This project uses semantic versioning while in the `0.1.x` line.
-- When releasing a new version, bump the `APP_VERSION` patch in `sw.js` (for example `0.1.1` to `0.1.2`).
-- Each bump forces a new cache name so installed PWAs fetch fresh files instead of staying on an older cached build.
-
-## Structure
-
-- `index.html` - app shell
-- `styles.css` - responsive UI styling
-- `sudoku.js` - generator/solver/validation logic
-- `app.js` - game state and interactions
-- `sw.js` - service worker cache logic
-- `manifest.webmanifest` - PWA manifest
-- `icons/` - PWA icons
+Developer setup, versioning notes, and project structure live in `CONTRIBUTING.md`.
