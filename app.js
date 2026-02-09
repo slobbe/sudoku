@@ -8,7 +8,7 @@ import {
 const HINTS_PER_GAME = 3;
 const SAVE_KEY = "sudoku-pwa-current-game-v1";
 const FILL_MODE_ENTRY_TYPES = ["long-press", "double-tap"];
-const THEMES = ["slate", "green", "blue", "amber"];
+const THEMES = ["slate", "dusk", "mist", "amber"];
 const DOUBLE_TAP_MS = 300;
 const APP_NAME = "Sudoku";
 const APP_VERSION = "0.1.3";
@@ -68,10 +68,23 @@ const appInfoAuthorEl = document.querySelector("#app-info-author");
 
 const THEME_COLORS = {
   slate: "#151a21",
-  green: "#141a18",
-  blue: "#141822",
+  mist: "#161918",
+  dusk: "#171420",
   amber: "#1d1913",
 };
+
+function normalizeTheme(theme) {
+  if (typeof theme !== "string") {
+    return "slate";
+  }
+  if (theme === "purple") {
+    return "dusk";
+  }
+  if (THEMES.includes(theme)) {
+    return theme;
+  }
+  return "slate";
+}
 
 const state = {
   difficulty: "medium",
@@ -268,7 +281,7 @@ function loadSavedGame() {
   if (parsed.fillModeEntry !== undefined && !FILL_MODE_ENTRY_TYPES.includes(parsed.fillModeEntry)) {
     return false;
   }
-  if (parsed.theme !== undefined && !THEMES.includes(parsed.theme)) {
+  if (parsed.theme !== undefined && typeof parsed.theme !== "string") {
     return false;
   }
   if (!isSavedGameIntegrityValid(parsed)) {
@@ -285,7 +298,7 @@ function loadSavedGame() {
   state.fillModeValue = null;
   state.showMistakes = parsed.showMistakes !== undefined ? parsed.showMistakes : true;
   state.fillModeEntry = parsed.fillModeEntry || "double-tap";
-  state.theme = parsed.theme || "slate";
+  state.theme = normalizeTheme(parsed.theme);
   state.undoStack = [];
   state.redoStack = [];
   state.stats = normalizeStats(parsed.stats);
@@ -779,6 +792,8 @@ function renderBoard() {
       cell.role = "gridcell";
       cell.textContent = value === 0 ? "" : String(value);
       cell.setAttribute("aria-label", `Row ${row + 1}, Column ${col + 1}`);
+      const boxParity = (Math.floor(row / 3) + Math.floor(col / 3)) % 2;
+      cell.classList.add(boxParity === 0 ? "box-tone-a" : "box-tone-b");
 
       if (col === 2 || col === 5) {
         cell.classList.add("box-right");

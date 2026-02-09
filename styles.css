@@ -9,25 +9,28 @@
   --accent: #8cb5a0;
   --line: #4b5b53;
   --line-bold: #64786d;
+  --box-divider: #74897f;
   --given: #22302a;
   --active: #30483c;
   --peer: #1e2a24;
   --peer-box: #1c2722;
-  --peer-ring: #8cb5a010;
-  --peer-box-ring: #8cb5a008;
+  --peer-ring: #8cb5a00d;
+  --peer-box-ring: #8cb5a006;
   --error: #e78d8d;
   --control-bg: #24312c;
   --control-hover: #2b3a34;
   --control-active: #33453d;
   --board-bg: #1a2320;
   --cell-bg: #1a2320;
-  --selection-ring: #9fcdb7aa;
+  --cell-ink: #d5e0d9;
+  --box-tone-a: #1a2320;
+  --box-tone-b: #1d2723;
+  --selection-ring: #9fcdb778;
   --fill-mode-bg: #385046;
   --fill-mode-active: #3f5b4f;
-  --match-fill: #8cb5a03a;
-  --match-ink: #e3f8ec;
-  --match-glow: #8cb5a0d2;
-  --match-ring: #8cb5a096;
+  --match-fill: #8cb5a024;
+  --match-ink: #dcece2;
+  --match-ring: #8cb5a072;
 }
 
 :root[data-theme="slate"] {
@@ -40,56 +43,96 @@
   --accent: #8fa5bf;
   --line: #4a596d;
   --line-bold: #61748c;
+  --box-divider: #788ea9;
   --given: #222d3b;
-  --active: #314358;
+  --active: #2d3f54;
   --peer: #212b38;
   --peer-box: #1d2734;
-  --peer-ring: #8fa5bf10;
-  --peer-box-ring: #8fa5bf08;
+  --peer-ring: #8fa5bf0d;
+  --peer-box-ring: #8fa5bf06;
   --error: #e69a9a;
   --control-bg: #253141;
   --control-hover: #2d3b4f;
   --control-active: #37485f;
   --board-bg: #1a2431;
   --cell-bg: #1a2431;
-  --selection-ring: #a6bdd8aa;
+  --cell-ink: #d5deea;
+  --box-tone-a: #1a2431;
+  --box-tone-b: #1d2836;
+  --selection-ring: #a6bdd878;
   --fill-mode-bg: #3b4e66;
   --fill-mode-active: #455b77;
-  --match-fill: #9ab2cf3a;
-  --match-ink: #edf3ff;
-  --match-glow: #9ab2cfd0;
-  --match-ring: #9ab2cf98;
+  --match-fill: #9ab2cf24;
+  --match-ink: #dce5f3;
+  --match-ring: #9ab2cf70;
 }
 
-:root[data-theme="blue"] {
-  --bg: #141822;
-  --bg-glow: #202b3f;
-  --bg-deep: #11151e;
-  --paper: #1b2230;
-  --ink: #e8edf6;
-  --muted: #b6bfcd;
-  --accent: #89a7d6;
-  --line: #4a576e;
-  --line-bold: #62738f;
-  --given: #222c3d;
-  --active: #30425d;
-  --peer: #202b3d;
-  --peer-box: #1d2738;
-  --peer-ring: #89a7d610;
-  --peer-box-ring: #89a7d608;
-  --error: #e19393;
-  --control-bg: #243046;
-  --control-hover: #2c3a54;
-  --control-active: #364667;
-  --board-bg: #1a2332;
-  --cell-bg: #1a2332;
-  --selection-ring: #9db9e1aa;
-  --fill-mode-bg: #3a4d73;
-  --fill-mode-active: #445a86;
-  --match-fill: #89a7d63a;
-  --match-ink: #e6edff;
-  --match-glow: #89a7d6d2;
-  --match-ring: #89a7d696;
+:root[data-theme="mist"] {
+  --bg: #161918;
+  --bg-glow: #202624;
+  --bg-deep: #111413;
+  --paper: #1d2221;
+  --ink: #d7ddd9;
+  --muted: #a9b3ae;
+  --accent: #8fa197;
+  --line: #4d5a54;
+  --line-bold: #65756d;
+  --box-divider: #79877f;
+  --given: #252d2a;
+  --active: #2e3934;
+  --peer: #212825;
+  --peer-box: #1d2421;
+  --peer-ring: #8fa1970d;
+  --peer-box-ring: #8fa19706;
+  --error: #d69a93;
+  --control-bg: #27312d;
+  --control-hover: #2f3a35;
+  --control-active: #37453f;
+  --board-bg: #1b2220;
+  --cell-bg: #1b2220;
+  --cell-ink: #d0d8d3;
+  --box-tone-a: #1b2220;
+  --box-tone-b: #1e2623;
+  --selection-ring: #9fb4a77a;
+  --fill-mode-bg: #3c4b45;
+  --fill-mode-active: #46574f;
+  --match-fill: #9fb4a524;
+  --match-ink: #d7e4dd;
+  --match-ring: #9fb4a56f;
+}
+
+:root[data-theme="dusk"] {
+  --bg: #171420;
+  --bg-glow: #241f32;
+  --bg-deep: #11101a;
+  --paper: #201c2b;
+  --ink: #e0dceb;
+  --muted: #b4abc7;
+  --accent: #9d93bd;
+  --line: #554d69;
+  --line-bold: #6f6688;
+  --box-divider: #857ca0;
+  --given: #2a2538;
+  --active: #38314c;
+  --peer: #272236;
+  --peer-box: #231f31;
+  --peer-ring: #9d93bd0d;
+  --peer-box-ring: #9d93bd06;
+  --error: #d7a0a3;
+  --control-bg: #2d2740;
+  --control-hover: #372f4d;
+  --control-active: #43395d;
+  --board-bg: #201b2e;
+  --cell-bg: #201b2e;
+  --cell-ink: #d8d2e7;
+  --box-tone-a: #201b2e;
+  --box-tone-b: #241f33;
+  --selection-ring: #b1a8cb78;
+  --fill-mode-bg: #4a4063;
+  --fill-mode-active: #584c74;
+  --match-fill: #b1a8cb24;
+  --match-ink: #e5e0f2;
+  --match-ring: #b1a8cb70;
 }
 
 :root[data-theme="amber"] {
@@ -102,25 +145,28 @@
   --accent: #c5a36f;
   --line: #695845;
   --line-bold: #8b7458;
+  --box-divider: #a78f6e;
   --given: #33291b;
-  --active: #503d25;
+  --active: #4a3923;
   --peer: #312619;
   --peer-box: #2c2217;
-  --peer-ring: #c5a36f10;
-  --peer-box-ring: #c5a36f08;
+  --peer-ring: #c5a36f0d;
+  --peer-box-ring: #c5a36f06;
   --error: #ef9a8f;
   --control-bg: #3a2d1d;
   --control-hover: #483723;
   --control-active: #59452c;
   --board-bg: #261f15;
   --cell-bg: #261f15;
-  --selection-ring: #d8b987aa;
+  --cell-ink: #e6d7be;
+  --box-tone-a: #261f15;
+  --box-tone-b: #2a2318;
+  --selection-ring: #d8b98778;
   --fill-mode-bg: #5b452a;
   --fill-mode-active: #6b5131;
-  --match-fill: #c5a36f3a;
-  --match-ink: #fff0d1;
-  --match-glow: #c5a36fd2;
-  --match-ring: #c5a36f96;
+  --match-fill: #c5a36f24;
+  --match-ink: #efddbf;
+  --match-ring: #c5a36f72;
 }
 
 * {
@@ -277,7 +323,7 @@ button:disabled {
   width: min(540px, 100%, calc(100svh - 190px));
   margin: 0 auto;
   aspect-ratio: 1 / 1;
-  border: 2px solid var(--line-bold);
+  border: 3px solid var(--box-divider);
   border-radius: 0;
   overflow: hidden;
   display: grid;
@@ -293,11 +339,19 @@ button:disabled {
   display: grid;
   place-items: center;
   background: var(--cell-bg);
-  color: #d6e2da;
+  color: var(--cell-ink);
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
   touch-action: manipulation;
+}
+
+.cell.box-tone-a {
+  background: var(--box-tone-a);
+}
+
+.cell.box-tone-b {
+  background: var(--box-tone-b);
 }
 
 .cell.given {
@@ -326,7 +380,7 @@ button:disabled {
 
 .cell.selected {
   background: var(--active);
-  box-shadow: inset 0 0 0 1px var(--selection-ring), 0 0 7px -5px var(--selection-ring);
+  box-shadow: inset 0 0 0 2px var(--selection-ring);
 }
 
 .cell.selected.match {
@@ -340,11 +394,11 @@ button:disabled {
 }
 
 .cell.box-right {
-  border-right: 2px solid var(--line-bold);
+  border-right: 3px solid var(--box-divider);
 }
 
 .cell.box-bottom {
-  border-bottom: 2px solid var(--line-bold);
+  border-bottom: 3px solid var(--box-divider);
 }
 
 .numpad {
