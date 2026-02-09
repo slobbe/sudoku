@@ -11,7 +11,7 @@ const FILL_MODE_ENTRY_TYPES = ["long-press", "double-tap"];
 const THEMES = ["slate", "dusk", "mist", "amber"];
 const DOUBLE_TAP_MS = 300;
 const APP_NAME = "Sudoku";
-const APP_VERSION = "0.1.3";
+const APP_VERSION = "0.1.4";
 const APP_AUTHOR = "slobbe";
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
