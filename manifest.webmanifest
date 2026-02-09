@@ -13,8 +13,8 @@
     "games",
     "puzzle"
   ],
-  "background_color": "#141822",
-  "theme_color": "#141822",
+  "background_color": "#151a21",
+  "theme_color": "#151a21",
   "icons": [
     {
       "src": "./icons/icon-192.png",

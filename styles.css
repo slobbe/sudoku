@@ -29,6 +29,36 @@
   --match-ring: #8cb5a096;
 }
 
+:root[data-theme="slate"] {
+  --bg: #151a21;
+  --bg-glow: #222a36;
+  --bg-deep: #10151b;
+  --paper: #1b232e;
+  --ink: #e5ebf2;
+  --muted: #b3becc;
+  --accent: #8fa5bf;
+  --line: #4a596d;
+  --line-bold: #61748c;
+  --given: #222d3b;
+  --active: #314358;
+  --peer: #212b38;
+  --peer-box: #1d2734;
+  --peer-ring: #8fa5bf10;
+  --peer-box-ring: #8fa5bf08;
+  --error: #e69a9a;
+  --control-bg: #253141;
+  --control-hover: #2d3b4f;
+  --control-active: #37485f;
+  --board-bg: #1a2431;
+  --cell-bg: #1a2431;
+  --selection-ring: #a6bdd8aa;
+  --fill-mode-bg: #3b4e66;
+  --fill-mode-active: #455b77;
+  --match-ink: #edf3ff;
+  --match-glow: #9ab2cfd0;
+  --match-ring: #9ab2cf98;
+}
+
 :root[data-theme="blue"] {
   --bg: #141822;
   --bg-glow: #202b3f;
@@ -234,7 +264,7 @@ button:disabled {
 
 .cell {
   border: 1px solid var(--line);
-  font-size: clamp(1.15rem, 3.8vw, 1.9rem);
+  font-size: clamp(1.35rem, 4.4vw, 2.2rem);
   font-weight: 700;
   display: grid;
   place-items: center;
@@ -300,6 +330,7 @@ button:disabled {
 
 .numpad button {
   font-weight: 700;
+  font-size: 1.08rem;
   min-height: 50px;
   padding: 6px 0;
 }
@@ -521,7 +552,7 @@ button:disabled {
   }
 
   .cell {
-    font-size: clamp(1.25rem, 5.4vw, 1.95rem);
+    font-size: clamp(1.5rem, 6.4vw, 2.35rem);
   }
 
   .numpad {
@@ -533,7 +564,7 @@ button:disabled {
   .numpad button {
     min-height: 52px;
     padding: 4px 0;
-    font-size: 1.2rem;
+    font-size: 1.3rem;
   }
 
   .settings-card {

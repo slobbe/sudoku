@@ -8,7 +8,7 @@ import {
 const HINTS_PER_GAME = 3;
 const SAVE_KEY = "sudoku-pwa-current-game-v1";
 const FILL_MODE_ENTRY_TYPES = ["long-press", "double-tap"];
-const THEMES = ["green", "blue", "amber"];
+const THEMES = ["slate", "green", "blue", "amber"];
 const DOUBLE_TAP_MS = 300;
 
 const DIFFICULTIES = ["easy", "medium", "hard"];
@@ -59,6 +59,7 @@ const updateActionEl = document.querySelector("#update-action");
 const themeColorMetaEl = document.querySelector('meta[name="theme-color"]');
 
 const THEME_COLORS = {
+  slate: "#151a21",
   green: "#141a18",
   blue: "#141822",
   amber: "#1d1913",
@@ -75,7 +76,7 @@ const state = {
   fillModeValue: null,
   showMistakes: true,
   fillModeEntry: "double-tap",
-  theme: "blue",
+  theme: "slate",
   undoStack: [],
   redoStack: [],
   stats: createDefaultStats(),
@@ -275,7 +276,7 @@ function loadSavedGame() {
   state.fillModeValue = null;
   state.showMistakes = parsed.showMistakes !== undefined ? parsed.showMistakes : true;
   state.fillModeEntry = parsed.fillModeEntry || "double-tap";
-  state.theme = parsed.theme || "blue";
+  state.theme = parsed.theme || "slate";
   state.undoStack = [];
   state.redoStack = [];
   state.stats = normalizeStats(parsed.stats);
