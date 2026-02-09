@@ -137,9 +137,21 @@ body {
   text-transform: uppercase;
 }
 
-.header-actions {
+.header-top-actions {
   display: flex;
   align-items: center;
+  gap: 6px;
+}
+
+.header-controls {
+  width: min(540px, 100%, calc(100svh - 190px));
+  margin-top: 4px;
+  margin-bottom: 2px;
+  margin-left: auto;
+  margin-right: auto;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   gap: 6px;
 }
 
@@ -177,14 +189,19 @@ button:active {
 #new-game,
 #undo,
 #redo,
+#reset-game,
 #hint,
+#stats-open,
 #settings-open {
   border-color: var(--line-bold);
 }
 
 #undo,
 #redo,
+#reset-game,
 #hint,
+#new-game,
+#stats-open,
 #settings-open {
   flex-shrink: 0;
 }
@@ -195,7 +212,7 @@ button:disabled {
 }
 
 .board-wrap {
-  margin-top: 6px;
+  margin-top: 0;
   display: grid;
   place-items: center;
   flex: 1;
@@ -418,34 +435,40 @@ button:disabled {
   margin-top: 4px;
 }
 
-.updates {
-  border: 0;
-  padding: 2px 0 0;
+.stats-modal {
+  margin: auto;
+  width: min(420px, calc(100svw - 16px));
+  max-width: calc(100svw - 16px);
+  padding: 0;
+  border: 1px solid var(--line-bold);
+  background: transparent;
+  color: var(--ink);
 }
 
-.updates h3 {
-  margin: 0 0 6px;
-  font-size: 0.95rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+.stats-modal::backdrop {
+  background: #00000088;
 }
 
-.update-status {
+.stats-card {
   margin: 0;
-  font-size: 0.9rem;
-  color: var(--muted);
+  width: 100%;
+  background: var(--paper);
+  padding: 12px;
 }
 
-.update-actions {
-  margin-top: 8px;
-  display: flex;
-  gap: 8px;
+.updates {
+  margin-top: 2px;
 }
 
 @media (max-width: 600px) {
   body {
     place-items: stretch;
     padding: 0;
+  }
+
+  .header {
+    display: flex;
+    flex-direction: column;
   }
 
   .app {
@@ -460,7 +483,6 @@ button:disabled {
   }
 
   .header-row {
-    flex-wrap: wrap;
     gap: 6px;
   }
 
@@ -468,19 +490,30 @@ button:disabled {
     font-size: clamp(1.5rem, 7vw, 1.9rem);
   }
 
-  .header-actions {
-    width: 100%;
-    justify-content: flex-end;
+  .header-top-actions {
     gap: 4px;
   }
 
-  .header-actions button {
+  .header-top-actions button,
+  .header-controls button {
     padding: 7px 9px;
     font-size: 0.95rem;
   }
 
+  .header-controls {
+    width: min(100%, calc(100svh - 214px));
+    margin-top: auto;
+    margin-bottom: 2px;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
   .board-wrap {
-    margin-top: 6px;
+    flex: 0 0 auto;
+    margin-top: 0;
+    margin-bottom: auto;
+    place-items: center;
+    align-content: center;
   }
 
   .board {
@@ -520,6 +553,28 @@ button:disabled {
   }
 
   .settings-modal[open] {
+    min-height: 100svh;
+    display: flex;
+    align-items: flex-end;
+  }
+
+  .stats-card {
+    max-height: calc(100svh - 20px);
+    overflow: auto;
+    padding-top: 10px;
+    padding-right: 10px;
+    padding-bottom: max(10px, env(safe-area-inset-bottom));
+    padding-left: 10px;
+  }
+
+  .stats-modal {
+    width: 100%;
+    max-width: 100%;
+    margin: 0;
+    border: 0;
+  }
+
+  .stats-modal[open] {
     min-height: 100svh;
     display: flex;
     align-items: flex-end;

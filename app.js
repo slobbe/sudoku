@@ -29,6 +29,9 @@ function createDefaultStats() {
 
 const boardEl = document.querySelector("#board");
 const numpadEl = document.querySelector(".numpad");
+const statsOpenEl = document.querySelector("#stats-open");
+const statsModalEl = document.querySelector("#stats-modal");
+const statsCloseEl = document.querySelector("#stats-close");
 const settingsOpenEl = document.querySelector("#settings-open");
 const settingsModalEl = document.querySelector("#settings-modal");
 const settingsCloseEl = document.querySelector("#settings-close");
@@ -37,6 +40,7 @@ const winNewGameEl = document.querySelector("#win-new-game");
 const winLaterEl = document.querySelector("#win-later");
 const undoEl = document.querySelector("#undo");
 const redoEl = document.querySelector("#redo");
+const resetGameEl = document.querySelector("#reset-game");
 const difficultyEl = document.querySelector("#difficulty");
 const showMistakesEl = document.querySelector("#show-mistakes");
 const fillModeEntryEl = document.querySelector("#fill-mode-entry");
@@ -51,9 +55,7 @@ const statsBestStreakEl = document.querySelector("#stats-best-streak");
 const statsEasyEl = document.querySelector("#stats-easy");
 const statsMediumEl = document.querySelector("#stats-medium");
 const statsHardEl = document.querySelector("#stats-hard");
-const updateStatusEl = document.querySelector("#update-status");
-const checkUpdateEl = document.querySelector("#check-update");
-const applyUpdateEl = document.querySelector("#apply-update");
+const updateActionEl = document.querySelector("#update-action");
 const themeColorMetaEl = document.querySelector('meta[name="theme-color"]');
 
 const THEME_COLORS = {
@@ -273,12 +275,18 @@ function updateHintsUi() {
 }
 
 function setUpdateStatus(message) {
-  updateStatusEl.textContent = message;
+  if (!updateActionEl) {
+    return;
+  }
+  updateActionEl.title = message;
 }
 
-function updateUpdateButtons() {
+function updateUpdateAction() {
+  if (!updateActionEl) {
+    return;
+  }
   const waiting = Boolean(swRegistration && swRegistration.waiting);
-  applyUpdateEl.disabled = !waiting;
+  updateActionEl.textContent = waiting ? "Update now" : "Check for updates";
 }
 
 function formatRate(won, started) {
@@ -759,6 +767,29 @@ function startNewGame() {
   saveGame();
 }
 
+function resetCurrentGame() {
+  if (!state.puzzle || !state.board) {
+    return;
+  }
+
+  clearWinUi();
+  state.board = clone(state.puzzle);
+  state.selected = null;
+  state.highlightValue = null;
+  state.fillModeValue = null;
+  state.won = false;
+  state.undoStack = [];
+  state.redoStack = [];
+  state.hintsLeft = HINTS_PER_GAME;
+
+  updateHintsUi();
+  updateUndoRedoUi();
+  renderNumpadMode();
+  renderBoard();
+  setStatus("Puzzle reset.");
+  saveGame();
+}
+
 function applyNumberInput(value) {
   if (!state.selected || state.won) {
     return;
@@ -881,7 +912,7 @@ function onKeyDown(event) {
     return;
   }
 
-  if (settingsModalEl.open || winModalEl.open) {
+  if (settingsModalEl.open || (statsModalEl && statsModalEl.open) || winModalEl.open) {
     return;
   }
 
@@ -934,8 +965,10 @@ function onKeyDown(event) {
 function registerServiceWorker() {
   if (!("serviceWorker" in navigator)) {
     setUpdateStatus("Updates unavailable in this browser.");
-    checkUpdateEl.disabled = true;
-    applyUpdateEl.disabled = true;
+    if (updateActionEl) {
+      updateActionEl.disabled = true;
+      updateActionEl.textContent = "Updates unavailable";
+    }
     return;
   }
 
@@ -951,7 +984,7 @@ function registerServiceWorker() {
     navigator.serviceWorker.register("./sw.js")
       .then((registration) => {
         swRegistration = registration;
-        updateUpdateButtons();
+        updateUpdateAction();
         setUpdateStatus(registration.waiting ? "Update available." : "Up to date.");
 
         registration.addEventListener("updatefound", () => {
@@ -962,7 +995,7 @@ function registerServiceWorker() {
           setUpdateStatus("Downloading update...");
           newWorker.addEventListener("statechange", () => {
             if (newWorker.state === "installed") {
-              updateUpdateButtons();
+              updateUpdateAction();
               if (navigator.serviceWorker.controller) {
                 setUpdateStatus("Update available.");
               } else {
@@ -975,8 +1008,10 @@ function registerServiceWorker() {
       .catch(() => {
         setStatus("Game works, but offline mode could not be enabled.");
         setUpdateStatus("Service worker setup failed.");
-        checkUpdateEl.disabled = true;
-        applyUpdateEl.disabled = true;
+        if (updateActionEl) {
+          updateActionEl.disabled = true;
+          updateActionEl.textContent = "Update unavailable";
+        }
       });
   });
 }
@@ -990,7 +1025,7 @@ function checkForUpdates() {
   setUpdateStatus("Checking for updates...");
   swRegistration.update()
     .then(() => {
-      updateUpdateButtons();
+      updateUpdateAction();
       if (swRegistration.waiting) {
         setUpdateStatus("Update available.");
       } else {
@@ -1010,6 +1045,35 @@ function applyUpdateNow() {
 
   setUpdateStatus("Applying update...");
   swRegistration.waiting.postMessage({ type: "SKIP_WAITING" });
+}
+
+function runUpdateAction() {
+  const waiting = Boolean(swRegistration && swRegistration.waiting);
+  if (waiting) {
+    applyUpdateNow();
+  } else {
+    checkForUpdates();
+  }
+}
+
+function openStats() {
+  if (!statsModalEl) {
+    return;
+  }
+  renderStats();
+  statsModalEl.showModal();
+}
+
+function closeStats() {
+  if (statsModalEl && statsModalEl.open) {
+    statsModalEl.close();
+  }
+}
+
+function closeStatsOnBackdrop(event) {
+  if (event.target === statsModalEl) {
+    closeStats();
+  }
 }
 
 function openSettings() {
@@ -1064,6 +1128,18 @@ numpadEl.addEventListener("pointerleave", onNumpadPointerRelease);
 numpadEl.addEventListener("pointercancel", onNumpadPointerRelease);
 undoEl.addEventListener("click", undoMove);
 redoEl.addEventListener("click", redoMove);
+if (resetGameEl) {
+  resetGameEl.addEventListener("click", resetCurrentGame);
+}
+if (statsOpenEl) {
+  statsOpenEl.addEventListener("click", openStats);
+}
+if (statsCloseEl) {
+  statsCloseEl.addEventListener("click", closeStats);
+}
+if (statsModalEl) {
+  statsModalEl.addEventListener("click", closeStatsOnBackdrop);
+}
 settingsOpenEl.addEventListener("click", openSettings);
 settingsCloseEl.addEventListener("click", closeSettings);
 settingsModalEl.addEventListener("click", closeSettingsOnBackdrop);
@@ -1081,8 +1157,9 @@ newGameEl.addEventListener("click", startNewGame);
 hintEl.addEventListener("click", useHint);
 winNewGameEl.addEventListener("click", onWinNewGame);
 winLaterEl.addEventListener("click", closeWinPrompt);
-checkUpdateEl.addEventListener("click", checkForUpdates);
-applyUpdateEl.addEventListener("click", applyUpdateNow);
+if (updateActionEl) {
+  updateActionEl.addEventListener("click", runUpdateAction);
+}
 window.addEventListener("keydown", onKeyDown);
 
 registerServiceWorker();

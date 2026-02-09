@@ -16,16 +16,24 @@
     <header class="header">
       <div class="header-row">
         <h1>Sudoku</h1>
-        <div class="header-actions" aria-label="Quick actions">
-          <button id="undo" type="button" title="Undo">Undo</button>
-          <button id="redo" type="button" title="Redo">Redo</button>
-          <button id="hint" type="button">Hint (<span id="hints-left">3</span>)</button>
+        <div class="header-top-actions" aria-label="Header actions">
+          <button id="stats-open" type="button" aria-haspopup="dialog" aria-controls="stats-modal">
+            Stats
+          </button>
           <button id="settings-open" type="button" aria-haspopup="dialog" aria-controls="settings-modal">
             Settings
           </button>
         </div>
       </div>
     </header>
+
+    <div class="header-controls" aria-label="Quick actions">
+      <button id="undo" type="button" title="Undo">Undo</button>
+      <button id="redo" type="button" title="Redo">Redo</button>
+      <button id="reset-game" type="button">Reset</button>
+      <button id="new-game" type="button">New Game</button>
+      <button id="hint" type="button">Hint (<span id="hints-left">3</span>)</button>
+    </div>
 
     <section class="board-wrap" aria-label="Sudoku board">
       <div id="board" class="board" role="grid" aria-label="Sudoku grid"></div>
@@ -83,25 +91,27 @@
           <option value="blue">Blue</option>
           <option value="amber">Amber</option>
         </select>
-        <section class="stats" aria-label="Game stats">
-          <h3>Stats</h3>
-          <p>Overall: <span id="stats-overall">0/0 (0%)</span></p>
-          <p>Streak: <span id="stats-streak">0</span> (Best: <span id="stats-best-streak">0</span>)</p>
-          <p>Easy: <span id="stats-easy">0/0 (0%)</span></p>
-          <p>Medium: <span id="stats-medium">0/0 (0%)</span></p>
-          <p>Hard: <span id="stats-hard">0/0 (0%)</span></p>
-        </section>
         <section class="updates" aria-label="App updates">
-          <h3>App Update</h3>
-          <p id="update-status" class="update-status">Ready</p>
-          <div class="update-actions">
-            <button id="check-update" type="button">Check for updates</button>
-            <button id="apply-update" type="button" disabled>Update now</button>
-          </div>
+          <button id="update-action" type="button">Check for updates</button>
         </section>
-        <button id="new-game" type="button">New Game</button>
       </div>
     </form>
+  </dialog>
+
+  <dialog id="stats-modal" class="stats-modal" aria-label="Game stats">
+    <div class="stats-card">
+      <div class="settings-header">
+        <h2>Stats</h2>
+        <button id="stats-close" type="button">Close</button>
+      </div>
+      <section class="stats" aria-label="Game stats">
+        <p>Overall: <span id="stats-overall">0/0 (0%)</span></p>
+        <p>Streak: <span id="stats-streak">0</span> (Best: <span id="stats-best-streak">0</span>)</p>
+        <p>Easy: <span id="stats-easy">0/0 (0%)</span></p>
+        <p>Medium: <span id="stats-medium">0/0 (0%)</span></p>
+        <p>Hard: <span id="stats-hard">0/0 (0%)</span></p>
+      </section>
+    </div>
   </dialog>
 
   <script type="module" src="./app.js"></script>
