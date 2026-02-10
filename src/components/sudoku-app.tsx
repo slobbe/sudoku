@@ -750,6 +750,10 @@ export function SudokuApp() {
     setActiveView("home");
   }, []);
 
+  const continueCurrentPuzzle = useCallback(() => {
+    setActiveView("game");
+  }, []);
+
   const resetCurrentGame = useCallback(() => {
     const current = stateRef.current;
     if (!current.puzzle || !current.board) {
@@ -1519,6 +1523,13 @@ export function SudokuApp() {
 
   const highlighted = state.fillModeValue !== null ? state.fillModeValue : state.highlightValue;
   const showSelectionHighlights = state.fillModeValue === null;
+  const canContinueCurrentPuzzle = Boolean(
+    state.puzzle
+    && state.board
+    && state.currentGameStarted
+    && !state.won
+    && !state.lost,
+  );
 
   const statsOverall = formatLine(state.stats.gamesWon, state.stats.gamesStarted);
   const statsEasy = formatLine(state.stats.byDifficulty.easy.won, state.stats.byDifficulty.easy.started);
@@ -1544,6 +1555,11 @@ export function SudokuApp() {
           <section className="home-view" aria-label="Home menu">
             <h1>Sudoku</h1>
             <div className="home-actions" aria-label="Main actions">
+              {canContinueCurrentPuzzle ? (
+                <button id="continue-current-puzzle" type="button" onClick={continueCurrentPuzzle}>
+                  Continue Current Puzzle
+                </button>
+              ) : null}
               <button id="new-game" type="button" onClick={() => startNewGameAndOpen()}>
                 New Game
               </button>
