@@ -216,13 +216,27 @@ body {
     align-items: center;
 }
 
+.app.app-panel {
+    justify-content: center;
+    align-items: center;
+}
+
 .home-view {
     width: min(420px, 100%);
     padding: 18px;
-    border: 1px solid var(--line-bold);
-    background: var(--paper);
+    border: 0;
+    background: transparent;
     display: grid;
     gap: 12px;
+}
+
+.panel-view {
+    width: min(460px, 100%);
+    border: 0;
+}
+
+.panel-view.stats-view {
+    width: min(420px, 100%);
 }
 
 .home-view h1 {
@@ -601,7 +615,7 @@ button:disabled {
 .settings-card {
     margin: 0;
     width: 100%;
-    background: var(--paper);
+    background: transparent;
     padding: 12px;
 }
 
@@ -679,7 +693,7 @@ button:disabled {
 .stats-card {
     margin: 0;
     width: 100%;
-    background: var(--paper);
+    background: transparent;
     padding: 12px;
 }
 
@@ -740,6 +754,12 @@ button:disabled {
         align-items: center;
     }
 
+    .app.app-panel {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
     .app.app-game {
         grid-template-rows: auto minmax(0, 1fr) auto;
     }
@@ -748,6 +768,11 @@ button:disabled {
         width: min(420px, 100%);
         padding: 14px;
         gap: 10px;
+    }
+
+    .panel-view {
+        width: 100%;
+        border: 0;
     }
 
     .home-view h1 {
@@ -778,6 +803,7 @@ button:disabled {
     .header-top-actions button,
     .header-controls button,
     .home-actions button,
+    .panel-view button,
     .game-controls button,
     .board-actions button {
         padding: 4px 6px;
@@ -924,6 +950,7 @@ button:disabled {
     .header-top-actions button,
     .header-controls button,
     .home-actions button,
+    .panel-view button,
     .game-controls button,
     .board-actions button {
         padding: 3px 5px;
@@ -998,6 +1025,7 @@ button:disabled {
     .header-top-actions button,
     .header-controls button,
     .home-actions button,
+    .panel-view button,
     .game-controls button,
     .board-actions button {
         padding: 2px 4px;

@@ -20,7 +20,7 @@ import {
 
 type Theme = "slate" | "dusk" | "mist" | "amber";
 type FillModeEntry = "long-press" | "double-tap";
-type AppView = "home" | "game";
+type AppView = "home" | "game" | "settings" | "stats";
 
 type CellSelection = {
   row: number;
@@ -622,8 +622,6 @@ export function SudokuApp() {
 
   const [activeView, setActiveView] = useState<AppView>("home");
   const [statusMessage, setStatusMessage] = useState<string>("Generating puzzle...");
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [statsOpen, setStatsOpen] = useState(false);
   const [winPromptOpen, setWinPromptOpen] = useState(false);
   const [losePromptOpen, setLosePromptOpen] = useState(false);
 
@@ -632,8 +630,6 @@ export function SudokuApp() {
   const [updateStatus, setUpdateStatus] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
 
-  const settingsDialogRef = useRef<HTMLDialogElement>(null);
-  const statsDialogRef = useRef<HTMLDialogElement>(null);
   const winDialogRef = useRef<HTMLDialogElement>(null);
   const loseDialogRef = useRef<HTMLDialogElement>(null);
 
@@ -748,6 +744,14 @@ export function SudokuApp() {
     setWinPromptOpen(false);
     setLosePromptOpen(false);
     setActiveView("home");
+  }, []);
+
+  const openSettingsView = useCallback(() => {
+    setActiveView("settings");
+  }, []);
+
+  const openStatsView = useCallback(() => {
+    setActiveView("stats");
   }, []);
 
   const continueCurrentPuzzle = useCallback(() => {
@@ -1278,14 +1282,6 @@ export function SudokuApp() {
   }, [state]);
 
   useEffect(() => {
-    syncDialogState(settingsDialogRef.current, settingsOpen);
-  }, [settingsOpen]);
-
-  useEffect(() => {
-    syncDialogState(statsDialogRef.current, statsOpen);
-  }, [statsOpen]);
-
-  useEffect(() => {
     syncDialogState(winDialogRef.current, winPromptOpen);
   }, [winPromptOpen]);
 
@@ -1444,7 +1440,7 @@ export function SudokuApp() {
       if (!current.board) {
         return;
       }
-      if (settingsOpen || statsOpen || winPromptOpen || losePromptOpen) {
+      if (winPromptOpen || losePromptOpen) {
         return;
       }
       if (current.lost) {
@@ -1507,8 +1503,6 @@ export function SudokuApp() {
     moveSelection,
     redoMove,
     setFillMode,
-    settingsOpen,
-    statsOpen,
     undoMove,
     winPromptOpen,
     activeView,
@@ -1550,7 +1544,7 @@ export function SudokuApp() {
 
   return (
     <>
-      <main className={`app ${activeView === "home" ? "app-home" : "app-game"}`}>
+      <main className={`app ${activeView === "home" ? "app-home" : activeView === "game" ? "app-game" : "app-panel"}`}>
         {activeView === "home" ? (
           <section className="home-view" aria-label="Home menu">
             <h1>Sudoku</h1>
@@ -1563,16 +1557,16 @@ export function SudokuApp() {
               <button id="new-game" type="button" onClick={() => startNewGameAndOpen()}>
                 New Puzzle
               </button>
-              <button id="settings-open" type="button" onClick={() => setSettingsOpen(true)}>
+              <button id="settings-open" type="button" onClick={openSettingsView}>
                 Settings
               </button>
-              <button id="stats-open" type="button" onClick={() => setStatsOpen(true)}>
+              <button id="stats-open" type="button" onClick={openStatsView}>
                 Statistics
               </button>
             </div>
             <p className="home-status" aria-live="polite">{statusMessage}</p>
           </section>
-        ) : (
+        ) : activeView === "game" ? (
           <>
             <div className="game-controls" aria-label="Puzzle controls">
               <button id="home-button" type="button" onClick={goHome}>
@@ -1702,6 +1696,141 @@ export function SudokuApp() {
               })}
             </section>
           </>
+        ) : activeView === "settings" ? (
+          <section className="panel-view settings-view" aria-label="Puzzle settings">
+            <div className="settings-card">
+              <div className="settings-header">
+                <h2>Settings</h2>
+                <button id="settings-close" type="button" onClick={goHome}>
+                  Home
+                </button>
+              </div>
+              <div className="settings-grid">
+                <label htmlFor="difficulty">Difficulty</label>
+                <select
+                  id="difficulty"
+                  value={state.difficulty}
+                  onChange={(event) => {
+                    const difficulty = event.target.value as Difficulty;
+                    const current = stateRef.current;
+                    applyState({ ...current, difficulty });
+                    setStatusMessage(`Difficulty set to ${difficulty}.`);
+                  }}
+                >
+                  <option value="easy">Easy</option>
+                  <option value="medium">Medium</option>
+                  <option value="hard">Hard</option>
+                </select>
+
+                <label htmlFor="show-mistakes" className="settings-toggle">
+                  <input
+                    id="show-mistakes"
+                    type="checkbox"
+                    checked={state.showMistakes}
+                    onChange={(event) => {
+                      const current = stateRef.current;
+                      applyState({ ...current, showMistakes: event.target.checked });
+                    }}
+                  />
+                  Show mistakes immediately
+                </label>
+
+                <label htmlFor="fill-mode-entry">Fill mode trigger</label>
+                <select
+                  id="fill-mode-entry"
+                  value={state.fillModeEntry}
+                  onChange={(event) => {
+                    const entry = event.target.value as FillModeEntry;
+                    const current = stateRef.current;
+                    applyState({ ...current, fillModeEntry: entry });
+                    clearLongPressTimer();
+                    resetDoubleTapTracking();
+                  }}
+                >
+                  <option value="long-press">Long press</option>
+                  <option value="double-tap">Double tap</option>
+                </select>
+
+                <label htmlFor="theme">Theme</label>
+                <select
+                  id="theme"
+                  value={state.theme}
+                  onChange={(event) => {
+                    const current = stateRef.current;
+                    const nextTheme = normalizeTheme(event.target.value);
+                    applyState({ ...current, theme: nextTheme });
+                  }}
+                >
+                  <option value="slate">Slate</option>
+                  <option value="dusk">Dusk</option>
+                  <option value="mist">Mist</option>
+                  <option value="amber">Amber</option>
+                </select>
+
+                <div className="settings-footer" aria-label="App info and updates">
+                  <p className="app-info-inline">
+                    <span id="app-info-name">{APP_NAME}</span>
+                    {" "}
+                    v<span id="app-info-version">{APP_VERSION}</span>
+                    {" "}
+                    by <span id="app-info-author">{APP_AUTHOR}</span>
+                  </p>
+                  <button
+                    id="update-action"
+                    type="button"
+                    title={updateStatus}
+                    disabled={updateActionDisabled}
+                    onClick={runUpdateAction}
+                  >
+                    {updateActionLabel}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </section>
+        ) : (
+          <section className="panel-view stats-view" aria-label="Puzzle stats">
+            <div className="stats-card">
+              <div className="settings-header">
+                <h2>Stats</h2>
+                <button id="stats-close" type="button" onClick={goHome}>
+                  Home
+                </button>
+              </div>
+              <section className="stats" aria-label="Puzzle stats">
+                <p>
+                  Overall:
+                  {" "}
+                  <span id="stats-overall">{statsOverall}</span>
+                </p>
+                <p>
+                  Streak:
+                  {" "}
+                  <span id="stats-streak">{state.stats.currentStreak}</span>
+                  {" "}
+                  (Best:
+                  {" "}
+                  <span id="stats-best-streak">{state.stats.bestStreak}</span>
+                  )
+                </p>
+                <p>
+                  Easy:
+                  {" "}
+                  <span id="stats-easy">{statsEasy}</span>
+                </p>
+                <p>
+                  Medium:
+                  {" "}
+                  <span id="stats-medium">{statsMedium}</span>
+                </p>
+                <p>
+                  Hard:
+                  {" "}
+                  <span id="stats-hard">{statsHard}</span>
+                </p>
+              </section>
+            </div>
+          </section>
         )}
       </main>
 
@@ -1775,168 +1904,6 @@ export function SudokuApp() {
         </div>
       </dialog>
 
-      <dialog
-        id="settings-modal"
-        ref={settingsDialogRef}
-        className="settings-modal"
-        aria-label="Puzzle settings"
-        onClick={(event) => {
-          if (event.target === event.currentTarget) {
-            setSettingsOpen(false);
-          }
-        }}
-        onCancel={(event) => {
-          event.preventDefault();
-          setSettingsOpen(false);
-        }}
-      >
-        <div className="settings-card">
-          <div className="settings-header">
-            <h2>Settings</h2>
-            <button id="settings-close" type="button" onClick={() => setSettingsOpen(false)}>
-              Close
-            </button>
-          </div>
-          <div className="settings-grid">
-            <label htmlFor="difficulty">Difficulty</label>
-            <select
-              id="difficulty"
-              value={state.difficulty}
-              onChange={(event) => {
-                const difficulty = event.target.value as Difficulty;
-                const current = stateRef.current;
-                applyState({ ...current, difficulty });
-                setStatusMessage(`Difficulty set to ${difficulty}.`);
-              }}
-            >
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
-            </select>
-
-            <label htmlFor="show-mistakes" className="settings-toggle">
-              <input
-                id="show-mistakes"
-                type="checkbox"
-                checked={state.showMistakes}
-                onChange={(event) => {
-                  const current = stateRef.current;
-                  applyState({ ...current, showMistakes: event.target.checked });
-                }}
-              />
-              Show mistakes immediately
-            </label>
-
-            <label htmlFor="fill-mode-entry">Fill mode trigger</label>
-            <select
-              id="fill-mode-entry"
-              value={state.fillModeEntry}
-              onChange={(event) => {
-                const entry = event.target.value as FillModeEntry;
-                const current = stateRef.current;
-                applyState({ ...current, fillModeEntry: entry });
-                clearLongPressTimer();
-                resetDoubleTapTracking();
-              }}
-            >
-              <option value="long-press">Long press</option>
-              <option value="double-tap">Double tap</option>
-            </select>
-
-            <label htmlFor="theme">Theme</label>
-            <select
-              id="theme"
-              value={state.theme}
-              onChange={(event) => {
-                const current = stateRef.current;
-                const nextTheme = normalizeTheme(event.target.value);
-                applyState({ ...current, theme: nextTheme });
-              }}
-            >
-              <option value="slate">Slate</option>
-              <option value="dusk">Dusk</option>
-              <option value="mist">Mist</option>
-              <option value="amber">Amber</option>
-            </select>
-
-            <div className="settings-footer" aria-label="App info and updates">
-              <p className="app-info-inline">
-                <span id="app-info-name">{APP_NAME}</span>
-                {" "}
-                v<span id="app-info-version">{APP_VERSION}</span>
-                {" "}
-                by <span id="app-info-author">{APP_AUTHOR}</span>
-              </p>
-              <button
-                id="update-action"
-                type="button"
-                title={updateStatus}
-                disabled={updateActionDisabled}
-                onClick={runUpdateAction}
-              >
-                {updateActionLabel}
-              </button>
-            </div>
-          </div>
-        </div>
-      </dialog>
-
-      <dialog
-        id="stats-modal"
-        ref={statsDialogRef}
-        className="stats-modal"
-        aria-label="Puzzle stats"
-        onClick={(event) => {
-          if (event.target === event.currentTarget) {
-            setStatsOpen(false);
-          }
-        }}
-        onCancel={(event) => {
-          event.preventDefault();
-          setStatsOpen(false);
-        }}
-      >
-        <div className="stats-card">
-          <div className="settings-header">
-            <h2>Stats</h2>
-            <button id="stats-close" type="button" onClick={() => setStatsOpen(false)}>
-              Close
-            </button>
-          </div>
-          <section className="stats" aria-label="Puzzle stats">
-            <p>
-              Overall:
-              {" "}
-              <span id="stats-overall">{statsOverall}</span>
-            </p>
-            <p>
-              Streak:
-              {" "}
-              <span id="stats-streak">{state.stats.currentStreak}</span>
-              {" "}
-              (Best:
-              {" "}
-              <span id="stats-best-streak">{state.stats.bestStreak}</span>
-              )
-            </p>
-            <p>
-              Easy:
-              {" "}
-              <span id="stats-easy">{statsEasy}</span>
-            </p>
-            <p>
-              Medium:
-              {" "}
-              <span id="stats-medium">{statsMedium}</span>
-            </p>
-            <p>
-              Hard:
-              {" "}
-              <span id="stats-hard">{statsHard}</span>
-            </p>
-          </section>
-        </div>
-      </dialog>
     </>
   );
 }
