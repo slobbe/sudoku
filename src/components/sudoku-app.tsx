@@ -625,8 +625,6 @@ export function SudokuApp() {
   const [winPromptOpen, setWinPromptOpen] = useState(false);
   const [losePromptOpen, setLosePromptOpen] = useState(false);
 
-  const [updateActionLabel, setUpdateActionLabel] = useState("Check for updates");
-  const [updateActionDisabled, setUpdateActionDisabled] = useState(false);
   const [updateStatus, setUpdateStatus] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
 
@@ -639,7 +637,6 @@ export function SudokuApp() {
   const lastTapAtRef = useRef(0);
   const pendingTapTimerRef = useRef<number | null>(null);
 
-  const swRegistrationRef = useRef<ServiceWorkerRegistration | null>(null);
   const reloadTriggeredByUpdateRef = useRef(false);
 
   const applyState = useCallback((next: GameState) => {
@@ -1229,54 +1226,6 @@ export function SudokuApp() {
     restartCurrentPuzzle();
   }, [restartCurrentPuzzle]);
 
-  const refreshUpdateAction = useCallback(() => {
-    const waiting = Boolean(swRegistrationRef.current?.waiting);
-    setUpdateActionLabel(waiting ? "Update now" : "Check for updates");
-  }, []);
-
-  const checkForUpdates = useCallback(() => {
-    const registration = swRegistrationRef.current;
-    if (!registration) {
-      setUpdateStatus("Checking unavailable right now.");
-      return;
-    }
-
-    setUpdateStatus("Checking for updates...");
-    registration
-      .update()
-      .then(() => {
-        refreshUpdateAction();
-        if (registration.waiting) {
-          setUpdateStatus("Update available.");
-        } else {
-          setUpdateStatus("Up to date.");
-        }
-      })
-      .catch(() => {
-        setUpdateStatus("Could not check for updates.");
-      });
-  }, [refreshUpdateAction]);
-
-  const applyUpdateNow = useCallback(() => {
-    const registration = swRegistrationRef.current;
-    if (!registration || !registration.waiting) {
-      setUpdateStatus("No update ready.");
-      return;
-    }
-
-    setUpdateStatus("Applying update...");
-    registration.waiting.postMessage({ type: "SKIP_WAITING" });
-  }, []);
-
-  const runUpdateAction = useCallback(() => {
-    const waiting = Boolean(swRegistrationRef.current?.waiting);
-    if (waiting) {
-      applyUpdateNow();
-    } else {
-      checkForUpdates();
-    }
-  }, [applyUpdateNow, checkForUpdates]);
-
   useEffect(() => {
     stateRef.current = state;
   }, [state]);
@@ -1367,8 +1316,22 @@ export function SudokuApp() {
   useEffect(() => {
     if (!("serviceWorker" in navigator)) {
       setUpdateStatus("Updates unavailable in this browser.");
-      setUpdateActionDisabled(true);
-      setUpdateActionLabel("Updates unavailable");
+      return;
+    }
+
+    if (process.env.NODE_ENV !== "production") {
+      setUpdateStatus("Service worker disabled in development.");
+
+      navigator.serviceWorker.getRegistrations()
+        .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+        .catch(() => undefined);
+
+      if ("caches" in window) {
+        window.caches.keys()
+          .then((cacheKeys) => Promise.all(cacheKeys.map((cacheKey) => window.caches.delete(cacheKey))))
+          .catch(() => undefined);
+      }
+
       return;
     }
 
@@ -1386,10 +1349,7 @@ export function SudokuApp() {
       navigator.serviceWorker
         .register("/sw.js")
         .then((registration) => {
-          swRegistrationRef.current = registration;
-          setUpdateActionDisabled(false);
-          refreshUpdateAction();
-          setUpdateStatus(registration.waiting ? "Update available." : "Up to date.");
+          setUpdateStatus(registration.waiting ? "Update available." : "Updates are active.");
 
           registration.addEventListener("updatefound", () => {
             const newWorker = registration.installing;
@@ -1400,11 +1360,10 @@ export function SudokuApp() {
             setUpdateStatus("Downloading update...");
             newWorker.addEventListener("statechange", () => {
               if (newWorker.state === "installed") {
-                refreshUpdateAction();
                 if (navigator.serviceWorker.controller) {
-                  setUpdateStatus("Update available.");
+                  setUpdateStatus("Update available. Restart app to apply.");
                 } else {
-                  setUpdateStatus("Up to date.");
+                  setUpdateStatus("Updates are active.");
                 }
               }
             });
@@ -1413,8 +1372,6 @@ export function SudokuApp() {
         .catch(() => {
           setStatusMessage("Puzzle app works, but offline mode could not be enabled.");
           setUpdateStatus("Service worker setup failed.");
-          setUpdateActionDisabled(true);
-          setUpdateActionLabel("Update unavailable");
         });
     };
 
@@ -1428,7 +1385,7 @@ export function SudokuApp() {
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
       window.removeEventListener("load", registerServiceWorker);
     };
-  }, [refreshUpdateAction]);
+  }, []);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -1547,7 +1504,7 @@ export function SudokuApp() {
       <main className={`app ${activeView === "home" ? "app-home" : activeView === "game" ? "app-game" : "app-panel"}`}>
         {activeView === "home" ? (
           <section className="home-view" aria-label="Home menu">
-            <h1>Sudoku</h1>
+            <h1 className="view-title">Sudoku</h1>
             <div className="home-actions" aria-label="Main actions">
               {canContinueCurrentPuzzle ? (
                 <button id="continue-current-puzzle" type="button" onClick={continueCurrentPuzzle}>
@@ -1766,25 +1723,17 @@ export function SudokuApp() {
                   <option value="mist">Mist</option>
                   <option value="amber">Amber</option>
                 </select>
+              </div>
 
-                <div className="settings-footer" aria-label="App info and updates">
-                  <p className="app-info-inline">
-                    <span id="app-info-name">{APP_NAME}</span>
-                    {" "}
-                    v<span id="app-info-version">{APP_VERSION}</span>
-                    {" "}
-                    by <span id="app-info-author">{APP_AUTHOR}</span>
-                  </p>
-                  <button
-                    id="update-action"
-                    type="button"
-                    title={updateStatus}
-                    disabled={updateActionDisabled}
-                    onClick={runUpdateAction}
-                  >
-                    {updateActionLabel}
-                  </button>
-                </div>
+              <div className="settings-footer" aria-label="App info and update status">
+                <p className="app-info-inline">
+                  <span id="app-info-name">{APP_NAME}</span>
+                  {" "}
+                  v<span id="app-info-version">{APP_VERSION}</span>
+                  {" "}
+                  by <span id="app-info-author">{APP_AUTHOR}</span>
+                </p>
+                <p className="app-update-status">{updateStatus || "Update checks active."}</p>
               </div>
             </div>
           </section>
@@ -1792,7 +1741,7 @@ export function SudokuApp() {
           <section className="panel-view stats-view" aria-label="Puzzle stats">
             <div className="stats-card">
               <div className="settings-header">
-                <h2>Stats</h2>
+                <h2>Statistics</h2>
                 <button id="stats-close" type="button" onClick={goHome}>
                   Home
                 </button>

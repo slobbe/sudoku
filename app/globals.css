@@ -174,9 +174,8 @@
 }
 
 html {
-    min-height: calc(100% + env(safe-area-inset-top));
-    padding: env(safe-area-inset-top) env(safe-area-inset-right)
-        env(safe-area-inset-bottom) env(safe-area-inset-left);
+    min-height: 100%;
+    padding: 0;
     background: radial-gradient(
         circle at top,
         var(--bg-glow) 0%,
@@ -198,57 +197,84 @@ body {
     );
     display: grid;
     place-items: center;
-    padding: 4px;
+    padding: 12px;
 }
 
 .app {
-    width: min(640px, 100%);
-    max-height: calc(100svh - 12px);
     border: 0;
     border-radius: 0;
-    padding: 8px;
     display: flex;
     flex-direction: column;
 }
 
+.app.app-game {
+    width: min(640px, 100%);
+    max-height: calc(100svh - 12px);
+    margin: 0 auto;
+    padding: 8px;
+}
+
 .app.app-home {
-    justify-content: center;
-    align-items: center;
+    width: min(680px, 100%);
+    height: min(860px, calc(100svh - 24px));
+    max-height: calc(100svh - 24px);
+    padding: 0;
+    margin: 0 auto;
+    justify-content: flex-start;
+    align-items: stretch;
+    overflow: hidden;
 }
 
 .app.app-panel {
-    justify-content: center;
-    align-items: center;
+    width: min(680px, 100%);
+    height: min(860px, calc(100svh - 24px));
+    max-height: calc(100svh - 24px);
+    padding: 0;
+    margin: 0 auto;
+    justify-content: flex-start;
+    align-items: stretch;
+    overflow: hidden;
 }
 
 .home-view {
-    width: min(420px, 100%);
-    padding: 18px;
+    width: 100%;
+    margin: 0;
+    padding: 18px 12px;
     border: 0;
     background: transparent;
     display: grid;
+    grid-template-rows: auto 1fr auto;
     gap: 12px;
+    flex: 1;
 }
 
 .panel-view {
-    width: min(460px, 100%);
+    width: 100%;
+    margin: 0;
+    padding: 18px 12px;
     border: 0;
+    display: grid;
+    grid-template-rows: 1fr;
+    gap: 12px;
+    flex: 1;
 }
 
 .panel-view.stats-view {
-    width: min(420px, 100%);
+    width: 100%;
 }
 
-.home-view h1 {
+.view-title {
     margin: 0;
     font-size: clamp(1.8rem, 4.2vw, 2.3rem);
     letter-spacing: 0.06em;
     text-transform: uppercase;
+    text-align: center;
 }
 
 .home-actions {
     display: grid;
     gap: 8px;
+    align-content: center;
 }
 
 .home-actions button {
@@ -598,25 +624,14 @@ button:disabled {
     text-align: center;
 }
 
-.settings-modal {
-    margin: auto;
-    width: min(460px, calc(100svw - 16px));
-    max-width: calc(100svw - 16px);
-    padding: 0;
-    border: 1px solid var(--line-bold);
-    background: transparent;
-    color: var(--ink);
-}
-
-.settings-modal::backdrop {
-    background: #00000088;
-}
-
 .settings-card {
     margin: 0;
     width: 100%;
     background: transparent;
     padding: 12px;
+    display: grid;
+    grid-template-rows: auto 1fr auto;
+    gap: 12px;
 }
 
 .settings-header {
@@ -624,7 +639,7 @@ button:disabled {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    margin-bottom: 10px;
+    margin-bottom: 0;
 }
 
 .settings-header h2 {
@@ -638,6 +653,7 @@ button:disabled {
     display: grid;
     grid-template-columns: 1fr;
     gap: 8px;
+    align-content: center;
 }
 
 .settings-grid label {
@@ -658,6 +674,10 @@ button:disabled {
 .stats {
     border: 0;
     padding: 2px 0 0;
+    display: grid;
+    align-content: center;
+    justify-items: start;
+    text-align: left;
 }
 
 .stats h3 {
@@ -676,107 +696,93 @@ button:disabled {
     margin-top: 4px;
 }
 
-.stats-modal {
-    margin: auto;
-    width: min(420px, calc(100svw - 16px));
-    max-width: calc(100svw - 16px);
-    padding: 0;
-    border: 1px solid var(--line-bold);
-    background: transparent;
-    color: var(--ink);
-}
-
-.stats-modal::backdrop {
-    background: #00000088;
-}
-
 .stats-card {
     margin: 0;
     width: 100%;
     background: transparent;
     padding: 12px;
+    display: grid;
+    grid-template-rows: auto 1fr;
+    gap: 12px;
 }
 
 .settings-footer {
-    margin-top: 8px;
+    margin-top: 0;
     padding-top: 8px;
     border-top: 1px solid var(--line);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    display: grid;
+    justify-items: center;
+    text-align: center;
+    gap: 6px;
 }
 
 .app-info-inline {
     margin: 0;
-    flex: 1;
-    min-width: 0;
     color: var(--muted);
     font-size: 0.84rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
 }
 
-#update-action {
-    flex-shrink: 0;
+.app-update-status {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8rem;
 }
 
-@media (max-width: 600px) {
+@media (max-width: 900px), (hover: none) and (pointer: coarse) {
     body {
-        place-items: stretch;
+        display: block;
+        margin: 0;
         padding: 0;
     }
 
-    .header {
-        display: flex;
-        flex-direction: column;
-    }
-
-    .app {
-        width: 100%;
-        min-height: calc(var(--app-vh, 1vh) * 100);
-        height: calc(var(--app-vh, 1vh) * 100);
-        padding-top: 4px;
-        padding-right: 4px;
-        padding-bottom: max(8px, calc(env(safe-area-inset-bottom) + 4px));
-        padding-left: 4px;
-        border-radius: 0;
-        display: grid;
-        grid-template-rows: auto auto minmax(0, 1fr) auto;
-        gap: 4px;
-        overflow: hidden;
-    }
-
-    .app.app-home {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
+    .app.app-home,
     .app.app-panel {
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    .app.app-game {
-        grid-template-rows: auto minmax(0, 1fr) auto;
-    }
-
-    .home-view {
-        width: min(420px, 100%);
-        padding: 14px;
-        gap: 10px;
-    }
-
-    .panel-view {
         width: 100%;
-        border: 0;
+        max-width: none;
+        min-height: 100dvh;
+        height: auto;
+        max-height: none;
+        margin: 0;
+        padding: max(12px, env(safe-area-inset-top)) 0 max(12px, env(safe-area-inset-bottom)) 0;
     }
 
-    .home-view h1 {
+    .home-view,
+    .panel-view,
+    .panel-view.stats-view,
+    .settings-card,
+    .stats-card,
+    .home-actions,
+    .home-status,
+    .settings-header,
+    .settings-grid,
+    .settings-footer,
+    .stats {
+        width: 100%;
+        max-width: none;
+        margin: 0;
+        padding-left: 0;
+        padding-right: 0;
+    }
+
+    .home-view,
+    .panel-view,
+    .panel-view.stats-view {
+        padding-left: 12px;
+        padding-right: 12px;
+    }
+
+    .view-title {
+        width: 100%;
+        text-align: center;
         font-size: clamp(1.55rem, 7vw, 2rem);
+    }
+
+    .home-actions button,
+    .settings-grid select,
+    .settings-grid .settings-toggle,
+    .app-update-status {
+        width: 100%;
     }
 
     .home-actions button {
@@ -785,24 +791,24 @@ button:disabled {
     }
 
     .home-status {
+        margin-top: auto;
+        text-align: center;
         font-size: 0.78rem;
     }
 
-    .header-row {
-        gap: 4px;
+    .settings-card,
+    .stats-card {
+        max-height: calc(100dvh - 24px);
+        overflow: auto;
     }
 
-    .header h1 {
-        font-size: clamp(1.4rem, 6.6vw, 1.75rem);
+    .settings-header {
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        text-align: left;
     }
 
-    .header-top-actions {
-        gap: 4px;
-    }
-
-    .header-top-actions button,
-    .header-controls button,
-    .home-actions button,
     .panel-view button,
     .game-controls button,
     .board-actions button {
@@ -810,31 +816,25 @@ button:disabled {
         font-size: 0.8rem;
     }
 
-    .game-controls {
+    .app.app-game {
         width: 100%;
-        margin: 0;
-        gap: 3px;
+        max-width: none;
+        min-height: 100dvh;
+        padding: 4px;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        gap: 4px;
     }
 
-    .header-controls {
+    .game-controls,
+    .board-actions,
+    .board,
+    .numpad {
         width: 100%;
         margin: 0;
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: flex-start;
-        gap: 3px;
-    }
-
-    .status-text {
-        width: 100%;
-        margin: 0;
-        font-size: 0.75rem;
-        min-height: 1em;
     }
 
     .board-actions {
-        width: 100%;
-        margin: 0;
         gap: 4px;
         position: sticky;
         top: 0;
@@ -843,10 +843,6 @@ button:disabled {
 
     .board-actions-left {
         gap: 3px;
-    }
-
-    .lives {
-        font-size: 1.28rem;
     }
 
     .board-wrap {
@@ -861,7 +857,6 @@ button:disabled {
     }
 
     .board {
-        width: 100%;
         height: auto;
         aspect-ratio: 1 / 1;
         max-width: 100%;
@@ -884,13 +879,8 @@ button:disabled {
         font-size: 1.3rem;
     }
 
-    .settings-card {
-        max-height: calc(100svh - 20px);
-        overflow: auto;
-        padding-top: 10px;
-        padding-right: 10px;
-        padding-bottom: max(34px, calc(env(safe-area-inset-bottom) + 10px));
-        padding-left: 10px;
+    .lives {
+        font-size: 1.28rem;
     }
 
     .settings-footer {
@@ -901,43 +891,8 @@ button:disabled {
         font-size: 0.8rem;
     }
 
-    .settings-modal {
-        width: 100%;
-        max-width: 100%;
-        margin: 0;
-        border: 0;
-    }
-
-    .settings-modal[open] {
-        min-height: 100svh;
-        display: flex;
-        align-items: flex-end;
-    }
-
-    .stats-card {
-        max-height: calc(100svh - 20px);
-        overflow: auto;
-        padding-top: 10px;
-        padding-right: 10px;
-        padding-bottom: max(34px, calc(env(safe-area-inset-bottom) + 10px));
-        padding-left: 10px;
-    }
-
     .win-card {
         padding-bottom: max(34px, calc(env(safe-area-inset-bottom) + 12px));
-    }
-
-    .stats-modal {
-        width: 100%;
-        max-width: 100%;
-        margin: 0;
-        border: 0;
-    }
-
-    .stats-modal[open] {
-        min-height: 100svh;
-        display: flex;
-        align-items: flex-end;
     }
 
     .win-modal {
@@ -1010,7 +965,7 @@ button:disabled {
 }
 
 @media (max-width: 360px) and (max-height: 600px) {
-    .app {
+    .app.app-game {
         padding-top: 2px;
         padding-right: 2px;
         padding-bottom: max(4px, env(safe-area-inset-bottom));
