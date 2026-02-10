@@ -573,9 +573,15 @@ button:disabled {
 
 .win-actions {
     margin-top: 10px;
-    display: flex;
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: 1fr;
     gap: 8px;
+}
+
+.win-actions button {
+    width: 100%;
+    white-space: normal;
+    text-align: center;
 }
 
 .settings-modal {

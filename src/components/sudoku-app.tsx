@@ -1160,10 +1160,66 @@ export function SudokuApp() {
     startNewGameAndOpen();
   }, [closeWinPrompt, startNewGameAndOpen]);
 
+  const onWinHome = useCallback(() => {
+    goHome();
+  }, [goHome]);
+
+  const onWinViewBoard = useCallback(() => {
+    closeWinPrompt();
+    setActiveView("game");
+  }, [closeWinPrompt]);
+
+  const restartCurrentPuzzle = useCallback(() => {
+    const current = stateRef.current;
+    if (!current.puzzle || !current.solution || !current.board) {
+      return;
+    }
+
+    const next: GameState = {
+      ...current,
+      board: clone(current.puzzle),
+      selected: null,
+      highlightValue: null,
+      fillModeValue: null,
+      undoStack: [],
+      redoStack: [],
+      stats: recordGameStart(current.stats, current.difficulty),
+      currentGameStarted: true,
+      hintsLeft: HINTS_PER_GAME,
+      livesLeft: LIVES_PER_GAME,
+      lost: false,
+      won: false,
+      winRecorded: false,
+    };
+
+    applyState(next);
+    setLosePromptOpen(false);
+    setWinPromptOpen(false);
+    setActiveView("game");
+    setStatusMessage("Puzzle restarted.");
+  }, [applyState]);
+
+  const onWinRestart = useCallback(() => {
+    restartCurrentPuzzle();
+  }, [restartCurrentPuzzle]);
+
   const onLoseNewGame = useCallback(() => {
     closeLosePrompt();
     startNewGameAndOpen();
   }, [closeLosePrompt, startNewGameAndOpen]);
+
+  const onLoseHome = useCallback(() => {
+    goHome();
+  }, [goHome]);
+
+  const onLoseViewBoard = useCallback(() => {
+    closeLosePrompt();
+    setActiveView("game");
+  }, [closeLosePrompt]);
+
+  const onLoseRestart = useCallback(() => {
+    restartCurrentPuzzle();
+  }, [restartCurrentPuzzle]);
 
   const refreshUpdateAction = useCallback(() => {
     const waiting = Boolean(swRegistrationRef.current?.waiting);
@@ -1650,13 +1706,19 @@ export function SudokuApp() {
       >
         <div className="win-card">
           <h2>Great Solve</h2>
-          <p>Start a new game?</p>
+          <p>What next?</p>
           <div className="win-actions">
+            <button id="win-restart" type="button" onClick={onWinRestart}>
+              Restart
+            </button>
             <button id="win-new-game" type="button" onClick={onWinNewGame}>
               New Game
             </button>
-            <button id="win-later" type="button" onClick={closeWinPrompt}>
-              Later
+            <button id="win-view-board" type="button" onClick={onWinViewBoard}>
+              View Board
+            </button>
+            <button id="win-home" type="button" onClick={onWinHome}>
+              Home
             </button>
           </div>
         </div>
@@ -1679,13 +1741,19 @@ export function SudokuApp() {
       >
         <div className="win-card">
           <h2>Game Over</h2>
-          <p>You are out of lives. Start a new game?</p>
+          <p>You are out of lives. What next?</p>
           <div className="win-actions">
+            <button id="lose-restart" type="button" onClick={onLoseRestart}>
+              Restart
+            </button>
             <button id="lose-new-game" type="button" onClick={onLoseNewGame}>
               New Game
             </button>
-            <button id="lose-later" type="button" onClick={closeLosePrompt}>
-              Later
+            <button id="lose-view-board" type="button" onClick={onLoseViewBoard}>
+              View Board
+            </button>
+            <button id="lose-home" type="button" onClick={onLoseHome}>
+              Home
             </button>
           </div>
         </div>
