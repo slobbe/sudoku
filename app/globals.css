@@ -244,6 +244,14 @@ body {
     gap: 6px;
 }
 
+.status-text {
+    width: min(540px, 100%, calc(100svh - 204px));
+    margin: 0 0 4px;
+    color: var(--muted);
+    font-size: 0.82rem;
+    min-height: 1.1em;
+}
+
 .board-actions {
     width: min(540px, 100%, calc(100svh - 204px));
     margin: 0 auto 2px;
@@ -696,6 +704,13 @@ button:disabled {
         flex-wrap: wrap;
         justify-content: flex-start;
         gap: 3px;
+    }
+
+    .status-text {
+        width: 100%;
+        margin: 0;
+        font-size: 0.75rem;
+        min-height: 1em;
     }
 
     .board-actions {

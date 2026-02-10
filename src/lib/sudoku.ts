@@ -1,26 +1,53 @@
+export type Difficulty = "easy" | "medium" | "hard";
+
+export type Board = number[][];
+
+export type PuzzleCandidate = {
+  puzzle: Board;
+  solution: Board;
+  difficulty: Difficulty;
+  givens: number;
+};
+
+type MaskState = {
+  rowMask: number[];
+  colMask: number[];
+  boxMask: number[];
+};
+
+type CellChoice = {
+  index: number;
+  mask: number;
+  count: number;
+};
+
 const SIZE = 81;
 const ALL = (1 << 9) - 1;
 
-const DIFFICULTY_CLUES = {
+const DIFFICULTY_CLUES: Record<Difficulty, [number, number]> = {
   easy: [38, 42],
   medium: [32, 36],
   hard: [26, 30],
 };
 
-function cloneBoard(board) {
+function cloneBoard(board: Board): Board {
   return board.map((row) => row.slice());
 }
 
-function isValidBoardShape(board) {
-  return Array.isArray(board)
-    && board.length === 9
-    && board.every(
-      (row) => Array.isArray(row) && row.length === 9
-        && row.every((value) => Number.isInteger(value) && value >= 0 && value <= 9),
-    );
+function isValidBoardShape(board: unknown): board is Board {
+  if (!Array.isArray(board) || board.length !== 9) {
+    return false;
+  }
+
+  return board.every(
+    (row) =>
+      Array.isArray(row)
+      && row.length === 9
+      && row.every((value) => Number.isInteger(value) && value >= 0 && value <= 9),
+  );
 }
 
-function shuffled(values, rng = Math.random) {
+function shuffled(values: number[], rng: () => number = Math.random): number[] {
   const arr = values.slice();
   for (let i = arr.length - 1; i > 0; i -= 1) {
     const j = Math.floor(rng() * (i + 1));
@@ -29,27 +56,27 @@ function shuffled(values, rng = Math.random) {
   return arr;
 }
 
-function boxStart(index) {
+function boxStart(index: number): number {
   return Math.floor(index / 3) * 3;
 }
 
-function rcToIdx(row, col) {
+function rcToIdx(row: number, col: number): number {
   return row * 9 + col;
 }
 
-function indexToCell(index) {
+function indexToCell(index: number): { row: number; col: number } {
   return { row: Math.floor(index / 9), col: index % 9 };
 }
 
-function boxIndex(row, col) {
+function boxIndex(row: number, col: number): number {
   return Math.floor(row / 3) * 3 + Math.floor(col / 3);
 }
 
-function digitToBit(value) {
+function digitToBit(value: number): number {
   return 1 << (value - 1);
 }
 
-function bitCount(mask) {
+function bitCount(mask: number): number {
   let count = 0;
   let value = mask;
   while (value) {
@@ -59,8 +86,8 @@ function bitCount(mask) {
   return count;
 }
 
-function bitsToDigits(mask) {
-  const digits = [];
+function bitsToDigits(mask: number): number[] {
+  const digits: number[] = [];
   for (let value = 1; value <= 9; value += 1) {
     if (mask & digitToBit(value)) {
       digits.push(value);
@@ -69,8 +96,8 @@ function bitsToDigits(mask) {
   return digits;
 }
 
-function boardToGrid(board) {
-  const grid = new Array(SIZE);
+function boardToGrid(board: Board): number[] {
+  const grid = new Array<number>(SIZE);
   for (let row = 0; row < 9; row += 1) {
     for (let col = 0; col < 9; col += 1) {
       grid[rcToIdx(row, col)] = board[row][col];
@@ -79,8 +106,8 @@ function boardToGrid(board) {
   return grid;
 }
 
-function gridToBoard(grid) {
-  const board = Array.from({ length: 9 }, () => Array(9).fill(0));
+function gridToBoard(grid: number[]): Board {
+  const board = Array.from({ length: 9 }, () => Array<number>(9).fill(0));
   for (let row = 0; row < 9; row += 1) {
     for (let col = 0; col < 9; col += 1) {
       board[row][col] = grid[rcToIdx(row, col)];
@@ -89,10 +116,10 @@ function gridToBoard(grid) {
   return board;
 }
 
-function initStateFromGrid(grid) {
-  const rowMask = new Array(9).fill(0);
-  const colMask = new Array(9).fill(0);
-  const boxMask = new Array(9).fill(0);
+function initStateFromGrid(grid: number[]): MaskState | null {
+  const rowMask = new Array<number>(9).fill(0);
+  const colMask = new Array<number>(9).fill(0);
+  const boxMask = new Array<number>(9).fill(0);
 
   for (let i = 0; i < SIZE; i += 1) {
     const value = grid[i];
@@ -120,13 +147,13 @@ function initStateFromGrid(grid) {
   return { rowMask, colMask, boxMask };
 }
 
-function candidatesMask(state, row, col) {
+function candidatesMask(state: MaskState, row: number, col: number): number {
   const box = boxIndex(row, col);
   const used = state.rowMask[row] | state.colMask[col] | state.boxMask[box];
   return ALL & ~used;
 }
 
-function place(state, grid, row, col, value) {
+function place(state: MaskState, grid: number[], row: number, col: number, value: number): void {
   const index = rcToIdx(row, col);
   const bit = digitToBit(value);
   const box = boxIndex(row, col);
@@ -137,7 +164,7 @@ function place(state, grid, row, col, value) {
   state.boxMask[box] |= bit;
 }
 
-function unplace(state, grid, row, col, value) {
+function unplace(state: MaskState, grid: number[], row: number, col: number, value: number): void {
   const index = rcToIdx(row, col);
   const bit = digitToBit(value);
   const box = boxIndex(row, col);
@@ -148,7 +175,7 @@ function unplace(state, grid, row, col, value) {
   state.boxMask[box] &= ~bit;
 }
 
-function findBestCell(grid, state) {
+function findBestCell(grid: number[], state: MaskState): CellChoice | null {
   let bestIndex = -1;
   let bestMask = 0;
   let bestCount = 10;
@@ -184,21 +211,22 @@ function findBestCell(grid, state) {
   return { index: bestIndex, mask: bestMask, count: bestCount };
 }
 
-function countSolutionsFromGrid(grid, limit = 2) {
+function countSolutionsFromGrid(grid: number[], limit = 2): number {
   const maxSolutions = Math.max(1, Math.floor(limit));
   const state = initStateFromGrid(grid);
   if (!state) {
     return 0;
   }
+  const maskState = state;
 
   let solutions = 0;
 
-  function dfs() {
+  function dfs(): void {
     if (solutions >= maxSolutions) {
       return;
     }
 
-    const choice = findBestCell(grid, state);
+    const choice = findBestCell(grid, maskState);
     if (choice === null) {
       solutions += 1;
       return;
@@ -212,9 +240,9 @@ function countSolutionsFromGrid(grid, limit = 2) {
     const values = bitsToDigits(choice.mask);
 
     for (const value of values) {
-      place(state, grid, row, col, value);
+      place(maskState, grid, row, col, value);
       dfs();
-      unplace(state, grid, row, col, value);
+      unplace(maskState, grid, row, col, value);
       if (solutions >= maxSolutions) {
         return;
       }
@@ -225,15 +253,16 @@ function countSolutionsFromGrid(grid, limit = 2) {
   return solutions;
 }
 
-function solveGrid(inputGrid) {
+function solveGrid(inputGrid: number[]): number[] | null {
   const grid = inputGrid.slice();
   const state = initStateFromGrid(grid);
   if (!state) {
     return null;
   }
+  const maskState = state;
 
-  function dfs() {
-    const choice = findBestCell(grid, state);
+  function dfs(): boolean {
+    const choice = findBestCell(grid, maskState);
     if (choice === null) {
       return true;
     }
@@ -246,11 +275,11 @@ function solveGrid(inputGrid) {
     const values = bitsToDigits(choice.mask);
 
     for (const value of values) {
-      place(state, grid, row, col, value);
+      place(maskState, grid, row, col, value);
       if (dfs()) {
         return true;
       }
-      unplace(state, grid, row, col, value);
+      unplace(maskState, grid, row, col, value);
     }
 
     return false;
@@ -259,12 +288,16 @@ function solveGrid(inputGrid) {
   return dfs() ? grid : null;
 }
 
-function generateSolvedGrid(rng = Math.random) {
-  const grid = new Array(SIZE).fill(0);
+function generateSolvedGrid(rng: () => number = Math.random): number[] {
+  const grid = new Array<number>(SIZE).fill(0);
   const state = initStateFromGrid(grid);
+  if (!state) {
+    throw new Error("Could not initialize solver state.");
+  }
+  const maskState = state;
 
-  function dfs() {
-    const choice = findBestCell(grid, state);
+  function dfs(): boolean {
+    const choice = findBestCell(grid, maskState);
     if (choice === null) {
       return true;
     }
@@ -277,11 +310,11 @@ function generateSolvedGrid(rng = Math.random) {
     const values = shuffled(bitsToDigits(choice.mask), rng);
 
     for (const value of values) {
-      place(state, grid, row, col, value);
+      place(maskState, grid, row, col, value);
       if (dfs()) {
         return true;
       }
-      unplace(state, grid, row, col, value);
+      unplace(maskState, grid, row, col, value);
     }
 
     return false;
@@ -294,7 +327,7 @@ function generateSolvedGrid(rng = Math.random) {
   return grid;
 }
 
-export function isValidPlacement(board, row, col, value) {
+export function isValidPlacement(board: Board, row: number, col: number, value: number): boolean {
   if (value === 0) {
     return true;
   }
@@ -321,14 +354,14 @@ export function isValidPlacement(board, row, col, value) {
   return true;
 }
 
-export function countSolutions(inputBoard, limit = 2) {
+export function countSolutions(inputBoard: unknown, limit = 2): number {
   if (!isValidBoardShape(inputBoard)) {
     return 0;
   }
   return countSolutionsFromGrid(boardToGrid(inputBoard), limit);
 }
 
-export function solveBoard(inputBoard) {
+export function solveBoard(inputBoard: unknown): Board | null {
   if (!isValidBoardShape(inputBoard)) {
     return null;
   }
@@ -340,11 +373,11 @@ export function solveBoard(inputBoard) {
   return gridToBoard(solved);
 }
 
-export function generateSolvedBoard() {
+export function generateSolvedBoard(): Board {
   return gridToBoard(generateSolvedGrid());
 }
 
-function puzzleMatchesSolution(puzzle, solution) {
+function puzzleMatchesSolution(puzzle: Board, solution: Board): boolean {
   for (let row = 0; row < 9; row += 1) {
     for (let col = 0; col < 9; col += 1) {
       const value = puzzle[row][col];
@@ -356,10 +389,7 @@ function puzzleMatchesSolution(puzzle, solution) {
   return true;
 }
 
-function isPuzzleSolutionPairValid(puzzle, solution) {
-  if (!isValidBoardShape(puzzle) || !isValidBoardShape(solution)) {
-    return false;
-  }
+function isPuzzleSolutionPairValid(puzzle: Board, solution: Board): boolean {
   if (!boardComplete(solution)) {
     return false;
   }
@@ -369,16 +399,16 @@ function isPuzzleSolutionPairValid(puzzle, solution) {
   return countSolutions(puzzle, 2) === 1;
 }
 
-function randomInt(min, max) {
+function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
-function targetCluesForDifficulty(difficulty) {
-  const range = DIFFICULTY_CLUES[difficulty] || DIFFICULTY_CLUES.medium;
+function targetCluesForDifficulty(difficulty: Difficulty): number {
+  const range = DIFFICULTY_CLUES[difficulty] ?? DIFFICULTY_CLUES.medium;
   return randomInt(range[0], range[1]);
 }
 
-function carveUniquePuzzle(solvedBoard, cluesTarget) {
+function carveUniquePuzzle(solvedBoard: Board, cluesTarget: number): { puzzle: Board; givens: number } {
   const puzzle = cloneBoard(solvedBoard);
   const cells = shuffled(Array.from({ length: SIZE }, (_, i) => i));
   let givens = SIZE;
@@ -406,9 +436,9 @@ function carveUniquePuzzle(solvedBoard, cluesTarget) {
   return { puzzle, givens };
 }
 
-export function generatePuzzle(difficulty = "medium") {
+export function generatePuzzle(difficulty: Difficulty = "medium"): PuzzleCandidate {
   const cluesTarget = targetCluesForDifficulty(difficulty);
-  let bestCandidate = null;
+  let bestCandidate: PuzzleCandidate | null = null;
 
   for (let attempts = 0; attempts < 20; attempts += 1) {
     const solvedSeed = generateSolvedBoard();
@@ -426,7 +456,7 @@ export function generatePuzzle(difficulty = "medium") {
       continue;
     }
 
-    const candidate = {
+    const candidate: PuzzleCandidate = {
       puzzle,
       solution: solved,
       difficulty,
@@ -469,7 +499,11 @@ export function generatePuzzle(difficulty = "medium") {
   };
 }
 
-export function boardComplete(board) {
+export function boardComplete(board: unknown): boolean {
+  if (!isValidBoardShape(board)) {
+    return false;
+  }
+
   for (let row = 0; row < 9; row += 1) {
     for (let col = 0; col < 9; col += 1) {
       if (board[row][col] === 0 || !isValidPlacement(board, row, col, board[row][col])) {
@@ -480,6 +514,6 @@ export function boardComplete(board) {
   return true;
 }
 
-export function clone(board) {
+export function clone(board: Board): Board {
   return cloneBoard(board);
 }

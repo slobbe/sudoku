@@ -1,12 +1,13 @@
 # Sudoku PWA
 
-A simple, offline-capable Sudoku game built with vanilla JavaScript.
+An offline-capable Sudoku game built with Next.js (App Router), React, and TypeScript.
 
 ## Features
 
 - Unique puzzle generation (exactly one solution)
 - Three difficulties: Easy, Medium, Hard
 - Hints (3 per game)
+- Lives system (3 lives per game)
 - Undo/redo support
 - Fill mode with configurable trigger:
   - Double tap (default)
@@ -21,20 +22,46 @@ A simple, offline-capable Sudoku game built with vanilla JavaScript.
 - Auto-save and restore of your current game
 - Installable PWA with offline support and update checks
 
-## Controls
+## Quick Start
 
-- Select a cell, then enter `1-9`
-- Clear a cell with `Backspace`, `Delete`, or `0`
-- Move with arrow keys
-- Undo: `Ctrl/Cmd + Z`
-- Redo: `Ctrl/Cmd + Shift + Z` or `Ctrl/Cmd + Y`
-- Use Hint to reveal one correct cell
+```bash
+npm install
+npm run dev
+```
+
+Open `http://localhost:3000`.
+
+## Scripts
+
+- `npm run dev` - Start local dev server
+- `npm run build` - Build production bundle
+- `npm run start` - Run production server
+- `npm run lint` - Run lint checks
+- `npm test` - Run unit tests
 
 ## Data & Privacy
 
 - Game progress and stats are stored locally in your browser (`localStorage`)
+- Existing save compatibility is preserved with key: `sudoku-pwa-current-game-v1`
 - No account or server backend is required
 
-## Contributing
+## PWA Notes
 
-Developer setup, versioning notes, and project structure live in `CONTRIBUTING.md`.
+- Manifest: `public/manifest.webmanifest`
+- Service worker: `public/sw.js`
+- Icons: `public/icons/`
+- Update flow (check/apply) is available from Settings
+
+When releasing a new version, keep app version values aligned in:
+
+- `src/components/sudoku-app.tsx` (`APP_VERSION`)
+- `public/sw.js` (`APP_VERSION`, used by cache naming)
+
+## Project Structure
+
+- `app/layout.tsx` - Metadata, manifest/icons wiring
+- `app/page.tsx` - Main page entry
+- `app/globals.css` - Global styling and themes
+- `src/components/sudoku-app.tsx` - App UI and gameplay interactions
+- `src/lib/sudoku.ts` - Puzzle generation/solver/validation logic
+- `tests/sudoku.test.ts` - Engine tests
