@@ -1,14 +1,14 @@
-const APP_VERSION = "0.1.7";
+const APP_VERSION = "0.2.0";
 const CACHE_NAME = `sudoku-next-${APP_VERSION}`;
-const FALLBACK_URL = "/";
+const FALLBACK_URL = "./";
 const PRECACHE_URLS = [
-  "/",
-  "/manifest.webmanifest",
-  "/icons/apple-touch-icon.png",
-  "/icons/icon-192.png",
-  "/icons/icon-512.png",
-  "/icons/icon-192.svg",
-  "/icons/icon-512.svg",
+  "./",
+  "./manifest.webmanifest",
+  "./icons/apple-touch-icon.png",
+  "./icons/icon-192.png",
+  "./icons/icon-512.png",
+  "./icons/icon-192.svg",
+  "./icons/icon-512.svg",
 ];
 
 self.addEventListener("install", (event) => {

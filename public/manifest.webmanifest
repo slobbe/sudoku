@@ -1,29 +1,28 @@
 {
-  "id": "/",
+  "id": "./",
   "name": "Sudoku PWA",
   "short_name": "Sudoku",
   "description": "Sudoku puzzle app with unique boards, 3 difficulties, and hints.",
   "lang": "en",
   "dir": "ltr",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
   "categories": [
-    "puzzle",
     "puzzle"
   ],
   "background_color": "#151a21",
   "theme_color": "#151a21",
   "icons": [
     {
-      "src": "/icons/icon-192.png",
+      "src": "./icons/icon-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-512.png",
+      "src": "./icons/icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
@@ -33,10 +32,10 @@
     {
       "name": "New Puzzle",
       "short_name": "New",
-      "url": "/",
+      "url": "./",
       "icons": [
         {
-          "src": "/icons/icon-192.png",
+          "src": "./icons/icon-192.png",
           "sizes": "192x192",
           "type": "image/png"
         }

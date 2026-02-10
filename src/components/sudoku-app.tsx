@@ -92,7 +92,7 @@ const SAVE_KEY = "sudoku-pwa-current-game-v1";
 const DOUBLE_TAP_MS = 300;
 
 const APP_NAME = "Sudoku";
-const APP_VERSION = "0.1.7";
+const APP_VERSION = "0.2.0";
 const APP_AUTHOR = "slobbe";
 
 const THEMES: Theme[] = ["slate", "dusk", "mist", "amber"];
@@ -1347,7 +1347,7 @@ export function SudokuApp() {
 
     const registerServiceWorker = () => {
       navigator.serviceWorker
-        .register("/sw.js")
+        .register("./sw.js")
         .then((registration) => {
           setUpdateStatus(registration.waiting ? "Update available." : "Updates are active.");
 
@@ -1525,102 +1525,109 @@ export function SudokuApp() {
           </section>
         ) : activeView === "game" ? (
           <>
-            <div className="game-controls" aria-label="Puzzle controls">
-              <button id="home-button" type="button" onClick={goHome}>
-                Home
-              </button>
+            <div className="game-header" aria-label="Puzzle header">
               <button id="reset-game" type="button" disabled={state.lost} onClick={resetCurrentGame}>
                 Reset
+              </button>
+              <h2 className="game-title">Sudoku</h2>
+              <button id="home-button" type="button" onClick={goHome}>
+                Home
               </button>
             </div>
 
             <section className="board-wrap" aria-label="Sudoku board">
-              <div className="board-actions" aria-label="Board actions">
-                <div className="board-actions-left">
-                  <button id="undo" type="button" title="Undo" disabled={state.lost || state.undoStack.length === 0} onClick={undoMove}>
-                    Undo
-                  </button>
-                  <button id="redo" type="button" title="Redo" disabled={state.lost || state.redoStack.length === 0} onClick={redoMove}>
-                    Redo
-                  </button>
-                </div>
-                <p id="lives" className={`lives${state.livesLeft === 0 ? " empty" : ""}`} aria-label={`Lives ${state.livesLeft} of ${LIVES_PER_GAME}`}>
-                  <span id="lives-display">
-                    {livesText.map((entry) => (
-                      <span key={entry.key} className={entry.className}>
-                        {entry.text}
+              <div className="board-area">
+                <div className="board-stack">
+                  <div className="game-subbar" aria-label="Puzzle quick actions">
+                    <div className="game-subbar-left">
+                      <button id="undo" type="button" title="Undo" disabled={state.lost || state.undoStack.length === 0} onClick={undoMove}>
+                        Undo
+                      </button>
+                      <button id="redo" type="button" title="Redo" disabled={state.lost || state.redoStack.length === 0} onClick={redoMove}>
+                        Redo
+                      </button>
+                    </div>
+                    <p id="lives" className={`lives${state.livesLeft === 0 ? " empty" : ""}`} aria-label={`Lives ${state.livesLeft} of ${LIVES_PER_GAME}`}>
+                      <span id="lives-display">
+                        {livesText.map((entry) => (
+                          <span key={entry.key} className={entry.className}>
+                            {entry.text}
+                          </span>
+                        ))}
                       </span>
-                    ))}
-                  </span>
-                </p>
-                <button id="hint" type="button" disabled={state.hintsLeft <= 0 || isInputLocked(state)} onClick={handleHint}>
-                  Hint (<span id="hints-left">{state.hintsLeft}</span>)
-                </button>
-              </div>
+                    </p>
+                    <div className="game-subbar-right">
+                      <button id="hint" type="button" disabled={state.hintsLeft <= 0 || isInputLocked(state)} onClick={handleHint}>
+                        Hint (<span id="hints-left">{state.hintsLeft}</span>)
+                      </button>
+                    </div>
+                  </div>
 
-              <div id="board" className="board" role="grid" aria-label="Sudoku grid" onClick={onBoardClick}>
-                {state.board
-                  && state.board.map((rowValues, row) =>
-                    rowValues.map((value, col) => {
-                      const given = state.givens.has(keyOf(row, col));
-                      const classes = ["cell"];
+                  <div id="board" className="board" role="grid" aria-label="Sudoku grid" onClick={onBoardClick}>
+                    {state.board
+                      && state.board.map((rowValues, row) =>
+                        rowValues.map((value, col) => {
+                          const given = state.givens.has(keyOf(row, col));
+                          const classes = ["cell"];
 
-                      const boxParity = (Math.floor(row / 3) + Math.floor(col / 3)) % 2;
-                      classes.push(boxParity === 0 ? "box-tone-a" : "box-tone-b");
+                          const boxParity = (Math.floor(row / 3) + Math.floor(col / 3)) % 2;
+                          classes.push(boxParity === 0 ? "box-tone-a" : "box-tone-b");
 
-                      if (col === 2 || col === 5) {
-                        classes.push("box-right");
-                      }
-                      if (row === 2 || row === 5) {
-                        classes.push("box-bottom");
-                      }
-                      if (given) {
-                        classes.push("given");
-                      }
+                          if (col === 2 || col === 5) {
+                            classes.push("box-right");
+                          }
+                          if (row === 2 || row === 5) {
+                            classes.push("box-bottom");
+                          }
+                          if (given) {
+                            classes.push("given");
+                          }
 
-                      if (showSelectionHighlights && state.selected && state.selected.row === row && state.selected.col === col) {
-                        classes.push("selected");
-                      } else if (showSelectionHighlights && state.selected) {
-                        const sameRowOrCol = state.selected.row === row || state.selected.col === col;
-                        const sameBox =
-                          Math.floor(state.selected.row / 3) === Math.floor(row / 3)
-                          && Math.floor(state.selected.col / 3) === Math.floor(col / 3);
-                        if (sameRowOrCol) {
-                          classes.push("peer");
-                        } else if (sameBox) {
-                          classes.push("peer-box");
-                        }
-                      }
+                          if (showSelectionHighlights && state.selected && state.selected.row === row && state.selected.col === col) {
+                            classes.push("selected");
+                          } else if (showSelectionHighlights && state.selected) {
+                            const sameRowOrCol = state.selected.row === row || state.selected.col === col;
+                            const sameBox =
+                              Math.floor(state.selected.row / 3) === Math.floor(row / 3)
+                              && Math.floor(state.selected.col / 3) === Math.floor(col / 3);
+                            if (sameRowOrCol) {
+                              classes.push("peer");
+                            } else if (sameBox) {
+                              classes.push("peer-box");
+                            }
+                          }
 
-                      if (highlighted !== null && value === highlighted) {
-                        classes.push("match");
-                      }
+                          if (highlighted !== null && value === highlighted) {
+                            classes.push("match");
+                          }
 
-                      if (
-                        state.showMistakes
-                        && value !== 0
-                        && !given
-                        && state.solution
-                        && value !== state.solution[row][col]
-                      ) {
-                        classes.push("invalid");
-                      }
+                          if (
+                            state.showMistakes
+                            && value !== 0
+                            && !given
+                            && state.solution
+                            && value !== state.solution[row][col]
+                          ) {
+                            classes.push("invalid");
+                          }
 
-                      return (
-                        <button
-                          key={`${row}-${col}`}
-                          type="button"
-                          className={classes.join(" ")}
-                          data-row={row}
-                          data-col={col}
-                          role="gridcell"
-                          aria-label={`Row ${row + 1}, Column ${col + 1}`}
-                        >
-                          {value === 0 ? "" : String(value)}
-                        </button>
-                      );
-                    }),
-                  )}
+                          return (
+                            <button
+                              key={`${row}-${col}`}
+                              type="button"
+                              className={classes.join(" ")}
+                              data-row={row}
+                              data-col={col}
+                              role="gridcell"
+                              aria-label={`Row ${row + 1}, Column ${col + 1}`}
+                            >
+                              {value === 0 ? "" : String(value)}
+                            </button>
+                          );
+                        }),
+                      )}
+                  </div>
+                </div>
               </div>
             </section>
 

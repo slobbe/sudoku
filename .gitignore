@@ -1,6 +1,7 @@
 _site/
 node_modules/
 .next/
+out/
 dist/
 coverage/
 npm-debug.log*

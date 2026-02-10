@@ -33,7 +33,7 @@ npm run build
 
 ## Versioning & PWA Cache
 
-The project currently uses semantic versioning in the `0.1.x` line.
+The project currently uses semantic versioning in the `0.2.x` line.
 
 When releasing a new version, keep app version values aligned in:
 
