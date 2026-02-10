@@ -2,7 +2,7 @@
   "id": "/",
   "name": "Sudoku PWA",
   "short_name": "Sudoku",
-  "description": "Sudoku game with unique puzzles, 3 difficulties, and hints.",
+  "description": "Sudoku puzzle app with unique boards, 3 difficulties, and hints.",
   "lang": "en",
   "dir": "ltr",
   "start_url": "/",
@@ -10,7 +10,7 @@
   "display": "standalone",
   "orientation": "portrait",
   "categories": [
-    "games",
+    "puzzle",
     "puzzle"
   ],
   "background_color": "#151a21",
@@ -31,7 +31,7 @@
   ],
   "shortcuts": [
     {
-      "name": "New Game",
+      "name": "New Puzzle",
       "short_name": "New",
       "url": "/",
       "icons": [

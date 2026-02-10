@@ -1,13 +1,13 @@
 # Sudoku PWA
 
-An offline-capable Sudoku game built with Next.js (App Router), React, and TypeScript.
+An offline-capable Sudoku puzzle app built with Next.js (App Router), React, and TypeScript.
 
 ## Features
 
 - Unique puzzle generation (exactly one solution)
 - Three difficulties: Easy, Medium, Hard
-- Hints (3 per game)
-- Lives system (3 lives per game)
+- Hints (3 per puzzle)
+- Lives system (3 lives per puzzle)
 - Undo/redo support
 - Fill mode with configurable trigger:
   - Double tap (default)
@@ -19,7 +19,7 @@ An offline-capable Sudoku game built with Next.js (App Router), React, and TypeS
   - Mist
   - Amber
 - Stats tracking (overall, by difficulty, streaks)
-- Auto-save and restore of your current game
+- Auto-save and restore of your current puzzle
 - Installable PWA with offline support and update checks
 
 ## Quick Start
@@ -41,7 +41,7 @@ Open `http://localhost:3000`.
 
 ## Data & Privacy
 
-- Game progress and stats are stored locally in your browser (`localStorage`)
+- Puzzle progress and stats are stored locally in your browser (`localStorage`)
 - Existing save compatibility is preserved with key: `sudoku-pwa-current-game-v1`
 - No account or server backend is required
 
@@ -62,6 +62,6 @@ When releasing a new version, keep app version values aligned in:
 - `app/layout.tsx` - Metadata, manifest/icons wiring
 - `app/page.tsx` - Main page entry
 - `app/globals.css` - Global styling and themes
-- `src/components/sudoku-app.tsx` - App UI and gameplay interactions
+- `src/components/sudoku-app.tsx` - App UI and puzzle interactions
 - `src/lib/sudoku.ts` - Puzzle generation/solver/validation logic
 - `tests/sudoku.test.ts` - Engine tests

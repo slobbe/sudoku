@@ -760,7 +760,7 @@ export function SudokuApp() {
       return;
     }
     if (current.lost) {
-      setStatusMessage("Out of lives. Start a new game.");
+      setStatusMessage("Out of lives. Start a new puzzle.");
       return;
     }
 
@@ -863,7 +863,7 @@ export function SudokuApp() {
             next.fillModeValue = null;
             next.stats = markCurrentGameAsLossIfNeeded(next);
             setLosePromptOpen(true);
-            setStatusMessage("Out of lives. Start a new game.");
+            setStatusMessage("Out of lives. Start a new puzzle.");
           }
         }
       } else if (!next.won) {
@@ -1333,9 +1333,9 @@ export function SudokuApp() {
     const restored = loadSavedGame();
     if (restored) {
       applyState(restored);
-      setStatusMessage("Restored your previous game.");
+      setStatusMessage("Restored your previous puzzle.");
     } else {
-      setStatusMessage("Choose New Game to begin.");
+      setStatusMessage("Choose New Puzzle to begin.");
     }
     setIsHydrated(true);
   }, [applyState]);
@@ -1415,7 +1415,7 @@ export function SudokuApp() {
           });
         })
         .catch(() => {
-          setStatusMessage("Game works, but offline mode could not be enabled.");
+          setStatusMessage("Puzzle app works, but offline mode could not be enabled.");
           setUpdateStatus("Service worker setup failed.");
           setUpdateActionDisabled(true);
           setUpdateActionLabel("Update unavailable");
@@ -1561,7 +1561,7 @@ export function SudokuApp() {
                 </button>
               ) : null}
               <button id="new-game" type="button" onClick={() => startNewGameAndOpen()}>
-                New Game
+                New Puzzle
               </button>
               <button id="settings-open" type="button" onClick={() => setSettingsOpen(true)}>
                 Settings
@@ -1574,7 +1574,7 @@ export function SudokuApp() {
           </section>
         ) : (
           <>
-            <div className="game-controls" aria-label="Game controls">
+            <div className="game-controls" aria-label="Puzzle controls">
               <button id="home-button" type="button" onClick={goHome}>
                 Home
               </button>
@@ -1728,7 +1728,7 @@ export function SudokuApp() {
               Restart
             </button>
             <button id="win-new-game" type="button" onClick={onWinNewGame}>
-              New Game
+              New Puzzle
             </button>
             <button id="win-view-board" type="button" onClick={onWinViewBoard}>
               View Board
@@ -1744,7 +1744,7 @@ export function SudokuApp() {
         id="lose-modal"
         ref={loseDialogRef}
         className="win-modal"
-        aria-label="Game over"
+        aria-label="Puzzle over"
         onClick={(event) => {
           if (event.target === event.currentTarget) {
             closeLosePrompt();
@@ -1756,14 +1756,14 @@ export function SudokuApp() {
         }}
       >
         <div className="win-card">
-          <h2>Game Over</h2>
+          <h2>Puzzle Over</h2>
           <p>You are out of lives. What next?</p>
           <div className="win-actions">
             <button id="lose-restart" type="button" onClick={onLoseRestart}>
               Restart
             </button>
             <button id="lose-new-game" type="button" onClick={onLoseNewGame}>
-              New Game
+              New Puzzle
             </button>
             <button id="lose-view-board" type="button" onClick={onLoseViewBoard}>
               View Board
@@ -1779,7 +1779,7 @@ export function SudokuApp() {
         id="settings-modal"
         ref={settingsDialogRef}
         className="settings-modal"
-        aria-label="Game settings"
+        aria-label="Puzzle settings"
         onClick={(event) => {
           if (event.target === event.currentTarget) {
             setSettingsOpen(false);
@@ -1885,7 +1885,7 @@ export function SudokuApp() {
         id="stats-modal"
         ref={statsDialogRef}
         className="stats-modal"
-        aria-label="Game stats"
+        aria-label="Puzzle stats"
         onClick={(event) => {
           if (event.target === event.currentTarget) {
             setStatsOpen(false);
@@ -1903,7 +1903,7 @@ export function SudokuApp() {
               Close
             </button>
           </div>
-          <section className="stats" aria-label="Game stats">
+          <section className="stats" aria-label="Puzzle stats">
             <p>
               Overall:
               {" "}

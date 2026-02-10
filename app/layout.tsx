@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Sudoku PWA",
-  description: "Offline-capable Sudoku game with three difficulties and hints.",
+  description: "Offline-capable Sudoku puzzle with three difficulties and hints.",
   manifest: "/manifest.webmanifest",
   appleWebApp: {
     title: "Sudoku",
