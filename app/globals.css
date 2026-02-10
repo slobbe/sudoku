@@ -211,6 +211,54 @@ body {
     flex-direction: column;
 }
 
+.app.app-home {
+    justify-content: center;
+    align-items: center;
+}
+
+.home-view {
+    width: min(420px, 100%);
+    padding: 18px;
+    border: 1px solid var(--line-bold);
+    background: var(--paper);
+    display: grid;
+    gap: 12px;
+}
+
+.home-view h1 {
+    margin: 0;
+    font-size: clamp(1.8rem, 4.2vw, 2.3rem);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.home-actions {
+    display: grid;
+    gap: 8px;
+}
+
+.home-actions button {
+    width: 100%;
+    min-height: 48px;
+    font-size: 1rem;
+    font-weight: 700;
+}
+
+.home-status {
+    margin: 0;
+    min-height: 1.2em;
+    color: var(--muted);
+    font-size: 0.85rem;
+}
+
+.game-controls {
+    width: min(540px, 100%, calc(100svh - 204px));
+    margin: 0 auto 2px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
 .header-row {
     display: flex;
     align-items: center;
@@ -340,6 +388,7 @@ button:active {
 }
 
 #new-game,
+#home-button,
 #undo,
 #redo,
 #reset-game,
@@ -354,6 +403,7 @@ button:active {
 #reset-game,
 #hint,
 #new-game,
+#home-button,
 #stats-open,
 #settings-open {
     flex-shrink: 0;
@@ -678,6 +728,35 @@ button:disabled {
         overflow: hidden;
     }
 
+    .app.app-home {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+
+    .app.app-game {
+        grid-template-rows: auto minmax(0, 1fr) auto;
+    }
+
+    .home-view {
+        width: min(420px, 100%);
+        padding: 14px;
+        gap: 10px;
+    }
+
+    .home-view h1 {
+        font-size: clamp(1.55rem, 7vw, 2rem);
+    }
+
+    .home-actions button {
+        min-height: 46px;
+        font-size: 0.95rem;
+    }
+
+    .home-status {
+        font-size: 0.78rem;
+    }
+
     .header-row {
         gap: 4px;
     }
@@ -692,9 +771,17 @@ button:disabled {
 
     .header-top-actions button,
     .header-controls button,
+    .home-actions button,
+    .game-controls button,
     .board-actions button {
         padding: 4px 6px;
         font-size: 0.8rem;
+    }
+
+    .game-controls {
+        width: 100%;
+        margin: 0;
+        gap: 3px;
     }
 
     .header-controls {
@@ -830,6 +917,8 @@ button:disabled {
 @media (max-width: 600px) and (max-height: 700px) {
     .header-top-actions button,
     .header-controls button,
+    .home-actions button,
+    .game-controls button,
     .board-actions button {
         padding: 3px 5px;
         font-size: 0.75rem;
@@ -902,6 +991,8 @@ button:disabled {
 
     .header-top-actions button,
     .header-controls button,
+    .home-actions button,
+    .game-controls button,
     .board-actions button {
         padding: 2px 4px;
         font-size: 0.68rem;

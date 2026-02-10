@@ -20,6 +20,7 @@ import {
 
 type Theme = "slate" | "dusk" | "mist" | "amber";
 type FillModeEntry = "long-press" | "double-tap";
+type AppView = "home" | "game";
 
 type CellSelection = {
   row: number;
@@ -619,6 +620,7 @@ export function SudokuApp() {
   const [state, setState] = useState<GameState>(createInitialState);
   const stateRef = useRef<GameState>(state);
 
+  const [activeView, setActiveView] = useState<AppView>("home");
   const [statusMessage, setStatusMessage] = useState<string>("Generating puzzle...");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [statsOpen, setStatsOpen] = useState(false);
@@ -733,6 +735,20 @@ export function SudokuApp() {
     },
     [applyState],
   );
+
+  const startNewGameAndOpen = useCallback(
+    (difficultyOverride?: Difficulty) => {
+      startNewGame(difficultyOverride);
+      setActiveView("game");
+    },
+    [startNewGame],
+  );
+
+  const goHome = useCallback(() => {
+    setWinPromptOpen(false);
+    setLosePromptOpen(false);
+    setActiveView("home");
+  }, []);
 
   const resetCurrentGame = useCallback(() => {
     const current = stateRef.current;
@@ -1141,13 +1157,13 @@ export function SudokuApp() {
 
   const onWinNewGame = useCallback(() => {
     closeWinPrompt();
-    startNewGame();
-  }, [closeWinPrompt, startNewGame]);
+    startNewGameAndOpen();
+  }, [closeWinPrompt, startNewGameAndOpen]);
 
   const onLoseNewGame = useCallback(() => {
     closeLosePrompt();
-    startNewGame();
-  }, [closeLosePrompt, startNewGame]);
+    startNewGameAndOpen();
+  }, [closeLosePrompt, startNewGameAndOpen]);
 
   const refreshUpdateAction = useCallback(() => {
     const waiting = Boolean(swRegistrationRef.current?.waiting);
@@ -1258,14 +1274,11 @@ export function SudokuApp() {
     if (restored) {
       applyState(restored);
       setStatusMessage("Restored your previous game.");
-      if (restored.lost) {
-        setLosePromptOpen(true);
-      }
     } else {
-      startNewGame();
+      setStatusMessage("Choose New Game to begin.");
     }
     setIsHydrated(true);
-  }, [applyState, startNewGame]);
+  }, [applyState]);
 
   useEffect(() => {
     if (!isHydrated || !state.puzzle || !state.solution || !state.board) {
@@ -1363,6 +1376,10 @@ export function SudokuApp() {
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
+      if (activeView !== "game") {
+        return;
+      }
+
       const current = stateRef.current;
       if (!current.board) {
         return;
@@ -1434,6 +1451,7 @@ export function SudokuApp() {
     statsOpen,
     undoMove,
     winPromptOpen,
+    activeView,
   ]);
 
   useEffect(() => {
@@ -1465,152 +1483,154 @@ export function SudokuApp() {
 
   return (
     <>
-      <main className="app">
-        <header className="header">
-          <div className="header-row">
+      <main className={`app ${activeView === "home" ? "app-home" : "app-game"}`}>
+        {activeView === "home" ? (
+          <section className="home-view" aria-label="Home menu">
             <h1>Sudoku</h1>
-            <div className="header-top-actions" aria-label="Header actions">
-              <button id="stats-open" type="button" onClick={() => setStatsOpen(true)}>
-                Stats
+            <div className="home-actions" aria-label="Main actions">
+              <button id="new-game" type="button" onClick={() => startNewGameAndOpen()}>
+                New Game
               </button>
               <button id="settings-open" type="button" onClick={() => setSettingsOpen(true)}>
                 Settings
               </button>
-            </div>
-          </div>
-        </header>
-
-        <div className="header-controls" aria-label="Quick actions">
-          <button id="reset-game" type="button" disabled={state.lost} onClick={resetCurrentGame}>
-            Reset
-          </button>
-          <button id="new-game" type="button" onClick={() => startNewGame()}>
-            New Game
-          </button>
-        </div>
-
-        <p id="status-text" className="status-text" aria-live="polite">
-          {statusMessage}
-        </p>
-
-        <section className="board-wrap" aria-label="Sudoku board">
-          <div className="board-actions" aria-label="Board actions">
-            <div className="board-actions-left">
-              <button id="undo" type="button" title="Undo" disabled={state.lost || state.undoStack.length === 0} onClick={undoMove}>
-                Undo
-              </button>
-              <button id="redo" type="button" title="Redo" disabled={state.lost || state.redoStack.length === 0} onClick={redoMove}>
-                Redo
+              <button id="stats-open" type="button" onClick={() => setStatsOpen(true)}>
+                Statistics
               </button>
             </div>
-            <p id="lives" className={`lives${state.livesLeft === 0 ? " empty" : ""}`} aria-label={`Lives ${state.livesLeft} of ${LIVES_PER_GAME}`}>
-              <span id="lives-display">
-                {livesText.map((entry) => (
-                  <span key={entry.key} className={entry.className}>
-                    {entry.text}
+            <p className="home-status" aria-live="polite">{statusMessage}</p>
+          </section>
+        ) : (
+          <>
+            <div className="game-controls" aria-label="Game controls">
+              <button id="home-button" type="button" onClick={goHome}>
+                Home
+              </button>
+              <button id="reset-game" type="button" disabled={state.lost} onClick={resetCurrentGame}>
+                Reset
+              </button>
+            </div>
+
+            <section className="board-wrap" aria-label="Sudoku board">
+              <div className="board-actions" aria-label="Board actions">
+                <div className="board-actions-left">
+                  <button id="undo" type="button" title="Undo" disabled={state.lost || state.undoStack.length === 0} onClick={undoMove}>
+                    Undo
+                  </button>
+                  <button id="redo" type="button" title="Redo" disabled={state.lost || state.redoStack.length === 0} onClick={redoMove}>
+                    Redo
+                  </button>
+                </div>
+                <p id="lives" className={`lives${state.livesLeft === 0 ? " empty" : ""}`} aria-label={`Lives ${state.livesLeft} of ${LIVES_PER_GAME}`}>
+                  <span id="lives-display">
+                    {livesText.map((entry) => (
+                      <span key={entry.key} className={entry.className}>
+                        {entry.text}
+                      </span>
+                    ))}
                   </span>
-                ))}
-              </span>
-            </p>
-            <button id="hint" type="button" disabled={state.hintsLeft <= 0 || isInputLocked(state)} onClick={handleHint}>
-              Hint (<span id="hints-left">{state.hintsLeft}</span>)
-            </button>
-          </div>
+                </p>
+                <button id="hint" type="button" disabled={state.hintsLeft <= 0 || isInputLocked(state)} onClick={handleHint}>
+                  Hint (<span id="hints-left">{state.hintsLeft}</span>)
+                </button>
+              </div>
 
-          <div id="board" className="board" role="grid" aria-label="Sudoku grid" onClick={onBoardClick}>
-            {state.board
-              && state.board.map((rowValues, row) =>
-                rowValues.map((value, col) => {
-                  const given = state.givens.has(keyOf(row, col));
-                  const classes = ["cell"];
+              <div id="board" className="board" role="grid" aria-label="Sudoku grid" onClick={onBoardClick}>
+                {state.board
+                  && state.board.map((rowValues, row) =>
+                    rowValues.map((value, col) => {
+                      const given = state.givens.has(keyOf(row, col));
+                      const classes = ["cell"];
 
-                  const boxParity = (Math.floor(row / 3) + Math.floor(col / 3)) % 2;
-                  classes.push(boxParity === 0 ? "box-tone-a" : "box-tone-b");
+                      const boxParity = (Math.floor(row / 3) + Math.floor(col / 3)) % 2;
+                      classes.push(boxParity === 0 ? "box-tone-a" : "box-tone-b");
 
-                  if (col === 2 || col === 5) {
-                    classes.push("box-right");
-                  }
-                  if (row === 2 || row === 5) {
-                    classes.push("box-bottom");
-                  }
-                  if (given) {
-                    classes.push("given");
-                  }
+                      if (col === 2 || col === 5) {
+                        classes.push("box-right");
+                      }
+                      if (row === 2 || row === 5) {
+                        classes.push("box-bottom");
+                      }
+                      if (given) {
+                        classes.push("given");
+                      }
 
-                  if (showSelectionHighlights && state.selected && state.selected.row === row && state.selected.col === col) {
-                    classes.push("selected");
-                  } else if (showSelectionHighlights && state.selected) {
-                    const sameRowOrCol = state.selected.row === row || state.selected.col === col;
-                    const sameBox =
-                      Math.floor(state.selected.row / 3) === Math.floor(row / 3)
-                      && Math.floor(state.selected.col / 3) === Math.floor(col / 3);
-                    if (sameRowOrCol) {
-                      classes.push("peer");
-                    } else if (sameBox) {
-                      classes.push("peer-box");
-                    }
-                  }
+                      if (showSelectionHighlights && state.selected && state.selected.row === row && state.selected.col === col) {
+                        classes.push("selected");
+                      } else if (showSelectionHighlights && state.selected) {
+                        const sameRowOrCol = state.selected.row === row || state.selected.col === col;
+                        const sameBox =
+                          Math.floor(state.selected.row / 3) === Math.floor(row / 3)
+                          && Math.floor(state.selected.col / 3) === Math.floor(col / 3);
+                        if (sameRowOrCol) {
+                          classes.push("peer");
+                        } else if (sameBox) {
+                          classes.push("peer-box");
+                        }
+                      }
 
-                  if (highlighted !== null && value === highlighted) {
-                    classes.push("match");
-                  }
+                      if (highlighted !== null && value === highlighted) {
+                        classes.push("match");
+                      }
 
-                  if (
-                    state.showMistakes
-                    && value !== 0
-                    && !given
-                    && state.solution
-                    && value !== state.solution[row][col]
-                  ) {
-                    classes.push("invalid");
-                  }
+                      if (
+                        state.showMistakes
+                        && value !== 0
+                        && !given
+                        && state.solution
+                        && value !== state.solution[row][col]
+                      ) {
+                        classes.push("invalid");
+                      }
 
-                  return (
-                    <button
-                      key={`${row}-${col}`}
-                      type="button"
-                      className={classes.join(" ")}
-                      data-row={row}
-                      data-col={col}
-                      role="gridcell"
-                      aria-label={`Row ${row + 1}, Column ${col + 1}`}
-                    >
-                      {value === 0 ? "" : String(value)}
-                    </button>
-                  );
-                }),
-              )}
-          </div>
-        </section>
+                      return (
+                        <button
+                          key={`${row}-${col}`}
+                          type="button"
+                          className={classes.join(" ")}
+                          data-row={row}
+                          data-col={col}
+                          role="gridcell"
+                          aria-label={`Row ${row + 1}, Column ${col + 1}`}
+                        >
+                          {value === 0 ? "" : String(value)}
+                        </button>
+                      );
+                    }),
+                  )}
+              </div>
+            </section>
 
-        <section
-          className={`numpad${state.fillModeValue !== null ? " fill-mode-active" : ""}`}
-          aria-label="Number input"
-          onClick={onNumpadClick}
-          onPointerDown={onNumpadPointerDown}
-          onPointerUp={onNumpadPointerRelease}
-          onPointerLeave={onNumpadPointerRelease}
-          onPointerCancel={onNumpadPointerRelease}
-        >
-          {DIGITS.map((digit) => {
-            const disabled = state.lost || isDigitCompletedCorrectly(state, digit);
-            const isFillMode = state.fillModeValue !== null && state.fillModeValue === digit;
-            const isCompleted = countDigitOnBoard(state.board, digit) >= 9;
+            <section
+              className={`numpad${state.fillModeValue !== null ? " fill-mode-active" : ""}`}
+              aria-label="Number input"
+              onClick={onNumpadClick}
+              onPointerDown={onNumpadPointerDown}
+              onPointerUp={onNumpadPointerRelease}
+              onPointerLeave={onNumpadPointerRelease}
+              onPointerCancel={onNumpadPointerRelease}
+            >
+              {DIGITS.map((digit) => {
+                const disabled = state.lost || isDigitCompletedCorrectly(state, digit);
+                const isFillMode = state.fillModeValue !== null && state.fillModeValue === digit;
+                const isCompleted = countDigitOnBoard(state.board, digit) >= 9;
 
-            return (
-              <button
-                key={digit}
-                type="button"
-                data-value={digit}
-                disabled={disabled}
-                className={isFillMode ? "fill-mode" : ""}
-                aria-label={isCompleted ? `Number ${digit} completed` : `Number ${digit}`}
-              >
-                {digit}
-              </button>
-            );
-          })}
-        </section>
+                return (
+                  <button
+                    key={digit}
+                    type="button"
+                    data-value={digit}
+                    disabled={disabled}
+                    className={isFillMode ? "fill-mode" : ""}
+                    aria-label={isCompleted ? `Number ${digit} completed` : `Number ${digit}`}
+                  >
+                    {digit}
+                  </button>
+                );
+              })}
+            </section>
+          </>
+        )}
       </main>
 
       <dialog
@@ -1700,7 +1720,9 @@ export function SudokuApp() {
               value={state.difficulty}
               onChange={(event) => {
                 const difficulty = event.target.value as Difficulty;
-                startNewGame(difficulty);
+                const current = stateRef.current;
+                applyState({ ...current, difficulty });
+                setStatusMessage(`Difficulty set to ${difficulty}.`);
               }}
             >
               <option value="easy">Easy</option>
