@@ -20,7 +20,8 @@ An offline-capable Sudoku puzzle app built with Next.js (App Router), React, and
   - Amber
 - Stats tracking (overall, by difficulty, streaks)
 - Auto-save and restore of your current puzzle
-- Installable PWA with offline support and update checks
+- Installable PWA with offline support and automatic update detection
+- Home, Settings, and Statistics as dedicated views
 
 ## Quick Start
 
@@ -30,6 +31,12 @@ npm run dev
 ```
 
 Open `http://localhost:3000`.
+
+## View Flow
+
+- Home view: Continue Puzzle (when available), New Puzzle, Settings, Statistics
+- Game view: Reset/Home top bar, Undo/Redo + Lives + Hint subbar, centered 1:1 board, numpad
+- Settings and Statistics are full views (not modals)
 
 ## Scripts
 
@@ -50,12 +57,31 @@ Open `http://localhost:3000`.
 - Manifest: `public/manifest.webmanifest`
 - Service worker: `public/sw.js`
 - Icons: `public/icons/`
-- Update flow (check/apply) is available from Settings
+- Update status is shown in Settings
 
 When releasing a new version, keep app version values aligned in:
 
 - `src/components/sudoku-app.tsx` (`APP_VERSION`)
 - `public/sw.js` (`APP_VERSION`, used by cache naming)
+
+## GitHub Pages Deployment
+
+This project is configured for static export and GitHub Pages deployment.
+
+- Next.js static export is enabled in `next.config.ts` (`output: "export"`)
+- GitHub Actions workflow: `.github/workflows/deploy-pages.yml`
+- Build output folder: `out/`
+
+Steps:
+
+1. Push changes to `main`.
+2. In GitHub repository settings, set Pages source to `GitHub Actions`.
+3. Wait for `Deploy to GitHub Pages` workflow to finish.
+
+The workflow automatically sets `NEXT_PUBLIC_BASE_PATH`:
+
+- User site repo (`<user>.github.io`): empty base path
+- Project repo (`<repo>`): `/<repo>`
 
 ## Project Structure
 

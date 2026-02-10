@@ -1508,7 +1508,7 @@ export function SudokuApp() {
             <div className="home-actions" aria-label="Main actions">
               {canContinueCurrentPuzzle ? (
                 <button id="continue-current-puzzle" type="button" onClick={continueCurrentPuzzle}>
-                  Continue Current Puzzle
+                  Continue Puzzle
                 </button>
               ) : null}
               <button id="new-game" type="button" onClick={() => startNewGameAndOpen()}>
