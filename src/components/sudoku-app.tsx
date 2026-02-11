@@ -432,11 +432,16 @@ function syncFillModeAvailability(state: GameState): GameState {
   return state;
 }
 
-function formatRate(won: number, started: number): string {
-  if (started === 0) {
-    return "0%";
+function calculateRatePercent(won: number, started: number): number {
+  if (started <= 0) {
+    return 0;
   }
-  return `${Math.round((won / started) * 100)}%`;
+  const value = (won / started) * 100;
+  return Math.min(100, Math.max(0, value));
+}
+
+function formatRate(won: number, started: number): string {
+  return `${Math.round(calculateRatePercent(won, started))}%`;
 }
 
 function formatLine(won: number, started: number): string {
@@ -1486,6 +1491,38 @@ export function SudokuApp() {
   const statsEasy = formatLine(state.stats.byDifficulty.easy.won, state.stats.byDifficulty.easy.started);
   const statsMedium = formatLine(state.stats.byDifficulty.medium.won, state.stats.byDifficulty.medium.started);
   const statsHard = formatLine(state.stats.byDifficulty.hard.won, state.stats.byDifficulty.hard.started);
+  const statsOverallRate = calculateRatePercent(state.stats.gamesWon, state.stats.gamesStarted);
+  const statsOverallAngle = (statsOverallRate / 100) * 360;
+  const statsOverallUnfinished = Math.max(0, state.stats.gamesStarted - state.stats.gamesWon);
+  const difficultyRateRows: Array<{
+    key: Difficulty;
+    label: string;
+    line: string;
+    rate: number;
+    rateText: string;
+  }> = [
+    {
+      key: "easy",
+      label: "Easy",
+      line: statsEasy,
+      rate: calculateRatePercent(state.stats.byDifficulty.easy.won, state.stats.byDifficulty.easy.started),
+      rateText: formatRate(state.stats.byDifficulty.easy.won, state.stats.byDifficulty.easy.started),
+    },
+    {
+      key: "medium",
+      label: "Medium",
+      line: statsMedium,
+      rate: calculateRatePercent(state.stats.byDifficulty.medium.won, state.stats.byDifficulty.medium.started),
+      rateText: formatRate(state.stats.byDifficulty.medium.won, state.stats.byDifficulty.medium.started),
+    },
+    {
+      key: "hard",
+      label: "Hard",
+      line: statsHard,
+      rate: calculateRatePercent(state.stats.byDifficulty.hard.won, state.stats.byDifficulty.hard.started),
+      rateText: formatRate(state.stats.byDifficulty.hard.won, state.stats.byDifficulty.hard.started),
+    },
+  ];
 
   const livesText = useMemo(() => {
     const symbols = [] as Array<{ key: string; text: string; className: string }>;
@@ -1754,36 +1791,93 @@ export function SudokuApp() {
                 </button>
               </div>
               <section className="stats" aria-label="Puzzle stats">
-                <p>
-                  Overall:
-                  {" "}
-                  <span id="stats-overall">{statsOverall}</span>
-                </p>
-                <p>
-                  Streak:
-                  {" "}
-                  <span id="stats-streak">{state.stats.currentStreak}</span>
-                  {" "}
-                  (Best:
-                  {" "}
-                  <span id="stats-best-streak">{state.stats.bestStreak}</span>
-                  )
-                </p>
-                <p>
-                  Easy:
-                  {" "}
-                  <span id="stats-easy">{statsEasy}</span>
-                </p>
-                <p>
-                  Medium:
-                  {" "}
-                  <span id="stats-medium">{statsMedium}</span>
-                </p>
-                <p>
-                  Hard:
-                  {" "}
-                  <span id="stats-hard">{statsHard}</span>
-                </p>
+                <section className="stats-panel stats-panel-overall" aria-label="Overall finished puzzles">
+                  <h3>Overall Finished</h3>
+                  <div className="stats-overview-grid">
+                    <div
+                      className="stats-pie-chart"
+                      role="img"
+                      aria-label={`Overall finished ${formatRate(state.stats.gamesWon, state.stats.gamesStarted)}`}
+                      style={{
+                        background:
+                          `conic-gradient(var(--stats-finished) 0deg ${statsOverallAngle}deg, var(--stats-unfinished) ${statsOverallAngle}deg 360deg)`,
+                      }}
+                    >
+                      <span className="stats-pie-center">{formatRate(state.stats.gamesWon, state.stats.gamesStarted)}</span>
+                    </div>
+                    <div className="stats-overview-lines">
+                      <p>
+                        Overall:
+                        {" "}
+                        <span id="stats-overall">{statsOverall}</span>
+                      </p>
+                      <ul className="stats-pie-legend" aria-label="Overall puzzle legend">
+                        <li>
+                          <span className="stats-legend-swatch solved" aria-hidden="true" />
+                          Won:
+                          {" "}
+                          {state.stats.gamesWon}
+                        </li>
+                        <li>
+                          <span className="stats-legend-swatch unfinished" aria-hidden="true" />
+                          Unfinished:
+                          {" "}
+                          {statsOverallUnfinished}
+                        </li>
+                      </ul>
+                    </div>
+                  </div>
+                </section>
+
+                <section className="stats-panel stats-panel-difficulty" aria-label="Win rate by difficulty">
+                  <h3>Difficulty Win Rate</h3>
+                  <div className="stats-bars" role="img" aria-label="Difficulty win rate bar chart">
+                    {difficultyRateRows.map((entry) => (
+                      <div key={entry.key} className="stats-bar-row">
+                        <div className="stats-bar-head">
+                          <span className="stats-bar-title">{entry.label}</span>
+                          <span className="stats-bar-rate">{entry.rateText}</span>
+                        </div>
+                        <div className="stats-bar-track">
+                          <div className={`stats-bar-fill stats-bar-fill-${entry.key}`} style={{ width: `${entry.rate}%` }} />
+                        </div>
+                        <p className="stats-bar-line">
+                          <span id={`stats-${entry.key}`}>{entry.line}</span>
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+
+                <section className="stats-panel stats-panel-streak" aria-label="Current and best streak">
+                  <h3>Streak Heat</h3>
+                  <div className="stats-streak-grid">
+                    <article className="stats-streak-card">
+                      <p className="stats-streak-label">
+                        <span className="stats-flame" aria-hidden="true">
+                          🔥
+                        </span>
+                        Current streak
+                      </p>
+                      <p className="stats-streak-value">
+                        <span id="stats-streak">{state.stats.currentStreak}</span>
+                        <span className="stats-streak-unit">puzzles</span>
+                      </p>
+                    </article>
+                    <article className="stats-streak-card">
+                      <p className="stats-streak-label">
+                        <span className="stats-flame" aria-hidden="true">
+                          🔥
+                        </span>
+                        Best streak
+                      </p>
+                      <p className="stats-streak-value">
+                        <span id="stats-best-streak">{state.stats.bestStreak}</span>
+                        <span className="stats-streak-unit">puzzles</span>
+                      </p>
+                    </article>
+                  </div>
+                </section>
               </section>
             </div>
           </section>
