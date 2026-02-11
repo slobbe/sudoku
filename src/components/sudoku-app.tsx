@@ -1209,10 +1209,6 @@ export function SudokuApp() {
     setStatusMessage("Puzzle restarted.");
   }, [applyState]);
 
-  const onWinRestart = useCallback(() => {
-    restartCurrentPuzzle();
-  }, [restartCurrentPuzzle]);
-
   const onLoseNewGame = useCallback(() => {
     closeLosePrompt();
     startNewGameAndOpen();
@@ -1903,9 +1899,6 @@ export function SudokuApp() {
           <h2>Great Solve</h2>
           <p>What next?</p>
           <div className="win-actions">
-            <button id="win-restart" type="button" onClick={onWinRestart}>
-              Restart
-            </button>
             <button id="win-new-game" type="button" onClick={onWinNewGame}>
               New Puzzle
             </button>
