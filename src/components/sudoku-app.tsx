@@ -1660,37 +1660,37 @@ export function SudokuApp() {
                         }),
                       )}
                   </div>
+
+                  <section
+                    className={`numpad${state.fillModeValue !== null ? " fill-mode-active" : ""}`}
+                    aria-label="Number input"
+                    onClick={onNumpadClick}
+                    onPointerDown={onNumpadPointerDown}
+                    onPointerUp={onNumpadPointerRelease}
+                    onPointerLeave={onNumpadPointerRelease}
+                    onPointerCancel={onNumpadPointerRelease}
+                  >
+                    {DIGITS.map((digit) => {
+                      const disabled = state.lost || isDigitCompletedCorrectly(state, digit);
+                      const isFillMode = state.fillModeValue !== null && state.fillModeValue === digit;
+                      const isCompleted = countDigitOnBoard(state.board, digit) >= 9;
+
+                      return (
+                        <button
+                          key={digit}
+                          type="button"
+                          data-value={digit}
+                          disabled={disabled}
+                          className={isFillMode ? "fill-mode" : ""}
+                          aria-label={isCompleted ? `Number ${digit} completed` : `Number ${digit}`}
+                        >
+                          {digit}
+                        </button>
+                      );
+                    })}
+                  </section>
                 </div>
               </div>
-            </section>
-
-            <section
-              className={`numpad${state.fillModeValue !== null ? " fill-mode-active" : ""}`}
-              aria-label="Number input"
-              onClick={onNumpadClick}
-              onPointerDown={onNumpadPointerDown}
-              onPointerUp={onNumpadPointerRelease}
-              onPointerLeave={onNumpadPointerRelease}
-              onPointerCancel={onNumpadPointerRelease}
-            >
-              {DIGITS.map((digit) => {
-                const disabled = state.lost || isDigitCompletedCorrectly(state, digit);
-                const isFillMode = state.fillModeValue !== null && state.fillModeValue === digit;
-                const isCompleted = countDigitOnBoard(state.board, digit) >= 9;
-
-                return (
-                  <button
-                    key={digit}
-                    type="button"
-                    data-value={digit}
-                    disabled={disabled}
-                    className={isFillMode ? "fill-mode" : ""}
-                    aria-label={isCompleted ? `Number ${digit} completed` : `Number ${digit}`}
-                  >
-                    {digit}
-                  </button>
-                );
-              })}
             </section>
           </>
         ) : activeView === "settings" ? (

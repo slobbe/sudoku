@@ -318,7 +318,7 @@ body {
 
 .game-subbar {
     width: 100%;
-    margin: 0;
+    margin: 0 0 4px;
     display: grid;
     grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
     align-items: center;
@@ -489,12 +489,13 @@ button:disabled {
 
 .board-stack {
     --subbar-reserve: clamp(36px, 8dvh, 68px);
-    width: min(100cqi, calc(100cqb - var(--subbar-reserve)));
+    --numpad-reserve: clamp(40px, 9dvh, 72px);
+    width: min(100cqi, calc(100cqb - var(--subbar-reserve) - var(--numpad-reserve)));
     height: auto;
     max-width: 100%;
     max-height: none;
     display: grid;
-    grid-template-rows: auto minmax(0, 1fr);
+    grid-template-rows: auto minmax(0, 1fr) auto;
     align-content: start;
     gap: 0;
 }
@@ -603,7 +604,8 @@ button:disabled {
 }
 
 .numpad {
-    margin-top: 6px;
+    width: 100%;
+    margin-top: 4px;
     display: grid;
     grid-template-columns: repeat(9, minmax(0, 1fr));
     gap: 5px;
@@ -1092,20 +1094,23 @@ button:disabled {
         height: auto;
         padding: 4px;
         display: grid;
-        grid-template-rows: auto minmax(0, 1fr) auto;
+        grid-template-rows: auto minmax(0, 1fr);
         gap: 4px;
     }
 
     .game-header,
     .game-subbar,
-    .board-area,
-    .numpad {
+    .board-area {
         width: 100%;
         margin: 0;
     }
 
     .game-subbar-left {
         gap: 3px;
+    }
+
+    .game-subbar {
+        margin-bottom: 3px;
     }
 
     .board-wrap {
@@ -1126,9 +1131,9 @@ button:disabled {
     }
 
     .numpad {
-        margin-top: 0;
+        margin-top: 3px;
         gap: 2px;
-        padding-bottom: max(18px, calc(env(safe-area-inset-bottom) + 4px));
+        padding-bottom: 0;
     }
 
     .numpad button {
