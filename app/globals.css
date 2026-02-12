@@ -206,6 +206,11 @@ body {
     padding: 12px;
 }
 
+:root[data-scroll-lock="on"],
+:root[data-scroll-lock="on"] body {
+    overscroll-behavior: none;
+}
+
 .app {
     border: 0;
     border-radius: 0;
@@ -1005,6 +1010,12 @@ button:disabled {
         padding: 0;
     }
 
+    :root[data-scroll-lock="on"],
+    :root[data-scroll-lock="on"] body {
+        height: 100dvh;
+        overflow: hidden;
+    }
+
     .app.app-home,
     .app.app-panel {
         width: 100%;
@@ -1014,6 +1025,13 @@ button:disabled {
         max-height: none;
         margin: 0;
         padding: max(12px, env(safe-area-inset-top)) 0 max(12px, env(safe-area-inset-bottom)) 0;
+    }
+
+    :root[data-scroll-lock="on"] .app.app-home,
+    :root[data-scroll-lock="on"] .app.app-panel,
+    :root[data-scroll-lock="on"] .app.app-game {
+        height: 100dvh;
+        max-height: 100dvh;
     }
 
     .home-view,

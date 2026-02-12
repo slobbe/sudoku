@@ -33,7 +33,7 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" data-theme="slate" suppressHydrationWarning>
+    <html lang="en" data-theme="slate" data-scroll-lock="on" suppressHydrationWarning>
       <body>{children}</body>
     </html>
   );
