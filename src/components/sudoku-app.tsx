@@ -1786,108 +1786,131 @@ export function SudokuApp() {
                 </button>
               </div>
               <div className="settings-grid">
-                <label htmlFor="difficulty">Difficulty</label>
-                <select
-                  id="difficulty"
-                  value={state.difficulty}
-                  onChange={(event) => {
-                    const difficulty = event.target.value as Difficulty;
-                    const current = stateRef.current;
-                    applyState({ ...current, difficulty });
-                    setStatusMessage(`Difficulty set to ${difficulty}.`);
-                  }}
-                >
-                  <option value="easy">Easy</option>
-                  <option value="medium">Medium</option>
-                  <option value="hard">Hard</option>
-                </select>
+                <div className="settings-row">
+                  <label htmlFor="difficulty">Difficulty</label>
+                  <div className="settings-control">
+                    <select
+                      id="difficulty"
+                      value={state.difficulty}
+                      onChange={(event) => {
+                        const difficulty = event.target.value as Difficulty;
+                        const current = stateRef.current;
+                        applyState({ ...current, difficulty });
+                        setStatusMessage(`Difficulty set to ${difficulty}.`);
+                      }}
+                    >
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                    </select>
+                  </div>
+                </div>
 
-                <label htmlFor="show-mistakes" className="settings-toggle">
-                  <input
-                    id="show-mistakes"
-                    type="checkbox"
-                    checked={state.showMistakes}
-                    onChange={(event) => {
-                      const current = stateRef.current;
-                      applyState({ ...current, showMistakes: event.target.checked });
-                    }}
-                  />
-                  Show mistakes immediately
-                </label>
+                <div className="settings-row settings-row-checkbox">
+                  <label htmlFor="show-mistakes">Show mistakes immediately</label>
+                  <div className="settings-control">
+                    <input
+                      id="show-mistakes"
+                      className="settings-checkbox"
+                      type="checkbox"
+                      checked={state.showMistakes}
+                      onChange={(event) => {
+                        const current = stateRef.current;
+                        applyState({ ...current, showMistakes: event.target.checked });
+                      }}
+                    />
+                  </div>
+                </div>
 
-                <label htmlFor="hints-per-game">Hints per game</label>
-                <select
-                  id="hints-per-game"
-                  value={state.configuredHintsPerGame}
-                  onChange={(event) => {
-                    const hintsPerGame = normalizePerGameCount(
-                      Number(event.target.value),
-                      MIN_HINTS_PER_GAME,
-                      MAX_HINTS_PER_GAME,
-                      DEFAULT_HINTS_PER_GAME,
-                    );
-                    const current = stateRef.current;
-                    applyState({ ...current, configuredHintsPerGame: hintsPerGame });
-                    setStatusMessage(`Hints per game set to ${hintsPerGame}. Applies to new puzzles.`);
-                  }}
-                >
-                  {HINT_OPTIONS.map((count) => (
-                    <option key={`hints-${count}`} value={count}>{count}</option>
-                  ))}
-                </select>
+                <div className="settings-row">
+                  <label htmlFor="hints-per-game">Hints per game</label>
+                  <div className="settings-control">
+                    <select
+                      id="hints-per-game"
+                      value={state.configuredHintsPerGame}
+                      onChange={(event) => {
+                        const hintsPerGame = normalizePerGameCount(
+                          Number(event.target.value),
+                          MIN_HINTS_PER_GAME,
+                          MAX_HINTS_PER_GAME,
+                          DEFAULT_HINTS_PER_GAME,
+                        );
+                        const current = stateRef.current;
+                        applyState({ ...current, configuredHintsPerGame: hintsPerGame });
+                        setStatusMessage(`Hints per game set to ${hintsPerGame}. Applies to new puzzles.`);
+                      }}
+                    >
+                      {HINT_OPTIONS.map((count) => (
+                        <option key={`hints-${count}`} value={count}>{count}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-                <label htmlFor="lives-per-game">Lives per game</label>
-                <select
-                  id="lives-per-game"
-                  value={state.configuredLivesPerGame}
-                  onChange={(event) => {
-                    const livesPerGame = normalizePerGameCount(
-                      Number(event.target.value),
-                      MIN_LIVES_PER_GAME,
-                      MAX_LIVES_PER_GAME,
-                      DEFAULT_LIVES_PER_GAME,
-                    );
-                    const current = stateRef.current;
-                    applyState({ ...current, configuredLivesPerGame: livesPerGame });
-                    setStatusMessage(`Lives per game set to ${livesPerGame}. Applies to new puzzles.`);
-                  }}
-                >
-                  {LIVES_OPTIONS.map((count) => (
-                    <option key={`lives-${count}`} value={count}>{count}</option>
-                  ))}
-                </select>
+                <div className="settings-row">
+                  <label htmlFor="lives-per-game">Lives per game</label>
+                  <div className="settings-control">
+                    <select
+                      id="lives-per-game"
+                      value={state.configuredLivesPerGame}
+                      onChange={(event) => {
+                        const livesPerGame = normalizePerGameCount(
+                          Number(event.target.value),
+                          MIN_LIVES_PER_GAME,
+                          MAX_LIVES_PER_GAME,
+                          DEFAULT_LIVES_PER_GAME,
+                        );
+                        const current = stateRef.current;
+                        applyState({ ...current, configuredLivesPerGame: livesPerGame });
+                        setStatusMessage(`Lives per game set to ${livesPerGame}. Applies to new puzzles.`);
+                      }}
+                    >
+                      {LIVES_OPTIONS.map((count) => (
+                        <option key={`lives-${count}`} value={count}>{count}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
 
-                <label htmlFor="fill-mode-entry">Fill mode trigger</label>
-                <select
-                  id="fill-mode-entry"
-                  value={state.fillModeEntry}
-                  onChange={(event) => {
-                    const entry = event.target.value as FillModeEntry;
-                    const current = stateRef.current;
-                    applyState({ ...current, fillModeEntry: entry });
-                    clearLongPressTimer();
-                    resetDoubleTapTracking();
-                  }}
-                >
-                  <option value="long-press">Long press</option>
-                  <option value="double-tap">Double tap</option>
-                </select>
+                <div className="settings-row">
+                  <label htmlFor="fill-mode-entry">Fill mode trigger</label>
+                  <div className="settings-control">
+                    <select
+                      id="fill-mode-entry"
+                      value={state.fillModeEntry}
+                      onChange={(event) => {
+                        const entry = event.target.value as FillModeEntry;
+                        const current = stateRef.current;
+                        applyState({ ...current, fillModeEntry: entry });
+                        clearLongPressTimer();
+                        resetDoubleTapTracking();
+                      }}
+                    >
+                      <option value="long-press">Long press</option>
+                      <option value="double-tap">Double tap</option>
+                    </select>
+                  </div>
+                </div>
 
-                <label htmlFor="theme">Theme</label>
-                <select
-                  id="theme"
-                  value={state.theme}
-                  onChange={(event) => {
-                    const current = stateRef.current;
-                    const nextTheme = normalizeTheme(event.target.value);
-                    applyState({ ...current, theme: nextTheme });
-                  }}
-                >
-                  <option value="slate">Slate</option>
-                  <option value="dusk">Dusk</option>
-                  <option value="mist">Mist</option>
-                  <option value="amber">Amber</option>
-                </select>
+                <div className="settings-row">
+                  <label htmlFor="theme">Theme</label>
+                  <div className="settings-control">
+                    <select
+                      id="theme"
+                      value={state.theme}
+                      onChange={(event) => {
+                        const current = stateRef.current;
+                        const nextTheme = normalizeTheme(event.target.value);
+                        applyState({ ...current, theme: nextTheme });
+                      }}
+                    >
+                      <option value="slate">Slate</option>
+                      <option value="dusk">Dusk</option>
+                      <option value="mist">Mist</option>
+                      <option value="amber">Amber</option>
+                    </select>
+                  </div>
+                </div>
               </div>
 
               <div className="settings-footer" aria-label="App info and update status">
