@@ -1110,7 +1110,22 @@ button:disabled {
     }
 
     .game-subbar {
+        grid-template-columns: auto minmax(0, 1fr) auto;
         margin-bottom: 3px;
+    }
+
+    #lives {
+        min-width: 0;
+        text-align: center;
+    }
+
+    #lives-display {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        align-items: center;
+        row-gap: 0.08em;
+        max-width: 100%;
     }
 
     .board-wrap {

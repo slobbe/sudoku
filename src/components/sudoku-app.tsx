@@ -49,6 +49,8 @@ type Snapshot = {
 
 type GameState = {
   difficulty: Difficulty;
+  configuredHintsPerGame: number;
+  configuredLivesPerGame: number;
   puzzle: Board | null;
   solution: Board | null;
   board: Board | null;
@@ -64,6 +66,8 @@ type GameState = {
   stats: GameStats;
   winRecorded: boolean;
   currentGameStarted: boolean;
+  hintsPerGame: number;
+  livesPerGame: number;
   hintsLeft: number;
   livesLeft: number;
   lost: boolean;
@@ -72,9 +76,13 @@ type GameState = {
 
 type SavedGamePayload = {
   difficulty: Difficulty;
+  configuredHintsPerGame: number;
+  configuredLivesPerGame: number;
   puzzle: Board;
   solution: Board;
   board: Board;
+  hintsPerGame: number;
+  livesPerGame: number;
   hintsLeft: number;
   livesLeft: number;
   showMistakes: boolean;
@@ -86,8 +94,12 @@ type SavedGamePayload = {
   currentGameStarted: boolean;
 };
 
-const HINTS_PER_GAME = 3;
-const LIVES_PER_GAME = 3;
+const DEFAULT_HINTS_PER_GAME = 3;
+const DEFAULT_LIVES_PER_GAME = 3;
+const MIN_HINTS_PER_GAME = 0;
+const MAX_HINTS_PER_GAME = 9;
+const MIN_LIVES_PER_GAME = 1;
+const MAX_LIVES_PER_GAME = 9;
 const SAVE_KEY = "sudoku-pwa-current-game-v1";
 const DOUBLE_TAP_MS = 300;
 
@@ -98,6 +110,14 @@ const APP_AUTHOR = "slobbe";
 const THEMES: Theme[] = ["slate", "dusk", "mist", "amber"];
 const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+const HINT_OPTIONS = Array.from(
+  { length: MAX_HINTS_PER_GAME - MIN_HINTS_PER_GAME + 1 },
+  (_, index) => MIN_HINTS_PER_GAME + index,
+);
+const LIVES_OPTIONS = Array.from(
+  { length: MAX_LIVES_PER_GAME - MIN_LIVES_PER_GAME + 1 },
+  (_, index) => MIN_LIVES_PER_GAME + index,
+);
 
 const THEME_COLORS: Record<Theme, string> = {
   slate: "#151a21",
@@ -185,6 +205,17 @@ function isFillModeEntry(value: unknown): value is FillModeEntry {
 
 function isNonNegativeInteger(value: unknown): value is number {
   return Number.isInteger(value) && (value as number) >= 0;
+}
+
+function normalizePerGameCount(value: unknown, min: number, max: number, fallback: number): number {
+  if (!Number.isInteger(value)) {
+    return fallback;
+  }
+  const parsed = value as number;
+  if (parsed < min || parsed > max) {
+    return fallback;
+  }
+  return parsed;
 }
 
 function puzzleMatchesSolution(puzzle: Board, solution: Board): boolean {
@@ -301,6 +332,8 @@ function normalizeStats(rawStats: unknown): GameStats {
 function createInitialState(): GameState {
   return {
     difficulty: "medium",
+    configuredHintsPerGame: DEFAULT_HINTS_PER_GAME,
+    configuredLivesPerGame: DEFAULT_LIVES_PER_GAME,
     puzzle: null,
     solution: null,
     board: null,
@@ -316,8 +349,10 @@ function createInitialState(): GameState {
     stats: createDefaultStats(),
     winRecorded: false,
     currentGameStarted: false,
-    hintsLeft: HINTS_PER_GAME,
-    livesLeft: LIVES_PER_GAME,
+    hintsPerGame: DEFAULT_HINTS_PER_GAME,
+    livesPerGame: DEFAULT_LIVES_PER_GAME,
+    hintsLeft: DEFAULT_HINTS_PER_GAME,
+    livesLeft: DEFAULT_LIVES_PER_GAME,
     lost: false,
     won: false,
   };
@@ -474,9 +509,13 @@ function loadSavedGame(): GameState | null {
 
   const candidate = parsed as {
     difficulty?: unknown;
+    configuredHintsPerGame?: unknown;
+    configuredLivesPerGame?: unknown;
     puzzle?: unknown;
     solution?: unknown;
     board?: unknown;
+    hintsPerGame?: unknown;
+    livesPerGame?: unknown;
     hintsLeft?: unknown;
     livesLeft?: unknown;
     showMistakes?: unknown;
@@ -494,12 +533,38 @@ function loadSavedGame(): GameState | null {
   if (!isBoardShape(candidate.puzzle) || !isBoardShape(candidate.solution) || !isBoardShape(candidate.board)) {
     return null;
   }
-  if (!isNonNegativeInteger(candidate.hintsLeft) || candidate.hintsLeft > HINTS_PER_GAME) {
+
+  const configuredHintsPerGame = normalizePerGameCount(
+    candidate.configuredHintsPerGame,
+    MIN_HINTS_PER_GAME,
+    MAX_HINTS_PER_GAME,
+    DEFAULT_HINTS_PER_GAME,
+  );
+  const configuredLivesPerGame = normalizePerGameCount(
+    candidate.configuredLivesPerGame,
+    MIN_LIVES_PER_GAME,
+    MAX_LIVES_PER_GAME,
+    DEFAULT_LIVES_PER_GAME,
+  );
+  const hintsPerGame = normalizePerGameCount(
+    candidate.hintsPerGame,
+    MIN_HINTS_PER_GAME,
+    MAX_HINTS_PER_GAME,
+    configuredHintsPerGame,
+  );
+  const livesPerGame = normalizePerGameCount(
+    candidate.livesPerGame,
+    MIN_LIVES_PER_GAME,
+    MAX_LIVES_PER_GAME,
+    configuredLivesPerGame,
+  );
+
+  if (!isNonNegativeInteger(candidate.hintsLeft) || candidate.hintsLeft > hintsPerGame) {
     return null;
   }
   if (
     candidate.livesLeft !== undefined
-    && (!isNonNegativeInteger(candidate.livesLeft) || candidate.livesLeft > LIVES_PER_GAME)
+    && (!isNonNegativeInteger(candidate.livesLeft) || candidate.livesLeft > livesPerGame)
   ) {
     return null;
   }
@@ -521,9 +586,13 @@ function loadSavedGame(): GameState | null {
 
   const payload = {
     difficulty: candidate.difficulty,
+    configuredHintsPerGame,
+    configuredLivesPerGame,
     puzzle: candidate.puzzle,
     solution: candidate.solution,
     board: candidate.board,
+    hintsPerGame,
+    livesPerGame,
     hintsLeft: candidate.hintsLeft,
     livesLeft: candidate.livesLeft,
     showMistakes: candidate.showMistakes,
@@ -547,11 +616,13 @@ function loadSavedGame(): GameState | null {
   }
 
   const inferredStarted = hasUserProgressOnBoard(payload.board, payload.puzzle);
-  const livesLeft = payload.livesLeft !== undefined ? payload.livesLeft : LIVES_PER_GAME;
+  const livesLeft = payload.livesLeft !== undefined ? payload.livesLeft : payload.livesPerGame;
   const won = payload.won;
 
   return {
     difficulty: payload.difficulty,
+    configuredHintsPerGame: payload.configuredHintsPerGame,
+    configuredLivesPerGame: payload.configuredLivesPerGame,
     puzzle: payload.puzzle,
     solution: payload.solution,
     board: payload.board,
@@ -567,6 +638,8 @@ function loadSavedGame(): GameState | null {
     stats: normalizeStats(payload.stats),
     winRecorded: won,
     currentGameStarted: payload.currentGameStarted === true || inferredStarted,
+    hintsPerGame: payload.hintsPerGame,
+    livesPerGame: payload.livesPerGame,
     hintsLeft: payload.hintsLeft,
     livesLeft,
     lost: payload.lost === true || (!won && livesLeft === 0),
@@ -708,6 +781,8 @@ export function SudokuApp() {
       const next: GameState = {
         ...current,
         difficulty,
+        hintsPerGame: current.configuredHintsPerGame,
+        livesPerGame: current.configuredLivesPerGame,
         puzzle,
         solution,
         board: clone(puzzle),
@@ -720,8 +795,8 @@ export function SudokuApp() {
         stats,
         winRecorded: false,
         currentGameStarted: false,
-        hintsLeft: HINTS_PER_GAME,
-        livesLeft: LIVES_PER_GAME,
+        hintsLeft: current.configuredHintsPerGame,
+        livesLeft: current.configuredLivesPerGame,
         lost: false,
         won: false,
       };
@@ -780,8 +855,8 @@ export function SudokuApp() {
       lost: false,
       undoStack: [],
       redoStack: [],
-      hintsLeft: HINTS_PER_GAME,
-      livesLeft: LIVES_PER_GAME,
+      hintsLeft: current.hintsPerGame,
+      livesLeft: current.livesPerGame,
     };
 
     applyState(next);
@@ -1195,8 +1270,8 @@ export function SudokuApp() {
       redoStack: [],
       stats: recordGameStart(current.stats, current.difficulty),
       currentGameStarted: true,
-      hintsLeft: HINTS_PER_GAME,
-      livesLeft: LIVES_PER_GAME,
+      hintsLeft: current.hintsPerGame,
+      livesLeft: current.livesPerGame,
       lost: false,
       won: false,
       winRecorded: false,
@@ -1293,9 +1368,13 @@ export function SudokuApp() {
 
     const payload: SavedGamePayload = {
       difficulty: state.difficulty,
+      configuredHintsPerGame: state.configuredHintsPerGame,
+      configuredLivesPerGame: state.configuredLivesPerGame,
       puzzle: state.puzzle,
       solution: state.solution,
       board: state.board,
+      hintsPerGame: state.hintsPerGame,
+      livesPerGame: state.livesPerGame,
       hintsLeft: state.hintsLeft,
       livesLeft: state.livesLeft,
       showMistakes: state.showMistakes,
@@ -1522,7 +1601,7 @@ export function SudokuApp() {
 
   const livesText = useMemo(() => {
     const symbols = [] as Array<{ key: string; text: string; className: string }>;
-    for (let i = 0; i < LIVES_PER_GAME; i += 1) {
+    for (let i = 0; i < state.livesPerGame; i += 1) {
       if (i < state.livesLeft) {
         symbols.push({ key: `life-${i}`, text: "\u2665", className: "lives-heart" });
       } else {
@@ -1530,7 +1609,7 @@ export function SudokuApp() {
       }
     }
     return symbols;
-  }, [state.livesLeft]);
+  }, [state.livesLeft, state.livesPerGame]);
 
   return (
     <>
@@ -1580,7 +1659,11 @@ export function SudokuApp() {
                         Redo
                       </button>
                     </div>
-                    <p id="lives" className={`lives${state.livesLeft === 0 ? " empty" : ""}`} aria-label={`Lives ${state.livesLeft} of ${LIVES_PER_GAME}`}>
+                    <p
+                      id="lives"
+                      className={`lives${state.livesLeft === 0 ? " empty" : ""}`}
+                      aria-label={`Lives ${state.livesLeft} of ${state.livesPerGame}`}
+                    >
                       <span id="lives-display">
                         {livesText.map((entry) => (
                           <span key={entry.key} className={entry.className}>
@@ -1731,6 +1814,48 @@ export function SudokuApp() {
                   />
                   Show mistakes immediately
                 </label>
+
+                <label htmlFor="hints-per-game">Hints per game</label>
+                <select
+                  id="hints-per-game"
+                  value={state.configuredHintsPerGame}
+                  onChange={(event) => {
+                    const hintsPerGame = normalizePerGameCount(
+                      Number(event.target.value),
+                      MIN_HINTS_PER_GAME,
+                      MAX_HINTS_PER_GAME,
+                      DEFAULT_HINTS_PER_GAME,
+                    );
+                    const current = stateRef.current;
+                    applyState({ ...current, configuredHintsPerGame: hintsPerGame });
+                    setStatusMessage(`Hints per game set to ${hintsPerGame}. Applies to new puzzles.`);
+                  }}
+                >
+                  {HINT_OPTIONS.map((count) => (
+                    <option key={`hints-${count}`} value={count}>{count}</option>
+                  ))}
+                </select>
+
+                <label htmlFor="lives-per-game">Lives per game</label>
+                <select
+                  id="lives-per-game"
+                  value={state.configuredLivesPerGame}
+                  onChange={(event) => {
+                    const livesPerGame = normalizePerGameCount(
+                      Number(event.target.value),
+                      MIN_LIVES_PER_GAME,
+                      MAX_LIVES_PER_GAME,
+                      DEFAULT_LIVES_PER_GAME,
+                    );
+                    const current = stateRef.current;
+                    applyState({ ...current, configuredLivesPerGame: livesPerGame });
+                    setStatusMessage(`Lives per game set to ${livesPerGame}. Applies to new puzzles.`);
+                  }}
+                >
+                  {LIVES_OPTIONS.map((count) => (
+                    <option key={`lives-${count}`} value={count}>{count}</option>
+                  ))}
+                </select>
 
                 <label htmlFor="fill-mode-entry">Fill mode trigger</label>
                 <select

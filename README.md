@@ -6,8 +6,8 @@ An offline-capable Sudoku puzzle app built with Next.js (App Router), React, and
 
 - Unique puzzle generation (exactly one solution)
 - Three difficulties: Easy, Medium, Hard
-- Hints (3 per puzzle)
-- Lives system (3 lives per puzzle)
+- Configurable hints per puzzle
+- Configurable lives per puzzle
 - Undo/redo support
 - Fill mode with configurable trigger:
   - Double tap (default)
