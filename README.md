@@ -26,7 +26,7 @@ An offline-capable Sudoku puzzle app built with Next.js (App Router), React, and
 ## Quick Start
 
 ```bash
-npm install
+npm ci
 npm run dev
 ```
 
@@ -45,6 +45,35 @@ Open `http://localhost:3000`.
 - `npm run start` - Run production server
 - `npm run lint` - Run lint checks
 - `npm test` - Run unit tests
+- `npm run test:watch` - Run tests in watch mode
+
+## Testing & Validation
+
+Run these checks before opening a PR or cutting a release:
+
+```bash
+npm run lint
+npm test
+npm run build
+```
+
+Run a single test file:
+
+```bash
+npm test -- tests/sudoku.test.ts
+```
+
+Run a single test by name:
+
+```bash
+npm test -- tests/sudoku.test.ts -t "generates puzzles with exactly one solution"
+```
+
+Equivalent direct Vitest command:
+
+```bash
+npx vitest run tests/sudoku.test.ts -t "generates puzzles with exactly one solution"
+```
 
 ## Data & Privacy
 
@@ -58,9 +87,12 @@ Open `http://localhost:3000`.
 - Service worker: `public/sw.js`
 - Icons: `public/icons/`
 - Update status is shown in Settings
+- Service worker is intentionally disabled in development
 
 When releasing a new version, keep app version values aligned in:
 
+- `package.json` (`version`)
+- `package-lock.json` (`version`)
 - `src/components/sudoku-app.tsx` (`APP_VERSION`)
 - `public/sw.js` (`APP_VERSION`, used by cache naming)
 
