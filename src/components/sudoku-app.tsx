@@ -203,6 +203,29 @@ function noteMaskDigits(mask: number): number[] {
   return values;
 }
 
+function clearPeerNoteDigit(notes: NotesBoard, board: Board, row: number, col: number, value: number): void {
+  const bit = noteBit(value);
+
+  for (let i = 0; i < 9; i += 1) {
+    if (i !== col && board[row][i] === 0) {
+      notes[row][i] &= ~bit;
+    }
+    if (i !== row && board[i][col] === 0) {
+      notes[i][col] &= ~bit;
+    }
+  }
+
+  const rowStart = Math.floor(row / 3) * 3;
+  const colStart = Math.floor(col / 3) * 3;
+  for (let r = rowStart; r < rowStart + 3; r += 1) {
+    for (let c = colStart; c < colStart + 3; c += 1) {
+      if ((r !== row || c !== col) && board[r][c] === 0) {
+        notes[r][c] &= ~bit;
+      }
+    }
+  }
+}
+
 function isBoardShape(board: unknown): board is Board {
   if (!Array.isArray(board) || board.length !== 9) {
     return false;
@@ -1000,6 +1023,9 @@ export function SudokuApp() {
       const notes = cloneNotesBoard(current.notes);
       if (value !== 0) {
         notes[row][col] = 0;
+        if (!wrongEntry) {
+          clearPeerNoteDigit(notes, board, row, col, value);
+        }
       }
 
       let next: GameState = {
@@ -1197,16 +1223,18 @@ export function SudokuApp() {
     }
 
     const board = clone(current.board);
-    board[hintCell.row][hintCell.col] = current.solution[hintCell.row][hintCell.col];
+    const hintValue = current.solution[hintCell.row][hintCell.col];
+    board[hintCell.row][hintCell.col] = hintValue;
     const notes = cloneNotesBoard(current.notes);
     notes[hintCell.row][hintCell.col] = 0;
+    clearPeerNoteDigit(notes, board, hintCell.row, hintCell.col, hintValue);
 
     let next: GameState = {
       ...current,
       board,
       notes,
       selected: { ...hintCell },
-      highlightValue: current.solution[hintCell.row][hintCell.col],
+      highlightValue: hintValue,
       hintsLeft: current.hintsLeft - 1,
       undoStack,
       redoStack: [],
@@ -1910,11 +1938,19 @@ export function SudokuApp() {
                                   ? ""
                                   : (
                                     <span className="cell-notes" aria-hidden="true">
-                                      {DIGITS.map((digit) => (
-                                        <span key={`note-${digit}`} className={`cell-note${noteMaskHasValue(noteMask, digit) ? "" : " empty"}`}>
-                                          {digit}
-                                        </span>
-                                      ))}
+                                      {DIGITS.map((digit) => {
+                                        const hasNote = noteMaskHasValue(noteMask, digit);
+                                        const isHighlighted = hasNote && highlighted === digit;
+
+                                        return (
+                                          <span
+                                            key={`note-${digit}`}
+                                            className={`cell-note${hasNote ? "" : " empty"}${isHighlighted ? " highlight" : ""}`}
+                                          >
+                                            {digit}
+                                          </span>
+                                        );
+                                      })}
                                     </span>
                                   )
                                 : String(value)}

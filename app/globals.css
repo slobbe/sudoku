@@ -568,6 +568,11 @@ button:disabled {
     place-items: center;
 }
 
+.cell-note.highlight {
+    color: var(--match-ink);
+    font-weight: 700;
+}
+
 .cell-note.empty {
     opacity: 0;
 }
