@@ -566,11 +566,14 @@ button:disabled {
 .cell-note {
     display: grid;
     place-items: center;
+    transform: scale(1);
+    transition: transform 120ms ease;
 }
 
 .cell-note.highlight {
     color: var(--match-ink);
     font-weight: 700;
+    transform: scale(1.5);
 }
 
 .cell-note.empty {
