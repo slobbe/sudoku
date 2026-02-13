@@ -714,7 +714,7 @@ function loadSavedGame(): GameState | null {
     fillModeValue: null,
     annotationMode: payload.annotationMode === true,
     notes: payload.notes ?? createEmptyNotesBoard(),
-    showMistakes: payload.showMistakes !== undefined ? payload.showMistakes : true,
+    showMistakes: true,
     fillModeEntry: payload.fillModeEntry ?? "double-tap",
     theme: normalizeTheme(payload.theme),
     undoStack: [],
@@ -2020,22 +2020,6 @@ export function SudokuApp() {
                       <option value="medium">Medium</option>
                       <option value="hard">Hard</option>
                     </select>
-                  </div>
-                </div>
-
-                <div className="settings-row settings-row-checkbox">
-                  <label htmlFor="show-mistakes">Show mistakes immediately</label>
-                  <div className="settings-control">
-                    <input
-                      id="show-mistakes"
-                      className="settings-checkbox"
-                      type="checkbox"
-                      checked={state.showMistakes}
-                      onChange={(event) => {
-                        const current = stateRef.current;
-                        applyState({ ...current, showMistakes: event.target.checked });
-                      }}
-                    />
                   </div>
                 </div>
 
