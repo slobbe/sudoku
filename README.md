@@ -12,6 +12,7 @@ An offline-capable Sudoku puzzle app built with Next.js (App Router), React, and
 - Fill mode with configurable trigger:
   - Double tap (default)
   - Long press
+- Annotation mode for penciling candidate numbers in empty cells
 - Optional immediate mistake highlighting (checked against the true solution)
 - Eye-friendly themes:
   - Slate (default)

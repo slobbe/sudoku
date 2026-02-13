@@ -32,6 +32,8 @@ type DifficultyStats = {
   won: number;
 };
 
+type NotesBoard = number[][];
+
 type GameStats = {
   gamesStarted: number;
   gamesWon: number;
@@ -42,6 +44,7 @@ type GameStats = {
 
 type Snapshot = {
   board: Board;
+  notes: NotesBoard;
   selected: CellSelection | null;
   highlightValue: number | null;
   won: boolean;
@@ -58,6 +61,8 @@ type GameState = {
   selected: CellSelection | null;
   highlightValue: number | null;
   fillModeValue: number | null;
+  annotationMode: boolean;
+  notes: NotesBoard;
   showMistakes: boolean;
   fillModeEntry: FillModeEntry;
   theme: Theme;
@@ -85,6 +90,8 @@ type SavedGamePayload = {
   livesPerGame: number;
   hintsLeft: number;
   livesLeft: number;
+  annotationMode: boolean;
+  notes: NotesBoard;
   showMistakes: boolean;
   fillModeEntry: FillModeEntry;
   theme: Theme;
@@ -156,6 +163,44 @@ function cloneStats(stats: GameStats): GameStats {
 
 function keyOf(row: number, col: number): string {
   return `${row}-${col}`;
+}
+
+function createEmptyNotesBoard(): NotesBoard {
+  return Array.from({ length: 9 }, () => Array<number>(9).fill(0));
+}
+
+function cloneNotesBoard(notes: NotesBoard): NotesBoard {
+  return notes.map((row) => row.slice());
+}
+
+function isNotesBoardShape(notes: unknown): notes is NotesBoard {
+  if (!Array.isArray(notes) || notes.length !== 9) {
+    return false;
+  }
+  return notes.every(
+    (row) =>
+      Array.isArray(row)
+      && row.length === 9
+      && row.every((value) => Number.isInteger(value) && value >= 0 && value <= 511),
+  );
+}
+
+function noteBit(value: number): number {
+  return 1 << (value - 1);
+}
+
+function noteMaskHasValue(mask: number, value: number): boolean {
+  return (mask & noteBit(value)) !== 0;
+}
+
+function noteMaskDigits(mask: number): number[] {
+  const values: number[] = [];
+  for (const digit of DIGITS) {
+    if (noteMaskHasValue(mask, digit)) {
+      values.push(digit);
+    }
+  }
+  return values;
 }
 
 function isBoardShape(board: unknown): board is Board {
@@ -341,6 +386,8 @@ function createInitialState(): GameState {
     selected: null,
     highlightValue: null,
     fillModeValue: null,
+    annotationMode: false,
+    notes: createEmptyNotesBoard(),
     showMistakes: true,
     fillModeEntry: "double-tap",
     theme: "slate",
@@ -362,6 +409,7 @@ function createSnapshot(state: GameState): Snapshot {
   if (!state.board) {
     return {
       board: Array.from({ length: 9 }, () => Array(9).fill(0)),
+      notes: cloneNotesBoard(state.notes),
       selected: state.selected ? { ...state.selected } : null,
       highlightValue: state.highlightValue,
       won: state.won,
@@ -370,6 +418,7 @@ function createSnapshot(state: GameState): Snapshot {
 
   return {
     board: clone(state.board),
+    notes: cloneNotesBoard(state.notes),
     selected: state.selected ? { ...state.selected } : null,
     highlightValue: state.highlightValue,
     won: state.won,
@@ -518,6 +567,8 @@ function loadSavedGame(): GameState | null {
     livesPerGame?: unknown;
     hintsLeft?: unknown;
     livesLeft?: unknown;
+    annotationMode?: unknown;
+    notes?: unknown;
     showMistakes?: unknown;
     fillModeEntry?: unknown;
     theme?: unknown;
@@ -580,6 +631,12 @@ function loadSavedGame(): GameState | null {
   if (candidate.showMistakes !== undefined && typeof candidate.showMistakes !== "boolean") {
     return null;
   }
+  if (candidate.annotationMode !== undefined && typeof candidate.annotationMode !== "boolean") {
+    return null;
+  }
+  if (candidate.notes !== undefined && !isNotesBoardShape(candidate.notes)) {
+    return null;
+  }
   if (candidate.fillModeEntry !== undefined && !isFillModeEntry(candidate.fillModeEntry)) {
     return null;
   }
@@ -595,6 +652,8 @@ function loadSavedGame(): GameState | null {
     livesPerGame,
     hintsLeft: candidate.hintsLeft,
     livesLeft: candidate.livesLeft,
+    annotationMode: candidate.annotationMode,
+    notes: candidate.notes,
     showMistakes: candidate.showMistakes,
     fillModeEntry: candidate.fillModeEntry,
     theme: candidate.theme,
@@ -630,6 +689,8 @@ function loadSavedGame(): GameState | null {
     selected: null,
     highlightValue: null,
     fillModeValue: null,
+    annotationMode: payload.annotationMode === true,
+    notes: payload.notes ?? createEmptyNotesBoard(),
     showMistakes: payload.showMistakes !== undefined ? payload.showMistakes : true,
     fillModeEntry: payload.fillModeEntry ?? "double-tap",
     theme: normalizeTheme(payload.theme),
@@ -759,6 +820,25 @@ export function SudokuApp() {
     [applyState],
   );
 
+  const toggleAnnotationMode = useCallback(() => {
+    const current = stateRef.current;
+    if (isInputLocked(current)) {
+      return;
+    }
+
+    clearLongPressTimer();
+    resetDoubleTapTracking();
+
+    const nextMode = !current.annotationMode;
+    const next: GameState = {
+      ...current,
+      annotationMode: nextMode,
+      fillModeValue: nextMode ? null : current.fillModeValue,
+    };
+
+    applyState(next);
+  }, [applyState, clearLongPressTimer, isInputLocked, resetDoubleTapTracking]);
+
   const toggleFillModeForDigit = useCallback(
     (value: number) => {
       const current = stateRef.current;
@@ -790,6 +870,8 @@ export function SudokuApp() {
         selected: null,
         highlightValue: null,
         fillModeValue: null,
+        annotationMode: false,
+        notes: createEmptyNotesBoard(),
         undoStack: [],
         redoStack: [],
         stats,
@@ -851,6 +933,8 @@ export function SudokuApp() {
       selected: null,
       highlightValue: null,
       fillModeValue: null,
+      annotationMode: false,
+      notes: createEmptyNotesBoard(),
       won: false,
       lost: false,
       undoStack: [],
@@ -913,9 +997,15 @@ export function SudokuApp() {
       const board = clone(current.board);
       board[row][col] = value;
 
+      const notes = cloneNotesBoard(current.notes);
+      if (value !== 0) {
+        notes[row][col] = 0;
+      }
+
       let next: GameState = {
         ...current,
         board,
+        notes,
         highlightValue: value === 0 ? null : value,
         undoStack,
         redoStack: [],
@@ -962,9 +1052,47 @@ export function SudokuApp() {
       if (!current.selected || isInputLocked(current)) {
         return;
       }
-      setCellValue(current.selected.row, current.selected.col, value);
+
+      const { row, col } = current.selected;
+      if (current.annotationMode) {
+        if (!current.board || current.givens.has(keyOf(row, col)) || current.board[row][col] !== 0) {
+          return;
+        }
+
+        const currentMask = current.notes[row][col];
+        let nextMask = currentMask;
+        if (value === 0) {
+          nextMask = 0;
+        } else {
+          nextMask = currentMask ^ noteBit(value);
+        }
+
+        if (nextMask === currentMask) {
+          return;
+        }
+
+        let undoStack = [...current.undoStack, createSnapshot(current)];
+        if (undoStack.length > 300) {
+          undoStack = undoStack.slice(-300);
+        }
+
+        const notes = cloneNotesBoard(current.notes);
+        notes[row][col] = nextMask;
+
+        const next: GameState = {
+          ...current,
+          notes,
+          undoStack,
+          redoStack: [],
+        };
+
+        applyState(next);
+        return;
+      }
+
+      setCellValue(row, col, value);
     },
-    [isInputLocked, setCellValue],
+    [applyState, isInputLocked, setCellValue],
   );
 
   const undoMove = useCallback(() => {
@@ -979,6 +1107,7 @@ export function SudokuApp() {
     let next: GameState = {
       ...current,
       board: clone(snapshot.board),
+      notes: cloneNotesBoard(snapshot.notes),
       selected: snapshot.selected ? { ...snapshot.selected } : null,
       highlightValue: snapshot.highlightValue,
       won: snapshot.won,
@@ -1002,6 +1131,7 @@ export function SudokuApp() {
     let next: GameState = {
       ...current,
       board: clone(snapshot.board),
+      notes: cloneNotesBoard(snapshot.notes),
       selected: snapshot.selected ? { ...snapshot.selected } : null,
       highlightValue: snapshot.highlightValue,
       won: snapshot.won,
@@ -1068,10 +1198,13 @@ export function SudokuApp() {
 
     const board = clone(current.board);
     board[hintCell.row][hintCell.col] = current.solution[hintCell.row][hintCell.col];
+    const notes = cloneNotesBoard(current.notes);
+    notes[hintCell.row][hintCell.col] = 0;
 
     let next: GameState = {
       ...current,
       board,
+      notes,
       selected: { ...hintCell },
       highlightValue: current.solution[hintCell.row][hintCell.col],
       hintsLeft: current.hintsLeft - 1,
@@ -1145,7 +1278,7 @@ export function SudokuApp() {
         return;
       }
 
-      if (current.fillModeValue !== null && !isInputLocked(current)) {
+      if (!current.annotationMode && current.fillModeValue !== null && !isInputLocked(current)) {
         if (!current.givens.has(keyOf(row, col)) && current.board[row][col] === 0) {
           const next: GameState = {
             ...current,
@@ -1184,6 +1317,11 @@ export function SudokuApp() {
         return;
       }
 
+      if (current.annotationMode) {
+        applyNumberInput(value);
+        return;
+      }
+
       if (current.fillModeEntry === "double-tap") {
         handleDoubleTapEntry(value);
         return;
@@ -1201,7 +1339,7 @@ export function SudokuApp() {
   const onNumpadPointerDown = useCallback(
     (event: ReactPointerEvent<HTMLElement>) => {
       const current = stateRef.current;
-      if (current.lost || current.fillModeEntry !== "long-press") {
+      if (current.lost || current.annotationMode || current.fillModeEntry !== "long-press") {
         return;
       }
 
@@ -1266,6 +1404,8 @@ export function SudokuApp() {
       selected: null,
       highlightValue: null,
       fillModeValue: null,
+      annotationMode: false,
+      notes: createEmptyNotesBoard(),
       undoStack: [],
       redoStack: [],
       stats: recordGameStart(current.stats, current.difficulty),
@@ -1377,6 +1517,8 @@ export function SudokuApp() {
       livesPerGame: state.livesPerGame,
       hintsLeft: state.hintsLeft,
       livesLeft: state.livesLeft,
+      annotationMode: state.annotationMode,
+      notes: state.notes,
       showMistakes: state.showMistakes,
       fillModeEntry: state.fillModeEntry,
       theme: state.theme,
@@ -1489,6 +1631,12 @@ export function SudokuApp() {
         return;
       }
 
+      if (!event.metaKey && !event.ctrlKey && event.key.toLowerCase() === "n") {
+        event.preventDefault();
+        toggleAnnotationMode();
+        return;
+      }
+
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
         event.preventDefault();
         if (event.shiftKey) {
@@ -1540,6 +1688,7 @@ export function SudokuApp() {
     moveSelection,
     redoMove,
     setFillMode,
+    toggleAnnotationMode,
     undoMove,
     winPromptOpen,
     activeView,
@@ -1673,6 +1822,16 @@ export function SudokuApp() {
                       </span>
                     </p>
                     <div className="game-subbar-right">
+                      <button
+                        id="annotation-mode"
+                        type="button"
+                        disabled={isInputLocked(state)}
+                        className={state.annotationMode ? "annotation-enabled" : ""}
+                        aria-pressed={state.annotationMode}
+                        onClick={toggleAnnotationMode}
+                      >
+                        Notes
+                      </button>
                       <button id="hint" type="button" disabled={state.hintsLeft <= 0 || isInputLocked(state)} onClick={handleHint}>
                         Hint (<span id="hints-left">{state.hintsLeft}</span>)
                       </button>
@@ -1684,6 +1843,8 @@ export function SudokuApp() {
                       && state.board.map((rowValues, row) =>
                         rowValues.map((value, col) => {
                           const given = state.givens.has(keyOf(row, col));
+                          const noteMask = value === 0 ? state.notes[row][col] : 0;
+                          const noteDigits = noteMask === 0 ? [] : noteMaskDigits(noteMask);
                           const classes = ["cell"];
 
                           const boxParity = (Math.floor(row / 3) + Math.floor(col / 3)) % 2;
@@ -1727,6 +1888,13 @@ export function SudokuApp() {
                             classes.push("invalid");
                           }
 
+                          const labelParts = [`Row ${row + 1}, Column ${col + 1}`];
+                          if (value !== 0) {
+                            labelParts.push(`Value ${value}`);
+                          } else if (noteDigits.length > 0) {
+                            labelParts.push(`Notes ${noteDigits.join(" ")}`);
+                          }
+
                           return (
                             <button
                               key={`${row}-${col}`}
@@ -1735,9 +1903,21 @@ export function SudokuApp() {
                               data-row={row}
                               data-col={col}
                               role="gridcell"
-                              aria-label={`Row ${row + 1}, Column ${col + 1}`}
+                              aria-label={labelParts.join(", ")}
                             >
-                              {value === 0 ? "" : String(value)}
+                              {value === 0
+                                ? noteMask === 0
+                                  ? ""
+                                  : (
+                                    <span className="cell-notes" aria-hidden="true">
+                                      {DIGITS.map((digit) => (
+                                        <span key={`note-${digit}`} className={`cell-note${noteMaskHasValue(noteMask, digit) ? "" : " empty"}`}>
+                                          {digit}
+                                        </span>
+                                      ))}
+                                    </span>
+                                  )
+                                : String(value)}
                             </button>
                           );
                         }),
@@ -1745,7 +1925,7 @@ export function SudokuApp() {
                   </div>
 
                   <section
-                    className={`numpad${state.fillModeValue !== null ? " fill-mode-active" : ""}`}
+                    className={`numpad${state.fillModeValue !== null ? " fill-mode-active" : ""}${state.annotationMode ? " annotation-mode-active" : ""}`}
                     aria-label="Number input"
                     onClick={onNumpadClick}
                     onPointerDown={onNumpadPointerDown}
@@ -1756,6 +1936,7 @@ export function SudokuApp() {
                     {DIGITS.map((digit) => {
                       const disabled = state.lost || isDigitCompletedCorrectly(state, digit);
                       const isFillMode = state.fillModeValue !== null && state.fillModeValue === digit;
+                      const isAnnotationMode = state.annotationMode;
                       const isCompleted = countDigitOnBoard(state.board, digit) >= 9;
 
                       return (
@@ -1764,7 +1945,7 @@ export function SudokuApp() {
                           type="button"
                           data-value={digit}
                           disabled={disabled}
-                          className={isFillMode ? "fill-mode" : ""}
+                          className={isFillMode ? "fill-mode" : isAnnotationMode ? "annotation-mode" : ""}
                           aria-label={isCompleted ? `Number ${digit} completed` : `Number ${digit}`}
                         >
                           {digit}

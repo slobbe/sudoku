@@ -338,6 +338,9 @@ body {
 }
 
 .game-subbar-right {
+    display: flex;
+    align-items: center;
+    gap: 6px;
     justify-self: end;
 }
 
@@ -449,6 +452,7 @@ button:active {
 #home-button,
 #undo,
 #redo,
+#annotation-mode,
 #reset-game,
 #hint,
 #stats-open,
@@ -458,6 +462,7 @@ button:active {
 
 #undo,
 #redo,
+#annotation-mode,
 #reset-game,
 #hint,
 #new-game,
@@ -545,9 +550,35 @@ button:disabled {
     touch-action: manipulation;
 }
 
+.cell-notes {
+    width: 100%;
+    height: 100%;
+    padding: 4%;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    color: var(--muted);
+    font-size: clamp(0.38rem, 1.75vw, 0.64rem);
+    font-weight: 600;
+    line-height: 1;
+}
+
+.cell-note {
+    display: grid;
+    place-items: center;
+}
+
+.cell-note.empty {
+    opacity: 0;
+}
+
 @supports (width: 1cqi) {
     .cell {
         font-size: clamp(0.72rem, 5.1cqi, 2.05rem);
+    }
+
+    .cell-notes {
+        font-size: clamp(0.38rem, 1.85cqi, 0.64rem);
     }
 }
 
@@ -589,6 +620,10 @@ button:disabled {
     box-shadow: inset 0 0 0 2px var(--selection-ring);
 }
 
+.cell.selected .cell-notes {
+    color: var(--ink);
+}
+
 .cell.selected.match {
     box-shadow:
         inset 0 0 0 2px var(--selection-ring),
@@ -623,17 +658,30 @@ button:disabled {
     padding: 6px 0;
 }
 
-.numpad button.fill-mode {
+.numpad button.fill-mode,
+.numpad button.annotation-mode {
     background: var(--fill-mode-bg);
     border-color: var(--accent);
     box-shadow: inset 0 0 0 1px var(--selection-ring);
 }
 
-.numpad.fill-mode-active button:hover {
+.numpad.fill-mode-active button:hover,
+.numpad.annotation-mode-active button:hover {
     background: var(--control-bg);
 }
 
-.numpad.fill-mode-active button.fill-mode:hover {
+.numpad.fill-mode-active button.fill-mode:hover,
+.numpad.annotation-mode-active button.annotation-mode:hover {
+    background: var(--fill-mode-active);
+}
+
+#annotation-mode.annotation-enabled {
+    background: var(--fill-mode-bg);
+    border-color: var(--accent);
+    box-shadow: inset 0 0 0 1px var(--selection-ring);
+}
+
+#annotation-mode.annotation-enabled:hover {
     background: var(--fill-mode-active);
 }
 
