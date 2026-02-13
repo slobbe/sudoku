@@ -126,6 +126,24 @@ const LIVES_OPTIONS = Array.from(
   (_, index) => MIN_LIVES_PER_GAME + index,
 );
 
+const HOME_STATUS_MESSAGES = [
+  "Sudoku rule zero: no guessing, only dramatic confidence.",
+  "Tip: scan rows and columns for cells with only one possible number.",
+  "Your pencil notes are tiny detectives. Let them investigate.",
+  "Tip: if a number can go in only one spot in a 3x3 box, place it.",
+  "When stuck, look for what is missing, not what is possible.",
+  "Tip: pairs of candidates can eliminate options from neighboring cells.",
+  "Sudoku is yoga for your brain, but with more muttering.",
+  "Tip: finish easy singles first to unlock harder patterns.",
+  "Every solved cell is one less mystery and one more victory.",
+  "Tip: check intersections where row and box constraints overlap.",
+  "If the board stares back, stare harder and mark notes.",
+  "Tip: after placing a number, recheck peers for new singles.",
+  "A calm solver is a fast solver. Breathe, then scan.",
+  "Tip: use hints sparingly; they are best when progress truly stalls.",
+  "No rush: correct and steady beats fast and chaotic.",
+];
+
 const THEME_COLORS: Record<Theme, string> = {
   slate: "#151a21",
   mist: "#161918",
@@ -201,6 +219,22 @@ function noteMaskDigits(mask: number): number[] {
     }
   }
   return values;
+}
+
+function pickHomeStatusMessage(previous?: string): string {
+  if (HOME_STATUS_MESSAGES.length === 0) {
+    return "";
+  }
+  if (HOME_STATUS_MESSAGES.length === 1) {
+    return HOME_STATUS_MESSAGES[0];
+  }
+
+  let next = HOME_STATUS_MESSAGES[Math.floor(Math.random() * HOME_STATUS_MESSAGES.length)] ?? HOME_STATUS_MESSAGES[0];
+  for (let attempts = 0; attempts < 8 && next === previous; attempts += 1) {
+    next = HOME_STATUS_MESSAGES[Math.floor(Math.random() * HOME_STATUS_MESSAGES.length)] ?? HOME_STATUS_MESSAGES[0];
+  }
+
+  return next;
 }
 
 function clearPeerNoteDigit(notes: NotesBoard, board: Board, row: number, col: number, value: number): void {
@@ -783,7 +817,7 @@ export function SudokuApp() {
   const stateRef = useRef<GameState>(state);
 
   const [activeView, setActiveView] = useState<AppView>("home");
-  const [statusMessage, setStatusMessage] = useState<string>("Generating puzzle...");
+  const [statusMessage, setStatusMessage] = useState<string>(() => pickHomeStatusMessage());
   const [winPromptOpen, setWinPromptOpen] = useState(false);
   const [losePromptOpen, setLosePromptOpen] = useState(false);
 
@@ -926,6 +960,7 @@ export function SudokuApp() {
     setWinPromptOpen(false);
     setLosePromptOpen(false);
     setActiveView("home");
+    setStatusMessage((currentMessage) => pickHomeStatusMessage(currentMessage));
   }, []);
 
   const openSettingsView = useCallback(() => {
@@ -1522,10 +1557,8 @@ export function SudokuApp() {
     const restored = loadSavedGame();
     if (restored) {
       applyState(restored);
-      setStatusMessage("Restored your previous puzzle.");
-    } else {
-      setStatusMessage("Choose New Puzzle to begin.");
     }
+    setStatusMessage((currentMessage) => pickHomeStatusMessage(currentMessage));
     setIsHydrated(true);
   }, [applyState]);
 
