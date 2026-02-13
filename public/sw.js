@@ -1,4 +1,4 @@
-const APP_VERSION = "0.2.2";
+const APP_VERSION = "0.3.0";
 const CACHE_NAME = `sudoku-next-${APP_VERSION}`;
 const FALLBACK_URL = "./";
 const PRECACHE_URLS = [
