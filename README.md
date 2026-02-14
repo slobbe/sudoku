@@ -61,19 +61,19 @@ bun run build
 Run a single test file:
 
 ```bash
-bun run test -- tests/sudoku.test.ts
+bun test tests/sudoku.test.ts
 ```
 
 Run a single test by name:
 
 ```bash
-bun run test -- tests/sudoku.test.ts -t "generates puzzles with exactly one solution"
+bun test tests/sudoku.test.ts -t "generates puzzles with exactly one solution"
 ```
 
-Equivalent direct Vitest command:
+Watch mode:
 
 ```bash
-bunx vitest run tests/sudoku.test.ts -t "generates puzzles with exactly one solution"
+bun run test:watch
 ```
 
 ## Data & Privacy

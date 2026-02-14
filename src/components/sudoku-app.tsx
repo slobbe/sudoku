@@ -111,7 +111,7 @@ const SAVE_KEY = "sudoku-pwa-current-game-v1";
 const DOUBLE_TAP_MS = 300;
 
 const APP_NAME = "Sudoku";
-const APP_VERSION = "0.3.2";
+const APP_VERSION = "0.3.3";
 const APP_AUTHOR = "slobbe";
 
 const THEMES: Theme[] = ["slate", "dusk", "mist", "amber"];
