@@ -817,7 +817,7 @@ export function SudokuApp() {
   const stateRef = useRef<GameState>(state);
 
   const [activeView, setActiveView] = useState<AppView>("home");
-  const [statusMessage, setStatusMessage] = useState<string>(() => pickHomeStatusMessage());
+  const [statusMessage, setStatusMessage] = useState<string>(() => HOME_STATUS_MESSAGES[0] ?? "");
   const [winPromptOpen, setWinPromptOpen] = useState(false);
   const [losePromptOpen, setLosePromptOpen] = useState(false);
 
