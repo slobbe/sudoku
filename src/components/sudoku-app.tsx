@@ -2151,7 +2151,7 @@ export function SudokuApp() {
                 <p className="app-info-inline">
                   <span id="app-info-name">{APP_NAME}</span>
                   {" "}
-                  v<span id="app-info-version">{APP_VERSION}</span>
+                  <span id="app-info-version">{APP_VERSION}</span>
                   {" "}
                   by <span id="app-info-author">{APP_AUTHOR}</span>
                 </p>
