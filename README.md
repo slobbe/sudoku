@@ -27,8 +27,8 @@ An offline-capable Sudoku puzzle app built with Next.js (App Router), React, and
 ## Quick Start
 
 ```bash
-npm ci
-npm run dev
+bun install --frozen-lockfile
+bun run dev
 ```
 
 Open `http://localhost:3000`.
@@ -41,39 +41,39 @@ Open `http://localhost:3000`.
 
 ## Scripts
 
-- `npm run dev` - Start local dev server
-- `npm run build` - Build production bundle
-- `npm run start` - Run production server
-- `npm run lint` - Run lint checks
-- `npm test` - Run unit tests
-- `npm run test:watch` - Run tests in watch mode
+- `bun run dev` - Start local dev server
+- `bun run build` - Build production bundle
+- `bun run start` - Run production server
+- `bun run lint` - Run lint checks
+- `bun run test` - Run unit tests
+- `bun run test:watch` - Run tests in watch mode
 
 ## Testing & Validation
 
 Run these checks before opening a PR or cutting a release:
 
 ```bash
-npm run lint
-npm test
-npm run build
+bun run lint
+bun run test
+bun run build
 ```
 
 Run a single test file:
 
 ```bash
-npm test -- tests/sudoku.test.ts
+bun run test -- tests/sudoku.test.ts
 ```
 
 Run a single test by name:
 
 ```bash
-npm test -- tests/sudoku.test.ts -t "generates puzzles with exactly one solution"
+bun run test -- tests/sudoku.test.ts -t "generates puzzles with exactly one solution"
 ```
 
 Equivalent direct Vitest command:
 
 ```bash
-npx vitest run tests/sudoku.test.ts -t "generates puzzles with exactly one solution"
+bunx vitest run tests/sudoku.test.ts -t "generates puzzles with exactly one solution"
 ```
 
 ## Data & Privacy
@@ -93,7 +93,7 @@ npx vitest run tests/sudoku.test.ts -t "generates puzzles with exactly one solut
 When releasing a new version, keep app version values aligned in:
 
 - `package.json` (`version`)
-- `package-lock.json` (`version`)
+- `bun.lock` (lockfile)
 - `src/components/sudoku-app.tsx` (`APP_VERSION`)
 - `public/sw.js` (`APP_VERSION`, used by cache naming)
 
