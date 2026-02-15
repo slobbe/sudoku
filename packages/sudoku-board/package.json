@@ -1,11 +1,26 @@
 {
   "name": "@slobbe/sudoku-board",
   "version": "0.1.0",
+  "description": "Reusable React Sudoku board component with variable-driven theming.",
+  "license": "MIT",
   "type": "module",
-  "main": "./src/index.ts",
-  "types": "./src/index.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
   "exports": {
-    ".": "./src/index.ts"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json && node ./scripts/copy-css.mjs",
+    "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
     "react": "^19.0.0"

@@ -172,3 +172,35 @@ Puzzle generation and validation logic is extracted to a reusable workspace pack
 - Package name: `@slobbe/sudoku-engine`
 - Core exports: `generatePuzzle`, `solveBoard`, `countSolutions`, `boardComplete`, `isValidPlacement`, `clone`
 - Types: `Board`, `Difficulty`, `PuzzleCandidate`
+
+## Publishing Packages
+
+This repo publishes packages from the same monorepo while the demo PWA is deployed separately.
+
+- Demo PWA deploy: `.github/workflows/deploy-pages.yml` (pushes to `main`)
+- NPM package publish: `.github/workflows/publish-packages.yml` (tag-driven)
+
+Tag formats:
+
+- `sudoku-board-v<version>` publishes `@slobbe/sudoku-board`
+- `sudoku-engine-v<version>` publishes `@slobbe/sudoku-engine`
+
+Manual release flow:
+
+1. Bump package version in the target package `package.json`.
+2. Commit and push to `main`.
+3. Create and push a matching tag.
+
+```bash
+# Example: publish board version 0.1.1
+git tag sudoku-board-v0.1.1
+git push origin sudoku-board-v0.1.1
+
+# Example: publish engine version 0.1.1
+git tag sudoku-engine-v0.1.1
+git push origin sudoku-engine-v0.1.1
+```
+
+Required repository secret:
+
+- `NPM_TOKEN` with publish permission for the `@slobbe` scope.

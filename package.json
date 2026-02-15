@@ -9,6 +9,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:packages": "bun run build:pkg:engine && bun run build:pkg:board",
+    "build:pkg:engine": "tsc -p packages/sudoku-engine/tsconfig.build.json",
+    "build:pkg:board": "tsc -p packages/sudoku-board/tsconfig.build.json && node packages/sudoku-board/scripts/copy-css.mjs",
     "start": "next start",
     "lint": "eslint .",
     "test": "bun test",
