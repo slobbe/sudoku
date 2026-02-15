@@ -17,7 +17,7 @@ import {
   generatePuzzle,
   type Board,
   type Difficulty,
-} from "@/lib/sudoku";
+} from "@slobbe/sudoku-engine";
 
 type Theme = "slate" | "dusk" | "mist" | "amber";
 type FillModeEntry = "long-press" | "double-tap";

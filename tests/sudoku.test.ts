@@ -5,7 +5,7 @@ import {
   countSolutions,
   generatePuzzle,
   solveBoard,
-} from "../src/lib/sudoku";
+} from "@slobbe/sudoku-engine";
 
 function isBoardShapeValid(board: number[][]): boolean {
   return (

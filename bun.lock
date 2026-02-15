@@ -6,6 +6,7 @@
       "name": "sudoku-next-pwa",
       "dependencies": {
         "@slobbe/sudoku-board": "workspace:*",
+        "@slobbe/sudoku-engine": "workspace:*",
         "next": "^16.1.6",
         "react": "^19.2.4",
         "react-dom": "^19.2.4",
@@ -26,6 +27,10 @@
       "peerDependencies": {
         "react": "^19.0.0",
       },
+    },
+    "packages/sudoku-engine": {
+      "name": "@slobbe/sudoku-engine",
+      "version": "0.1.0",
     },
   },
   "packages": {
@@ -186,6 +191,8 @@
     "@rtsao/scc": ["@rtsao/scc@1.1.0", "", {}, "sha512-zt6OdqaDoOnJ1ZYsCYGt9YmWzDXl4vQdKTyJev62gFhRGKdx7mcT54V9KIjg+d2wi9EXsPvAPKe7i7WjfVWB8g=="],
 
     "@slobbe/sudoku-board": ["@slobbe/sudoku-board@workspace:packages/sudoku-board"],
+
+    "@slobbe/sudoku-engine": ["@slobbe/sudoku-engine@workspace:packages/sudoku-engine"],
 
     "@swc/helpers": ["@swc/helpers@0.5.15", "", { "dependencies": { "tslib": "^2.8.0" } }, "sha512-JQ5TuMi45Owi4/BIMAJBoSQoOJu12oOk/gADqlcUL9JEdHB8vyjUSsxqeNXnmXHjYKMi2WcYtezGEEhqUI/E2g=="],
 

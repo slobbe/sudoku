@@ -122,9 +122,10 @@ The workflow automatically sets `NEXT_PUBLIC_BASE_PATH`:
 - `app/page.tsx` - Main page entry
 - `app/globals.css` - Global styling and themes
 - `src/components/sudoku-app.tsx` - App UI and puzzle interactions
-- `src/lib/sudoku.ts` - Puzzle generation/solver/validation logic
+- `src/lib/sudoku.ts` - Compatibility re-export to engine package
 - `tests/sudoku.test.ts` - Engine tests
 - `packages/sudoku-board/` - Reusable board workspace package (`@slobbe/sudoku-board`)
+- `packages/sudoku-engine/` - Reusable puzzle engine workspace package (`@slobbe/sudoku-engine`)
 
 ## Board Package (Workspace)
 
@@ -163,3 +164,11 @@ Common variables:
 - `--sudoku-peer-box-bg`, `--sudoku-peer-box-ring`
 - `--sudoku-match-bg`, `--sudoku-match-ink`, `--sudoku-match-ring`
 - `--sudoku-invalid-ink`, `--sudoku-focus-ring`
+
+## Engine Package (Workspace)
+
+Puzzle generation and validation logic is extracted to a reusable workspace package:
+
+- Package name: `@slobbe/sudoku-engine`
+- Core exports: `generatePuzzle`, `solveBoard`, `countSolutions`, `boardComplete`, `isValidPlacement`, `clone`
+- Types: `Board`, `Difficulty`, `PuzzleCandidate`
