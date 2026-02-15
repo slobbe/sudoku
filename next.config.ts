@@ -5,6 +5,7 @@ const normalizedBasePath = rawBasePath === "/" ? "" : rawBasePath.replace(/\/$/,
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  transpilePackages: ["@slobbe/sudoku-board"],
   output: "export",
   trailingSlash: true,
   images: {

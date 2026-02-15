@@ -421,7 +421,7 @@ body {
     font-weight: 700;
 }
 
-button,
+button:not([data-sudoku-cell="true"]),
 select {
     border: 1px solid var(--line);
     border-radius: 2px;
@@ -431,7 +431,7 @@ select {
     color: var(--ink);
 }
 
-button {
+button:not([data-sudoku-cell="true"]) {
     cursor: pointer;
     transition: background-color 120ms ease;
     user-select: none;
@@ -440,11 +440,11 @@ button {
     touch-action: manipulation;
 }
 
-button:hover {
+button:not([data-sudoku-cell="true"]):hover {
     background: var(--control-hover);
 }
 
-button:active {
+button:not([data-sudoku-cell="true"]):active {
     background: var(--control-active);
 }
 
@@ -472,7 +472,7 @@ button:active {
     flex-shrink: 0;
 }
 
-button:disabled {
+button:not([data-sudoku-cell="true"]):disabled {
     opacity: 0.45;
     cursor: not-allowed;
 }
@@ -514,6 +514,31 @@ button:disabled {
     .board-stack {
         width: 100%;
     }
+}
+
+.pwa-board-theme {
+    --sudoku-font-family: "Space Grotesk", system-ui, sans-serif;
+    --sudoku-board-border-color: var(--box-divider);
+    --sudoku-square-divider-color: var(--line);
+    --sudoku-cell-bg: var(--box-tone-a);
+    --sudoku-cell-bg-alt: var(--box-tone-b);
+    --sudoku-cell-ink: var(--cell-ink);
+    --sudoku-given-bg: var(--given);
+    --sudoku-given-ink: var(--ink);
+    --sudoku-active-bg: var(--active);
+    --sudoku-active-ring: var(--selection-ring);
+    --sudoku-peer-bg: var(--peer);
+    --sudoku-peer-ring: var(--peer-ring);
+    --sudoku-peer-box-bg: var(--peer-box);
+    --sudoku-peer-box-ring: var(--peer-box-ring);
+    --sudoku-match-bg: var(--match-fill);
+    --sudoku-match-ink: var(--match-ink);
+    --sudoku-match-ring: var(--match-ring);
+    --sudoku-invalid-ink: var(--error);
+    --sudoku-focus-ring: var(--selection-ring);
+    --sudoku-note-ink: var(--muted);
+    --sudoku-note-highlight-ink: var(--match-ink);
+    --sudoku-selected-note-ink: var(--ink);
 }
 
 .board {

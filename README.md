@@ -124,3 +124,42 @@ The workflow automatically sets `NEXT_PUBLIC_BASE_PATH`:
 - `src/components/sudoku-app.tsx` - App UI and puzzle interactions
 - `src/lib/sudoku.ts` - Puzzle generation/solver/validation logic
 - `tests/sudoku.test.ts` - Engine tests
+- `packages/sudoku-board/` - Reusable board workspace package (`@slobbe/sudoku-board`)
+
+## Board Package (Workspace)
+
+The Sudoku board UI is extracted to a reusable workspace package:
+
+- Package name: `@slobbe/sudoku-board`
+- Component export: `SudokuBoard`
+- Styles are bundled with the component (no separate CSS import)
+- Color scheme prop: `colorScheme?: "auto" | "light" | "dark"` (`"auto"` by default)
+
+The package ships with neutral defaults in both light and dark mode:
+
+- `auto`: follows `prefers-color-scheme`
+- `light`: forces neutral light palette
+- `dark`: forces neutral dark palette
+
+The board is themed through CSS variables on the `className` you pass to `SudokuBoard`, for example:
+
+```css
+.myBoardTheme {
+  --sudoku-cell-bg: #101820;
+  --sudoku-cell-bg-alt: #142230;
+  --sudoku-cell-ink: #f4f7fb;
+  --sudoku-given-bg: #1b2c3a;
+  --sudoku-active-bg: #24435b;
+  --sudoku-match-ring: #68b8ff;
+}
+```
+
+Common variables:
+
+- `--sudoku-cell-bg`, `--sudoku-cell-bg-alt`, `--sudoku-cell-ink`
+- `--sudoku-given-bg`, `--sudoku-given-ink`
+- `--sudoku-active-bg`, `--sudoku-active-ring`
+- `--sudoku-peer-bg`, `--sudoku-peer-ring`
+- `--sudoku-peer-box-bg`, `--sudoku-peer-box-ring`
+- `--sudoku-match-bg`, `--sudoku-match-ink`, `--sudoku-match-ring`
+- `--sudoku-invalid-ink`, `--sudoku-focus-ring`

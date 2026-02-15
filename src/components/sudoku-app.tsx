@@ -9,6 +9,7 @@ import {
   useRef,
   useState,
 } from "react";
+import { SudokuBoard } from "@slobbe/sudoku-board";
 import {
   boardComplete,
   clone,
@@ -205,20 +206,6 @@ function isNotesBoardShape(notes: unknown): notes is NotesBoard {
 
 function noteBit(value: number): number {
   return 1 << (value - 1);
-}
-
-function noteMaskHasValue(mask: number, value: number): boolean {
-  return (mask & noteBit(value)) !== 0;
-}
-
-function noteMaskDigits(mask: number): number[] {
-  const values: number[] = [];
-  for (const digit of DIGITS) {
-    if (noteMaskHasValue(mask, digit)) {
-      values.push(digit);
-    }
-  }
-  return values;
 }
 
 function pickHomeStatusMessage(previous?: string): string {
@@ -1323,21 +1310,10 @@ export function SudokuApp() {
     [applyNumberInput, clearPendingTapTimer, resetDoubleTapTracking, toggleFillModeForDigit],
   );
 
-  const onBoardClick = useCallback(
-    (event: ReactMouseEvent<HTMLDivElement>) => {
+  const onBoardCellSelect = useCallback(
+    (row: number, col: number) => {
       const current = stateRef.current;
       if (current.lost || !current.board) {
-        return;
-      }
-
-      const cell = (event.target as HTMLElement).closest<HTMLButtonElement>(".cell");
-      if (!cell) {
-        return;
-      }
-
-      const row = Number(cell.dataset.row);
-      const col = Number(cell.dataset.col);
-      if (!Number.isInteger(row) || !Number.isInteger(col)) {
         return;
       }
 
@@ -1899,99 +1875,21 @@ export function SudokuApp() {
                     </div>
                   </div>
 
-                  <div id="board" className="board" role="grid" aria-label="Sudoku grid" onClick={onBoardClick}>
-                    {state.board
-                      && state.board.map((rowValues, row) =>
-                        rowValues.map((value, col) => {
-                          const given = state.givens.has(keyOf(row, col));
-                          const noteMask = value === 0 ? state.notes[row][col] : 0;
-                          const noteDigits = noteMask === 0 ? [] : noteMaskDigits(noteMask);
-                          const classes = ["cell"];
-
-                          const boxParity = (Math.floor(row / 3) + Math.floor(col / 3)) % 2;
-                          classes.push(boxParity === 0 ? "box-tone-a" : "box-tone-b");
-
-                          if (col === 2 || col === 5) {
-                            classes.push("box-right");
-                          }
-                          if (row === 2 || row === 5) {
-                            classes.push("box-bottom");
-                          }
-                          if (given) {
-                            classes.push("given");
-                          }
-
-                          if (showSelectionHighlights && state.selected && state.selected.row === row && state.selected.col === col) {
-                            classes.push("selected");
-                          } else if (showSelectionHighlights && state.selected) {
-                            const sameRowOrCol = state.selected.row === row || state.selected.col === col;
-                            const sameBox =
-                              Math.floor(state.selected.row / 3) === Math.floor(row / 3)
-                              && Math.floor(state.selected.col / 3) === Math.floor(col / 3);
-                            if (sameRowOrCol) {
-                              classes.push("peer");
-                            } else if (sameBox) {
-                              classes.push("peer-box");
-                            }
-                          }
-
-                          if (highlighted !== null && value === highlighted) {
-                            classes.push("match");
-                          }
-
-                          if (
-                            state.showMistakes
-                            && value !== 0
-                            && !given
-                            && state.solution
-                            && value !== state.solution[row][col]
-                          ) {
-                            classes.push("invalid");
-                          }
-
-                          const labelParts = [`Row ${row + 1}, Column ${col + 1}`];
-                          if (value !== 0) {
-                            labelParts.push(`Value ${value}`);
-                          } else if (noteDigits.length > 0) {
-                            labelParts.push(`Notes ${noteDigits.join(" ")}`);
-                          }
-
-                          return (
-                            <button
-                              key={`${row}-${col}`}
-                              type="button"
-                              className={classes.join(" ")}
-                              data-row={row}
-                              data-col={col}
-                              role="gridcell"
-                              aria-label={labelParts.join(", ")}
-                            >
-                              {value === 0
-                                ? noteMask === 0
-                                  ? ""
-                                  : (
-                                    <span className="cell-notes" aria-hidden="true">
-                                      {DIGITS.map((digit) => {
-                                        const hasNote = noteMaskHasValue(noteMask, digit);
-                                        const isHighlighted = hasNote && highlighted === digit;
-
-                                        return (
-                                          <span
-                                            key={`note-${digit}`}
-                                            className={`cell-note${hasNote ? "" : " empty"}${isHighlighted ? " highlight" : ""}`}
-                                          >
-                                            {digit}
-                                          </span>
-                                        );
-                                      })}
-                                    </span>
-                                  )
-                                : String(value)}
-                            </button>
-                          );
-                        }),
-                      )}
-                  </div>
+                  {state.board ? (
+                    <SudokuBoard
+                      id="board"
+                      className="pwa-board-theme"
+                      board={state.board}
+                      notes={state.notes}
+                      givens={state.givens}
+                      selected={state.selected}
+                      highlightedValue={highlighted}
+                      showSelectionHighlights={showSelectionHighlights}
+                      showMistakes={state.showMistakes}
+                      solution={state.solution}
+                      onCellSelect={onBoardCellSelect}
+                    />
+                  ) : null}
 
                   <section
                     className={`numpad${state.fillModeValue !== null ? " fill-mode-active" : ""}${state.annotationMode ? " annotation-mode-active" : ""}`}
