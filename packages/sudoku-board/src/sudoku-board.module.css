@@ -135,6 +135,10 @@
   outline: none;
 }
 
+.cell:disabled {
+  cursor: default;
+}
+
 .given {
   background: var(--_given-bg);
   color: var(--_given-ink);

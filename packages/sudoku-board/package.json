@@ -2,12 +2,36 @@
   "name": "@slobbe/sudoku-board",
   "version": "0.1.0",
   "description": "Reusable React Sudoku board component with variable-driven theming.",
+  "author": "Sebastian Lobbe",
   "license": "MIT",
+  "keywords": [
+    "sudoku",
+    "react",
+    "board",
+    "puzzle",
+    "game-ui"
+  ],
+  "homepage": "https://github.com/slobbe/sudoku/tree/main/packages/sudoku-board",
+  "bugs": {
+    "url": "https://github.com/slobbe/sudoku/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/slobbe/sudoku.git",
+    "directory": "packages/sudoku-board"
+  },
+  "engines": {
+    "node": ">=18"
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
+  ],
+  "sideEffects": [
+    "**/*.css"
   ],
   "exports": {
     ".": {
@@ -23,6 +47,7 @@
     "prepublishOnly": "npm run build"
   },
   "peerDependencies": {
-    "react": "^19.0.0"
+    "react": "^18.2.0 || ^19.0.0",
+    "react-dom": "^18.2.0 || ^19.0.0"
   }
 }

@@ -62,16 +62,14 @@ jobs:
             exit 1
           fi
 
+      - name: Build workspace packages
+        run: bun run build:packages
+
       - name: Run lint and tests
         run: bun run lint && bun run test
 
-      - name: Build selected package
-        run: |
-          if [ "${{ steps.meta.outputs.package_key }}" = "board" ]; then
-            bun run build:pkg:board
-          else
-            bun run build:pkg:engine
-          fi
+      - name: Validate package tarball
+        run: npm pack --workspace "${{ steps.meta.outputs.package_name }}" --dry-run
 
       - name: Publish package to npm
         env:

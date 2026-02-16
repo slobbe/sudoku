@@ -9,7 +9,12 @@ import {
   useRef,
   useState,
 } from "react";
-import { SudokuBoard } from "@slobbe/sudoku-board";
+import {
+  givensSetToBooleanBoard,
+  noteMaskBoardToDigitsBoard,
+  SudokuBoard,
+  type SudokuBoardCell,
+} from "@slobbe/sudoku-board";
 import {
   boardComplete,
   clone,
@@ -1311,7 +1316,7 @@ export function SudokuApp() {
   );
 
   const onBoardCellSelect = useCallback(
-    (row: number, col: number) => {
+    ({ row, col }: SudokuBoardCell) => {
       const current = stateRef.current;
       if (current.lost || !current.board) {
         return;
@@ -1740,6 +1745,22 @@ export function SudokuApp() {
 
   const highlighted = state.fillModeValue !== null ? state.fillModeValue : state.highlightValue;
   const showSelectionHighlights = state.fillModeValue === null;
+  const boardGivens = useMemo(() => givensSetToBooleanBoard(state.givens), [state.givens]);
+  const boardNotes = useMemo(() => noteMaskBoardToDigitsBoard(state.notes), [state.notes]);
+  const invalidCells = useMemo(() => {
+    if (!state.showMistakes || !state.board || !state.solution) {
+      return undefined;
+    }
+
+    return state.board.map((rowValues, row) =>
+      rowValues.map((value, col) => {
+        if (value === 0 || state.givens.has(keyOf(row, col))) {
+          return false;
+        }
+        return value !== state.solution?.[row]?.[col];
+      }),
+    );
+  }, [state.board, state.givens, state.showMistakes, state.solution]);
   const canContinueCurrentPuzzle = Boolean(
     state.puzzle
     && state.board
@@ -1879,15 +1900,14 @@ export function SudokuApp() {
                     <SudokuBoard
                       id="board"
                       className="pwa-board-theme"
-                      board={state.board}
-                      notes={state.notes}
-                      givens={state.givens}
-                      selected={state.selected}
-                      highlightedValue={highlighted}
+                      values={state.board}
+                      notes={boardNotes}
+                      givens={boardGivens}
+                      selectedCell={state.selected}
+                      highlightedDigit={highlighted}
+                      invalidCells={invalidCells}
                       showSelectionHighlights={showSelectionHighlights}
-                      showMistakes={state.showMistakes}
-                      solution={state.solution}
-                      onCellSelect={onBoardCellSelect}
+                      onSelectCell={onBoardCellSelect}
                     />
                   ) : null}
 

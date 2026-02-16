@@ -133,8 +133,15 @@ The Sudoku board UI is extracted to a reusable workspace package:
 
 - Package name: `@slobbe/sudoku-board`
 - Component export: `SudokuBoard`
+- Helper exports: `givensSetToBooleanBoard`, `noteMaskBoardToDigitsBoard`, `digitsToNoteMask`, `noteMaskToDigits`
 - Styles are bundled with the component (no separate CSS import)
 - Color scheme prop: `colorScheme?: "auto" | "light" | "dark"` (`"auto"` by default)
+
+Core data props:
+
+- `values: number[][]`
+- `givens?: boolean[][]`
+- `notes?: number[][][]`
 
 The package ships with neutral defaults in both light and dark mode:
 

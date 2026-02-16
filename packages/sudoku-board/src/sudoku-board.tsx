@@ -1,66 +1,61 @@
+"use client";
+
 import type { ReactNode } from "react";
+import { SUDOKU_DIGITS } from "./helpers";
 import styles from "./sudoku-board.module.css";
 
-export type SudokuBoardSelection = {
+export type SudokuBoardCell = {
   row: number;
   col: number;
 };
 
 export type SudokuBoardColorScheme = "auto" | "light" | "dark";
 
+export type SudokuBooleanBoard = boolean[][];
+
+export type SudokuNoteDigitsBoard = number[][][];
+
 export type SudokuBoardProps = {
-  board: number[][];
-  notes?: number[][];
-  givens?: ReadonlySet<string>;
-  selected?: SudokuBoardSelection | null;
-  highlightedValue?: number | null;
+  values: number[][];
+  givens?: SudokuBooleanBoard;
+  notes?: SudokuNoteDigitsBoard;
+  selectedCell?: SudokuBoardCell | null;
+  highlightedDigit?: number | null;
+  invalidCells?: SudokuBooleanBoard;
   showSelectionHighlights?: boolean;
-  showMistakes?: boolean;
-  solution?: number[][] | null;
-  onCellSelect?: (row: number, col: number) => void;
+  disabled?: boolean;
+  onSelectCell?: (cell: SudokuBoardCell) => void;
   id?: string;
   className?: string;
   ariaLabel?: string;
   colorScheme?: SudokuBoardColorScheme;
 };
 
-const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
-
-function keyOf(row: number, col: number): string {
-  return `${row}-${col}`;
+function isSudokuDigit(value: number): value is (typeof SUDOKU_DIGITS)[number] {
+  return Number.isInteger(value) && value >= 1 && value <= 9;
 }
 
-function noteBit(value: number): number {
-  return 1 << (value - 1);
-}
-
-function noteMaskHasValue(mask: number, value: number): boolean {
-  return (mask & noteBit(value)) !== 0;
-}
-
-function noteMaskDigits(mask: number): number[] {
-  const values: number[] = [];
-  for (const digit of DIGITS) {
-    if (noteMaskHasValue(mask, digit)) {
-      values.push(digit);
-    }
+function normalizeNoteDigits(noteDigits: number[] | undefined): number[] {
+  if (!noteDigits || noteDigits.length === 0) {
+    return [];
   }
-  return values;
+
+  return SUDOKU_DIGITS.filter((digit) => noteDigits.some((value) => value === digit));
 }
 
-function renderCellValue(value: number, noteMask: number, highlightedValue: number | null): ReactNode {
+function renderCellValue(value: number, noteDigits: number[], highlightedDigit: number | null): ReactNode {
   if (value !== 0) {
     return String(value);
   }
-  if (noteMask === 0) {
+  if (noteDigits.length === 0) {
     return "";
   }
 
   return (
     <span className={styles.notes} aria-hidden="true">
-      {DIGITS.map((digit) => {
-        const hasNote = noteMaskHasValue(noteMask, digit);
-        const isHighlighted = hasNote && highlightedValue === digit;
+      {SUDOKU_DIGITS.map((digit) => {
+        const hasNote = noteDigits.includes(digit);
+        const isHighlighted = hasNote && highlightedDigit === digit;
         const noteClassName = [styles.note];
         if (!hasNote) {
           noteClassName.push(styles.noteEmpty);
@@ -83,21 +78,20 @@ function renderCellValue(value: number, noteMask: number, highlightedValue: numb
 }
 
 export function SudokuBoard({
-  board,
-  notes,
+  values,
   givens,
-  selected = null,
-  highlightedValue = null,
+  notes,
+  selectedCell = null,
+  highlightedDigit = null,
+  invalidCells,
   showSelectionHighlights = false,
-  showMistakes = false,
-  solution,
-  onCellSelect,
+  disabled = false,
+  onSelectCell,
   id,
   className,
   ariaLabel = "Sudoku grid",
   colorScheme = "auto",
 }: SudokuBoardProps) {
-  const givenSet = givens ?? new Set<string>();
   const boardClassName = className ? `${styles.board} ${className}` : styles.board;
 
   return (
@@ -122,13 +116,18 @@ export function SudokuBoard({
               const row = squareRow * 3 + localRow;
               const col = squareCol * 3 + localCol;
 
-              const value = board[row]?.[col] ?? 0;
-              const given = givenSet.has(keyOf(row, col));
-              const noteMask = value === 0 ? (notes?.[row]?.[col] ?? 0) : 0;
-              const noteDigits = noteMask === 0 ? [] : noteMaskDigits(noteMask);
+              const value = values[row]?.[col] ?? 0;
+              const given = Boolean(givens?.[row]?.[col]);
+              const noteDigits = value === 0 ? normalizeNoteDigits(notes?.[row]?.[col]) : [];
+              const isInvalid = Boolean(invalidCells?.[row]?.[col]);
 
               const classes = [styles.cell];
-              const isSelected = Boolean(showSelectionHighlights && selected && selected.row === row && selected.col === col);
+              const isSelected = Boolean(
+                showSelectionHighlights
+                && selectedCell
+                && selectedCell.row === row
+                && selectedCell.col === col,
+              );
 
               if (given) {
                 classes.push(styles.given);
@@ -136,11 +135,11 @@ export function SudokuBoard({
 
               if (isSelected) {
                 classes.push(styles.selected);
-              } else if (showSelectionHighlights && selected) {
-                const sameRowOrCol = selected.row === row || selected.col === col;
+              } else if (showSelectionHighlights && selectedCell) {
+                const sameRowOrCol = selectedCell.row === row || selectedCell.col === col;
                 const sameBox =
-                  Math.floor(selected.row / 3) === Math.floor(row / 3)
-                  && Math.floor(selected.col / 3) === Math.floor(col / 3);
+                  Math.floor(selectedCell.row / 3) === Math.floor(row / 3)
+                  && Math.floor(selectedCell.col / 3) === Math.floor(col / 3);
 
                 if (sameRowOrCol) {
                   classes.push(styles.peer);
@@ -149,11 +148,11 @@ export function SudokuBoard({
                 }
               }
 
-              if (highlightedValue !== null && value === highlightedValue) {
+              if (highlightedDigit !== null && isSudokuDigit(highlightedDigit) && value === highlightedDigit) {
                 classes.push(styles.match);
               }
 
-              if (showMistakes && value !== 0 && !given && solution && value !== (solution[row]?.[col] ?? 0)) {
+              if (isInvalid) {
                 classes.push(styles.invalid);
               }
 
@@ -176,11 +175,12 @@ export function SudokuBoard({
                   aria-label={labelParts.join(", ")}
                   aria-selected={isSelected || undefined}
                   aria-readonly={given || undefined}
+                  disabled={disabled}
                   onClick={() => {
-                    onCellSelect?.(row, col);
+                    onSelectCell?.({ row, col });
                   }}
                 >
-                  {renderCellValue(value, noteMask, highlightedValue)}
+                  {renderCellValue(value, noteDigits, highlightedDigit)}
                 </button>
               );
             })}
