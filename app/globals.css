@@ -537,6 +537,8 @@ button:not([data-sudoku-cell="true"]):disabled {
     --sudoku-invalid-ink: var(--error);
     --sudoku-focus-ring: var(--selection-ring);
     --sudoku-note-ink: var(--muted);
+    --sudoku-note-font-size: clamp(0.5rem, 2.45cqi, 0.86rem);
+    --sudoku-note-highlight-scale: 1.35;
     --sudoku-note-highlight-ink: var(--match-ink);
     --sudoku-selected-note-ink: var(--ink);
 }
