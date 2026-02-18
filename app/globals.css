@@ -449,12 +449,14 @@ button:not([data-sudoku-cell="true"]):active {
 }
 
 #new-game,
+#daily-game,
 #home-button,
 #undo,
 #redo,
 #annotation-mode,
 #reset-game,
 #hint,
+#continue-daily-puzzle,
 #stats-open,
 #settings-open {
     border-color: var(--line-bold);
@@ -466,6 +468,8 @@ button:not([data-sudoku-cell="true"]):active {
 #reset-game,
 #hint,
 #new-game,
+#daily-game,
+#continue-daily-puzzle,
 #home-button,
 #stats-open,
 #settings-open {

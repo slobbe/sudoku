@@ -19,6 +19,8 @@ import {
   boardComplete,
   clone,
   countSolutions,
+  createSeededRng,
+  dateSeed,
   generatePuzzle,
   type Board,
   type Difficulty,
@@ -27,6 +29,7 @@ import {
 type Theme = "slate" | "dusk" | "mist" | "amber";
 type FillModeEntry = "long-press" | "double-tap";
 type AppView = "home" | "game" | "settings" | "stats";
+type PuzzleMode = "standard" | "daily";
 
 type CellSelection = {
   row: number;
@@ -38,6 +41,16 @@ type DifficultyStats = {
   won: number;
 };
 
+type DailyStats = {
+  gamesStarted: number;
+  gamesWon: number;
+  currentStreak: number;
+  bestStreak: number;
+  byDifficulty: Record<Difficulty, DifficultyStats>;
+  lastStartedDate: string | null;
+  lastWonDate: string | null;
+};
+
 type NotesBoard = number[][];
 
 type GameStats = {
@@ -46,6 +59,28 @@ type GameStats = {
   currentStreak: number;
   bestStreak: number;
   byDifficulty: Record<Difficulty, DifficultyStats>;
+  daily: DailyStats;
+};
+
+type SessionSnapshot = {
+  difficulty: Difficulty;
+  puzzle: Board;
+  solution: Board;
+  board: Board;
+  notes: NotesBoard;
+  hintsPerGame: number;
+  livesPerGame: number;
+  hintsLeft: number;
+  livesLeft: number;
+  annotationMode: boolean;
+  currentGameStarted: boolean;
+  won: boolean;
+  lost: boolean;
+};
+
+type DailySessionSnapshot = SessionSnapshot & {
+  date: string;
+  seed: string;
 };
 
 type Snapshot = {
@@ -57,6 +92,7 @@ type Snapshot = {
 };
 
 type GameState = {
+  mode: PuzzleMode;
   difficulty: Difficulty;
   configuredHintsPerGame: number;
   configuredLivesPerGame: number;
@@ -83,9 +119,35 @@ type GameState = {
   livesLeft: number;
   lost: boolean;
   won: boolean;
+  dailyDate: string | null;
+  dailySeed: string | null;
+  standardSession: SessionSnapshot | null;
+  dailySession: DailySessionSnapshot | null;
+};
+
+type SavedSessionPayload = {
+  difficulty: Difficulty;
+  puzzle: Board;
+  solution: Board;
+  board: Board;
+  notes: NotesBoard;
+  hintsPerGame: number;
+  livesPerGame: number;
+  hintsLeft: number;
+  livesLeft: number;
+  annotationMode: boolean;
+  currentGameStarted: boolean;
+  won: boolean;
+  lost: boolean;
+};
+
+type SavedDailySessionPayload = SavedSessionPayload & {
+  date: string;
+  seed: string;
 };
 
 type SavedGamePayload = {
+  mode?: PuzzleMode;
   difficulty: Difficulty;
   configuredHintsPerGame: number;
   configuredLivesPerGame: number;
@@ -105,6 +167,10 @@ type SavedGamePayload = {
   won: boolean;
   lost: boolean;
   currentGameStarted: boolean;
+  dailyDate?: string | null;
+  dailySeed?: string | null;
+  standardSession?: SavedSessionPayload;
+  dailySession?: SavedDailySessionPayload;
 };
 
 const DEFAULT_HINTS_PER_GAME = 3;
@@ -157,6 +223,22 @@ const THEME_COLORS: Record<Theme, string> = {
   amber: "#1d1913",
 };
 
+function createDefaultDailyStats(): DailyStats {
+  return {
+    gamesStarted: 0,
+    gamesWon: 0,
+    currentStreak: 0,
+    bestStreak: 0,
+    byDifficulty: {
+      easy: { started: 0, won: 0 },
+      medium: { started: 0, won: 0 },
+      hard: { started: 0, won: 0 },
+    },
+    lastStartedDate: null,
+    lastWonDate: null,
+  };
+}
+
 function createDefaultStats(): GameStats {
   return {
     gamesStarted: 0,
@@ -168,6 +250,7 @@ function createDefaultStats(): GameStats {
       medium: { started: 0, won: 0 },
       hard: { started: 0, won: 0 },
     },
+    daily: createDefaultDailyStats(),
   };
 }
 
@@ -181,6 +264,19 @@ function cloneStats(stats: GameStats): GameStats {
       easy: { ...stats.byDifficulty.easy },
       medium: { ...stats.byDifficulty.medium },
       hard: { ...stats.byDifficulty.hard },
+    },
+    daily: {
+      gamesStarted: stats.daily.gamesStarted,
+      gamesWon: stats.daily.gamesWon,
+      currentStreak: stats.daily.currentStreak,
+      bestStreak: stats.daily.bestStreak,
+      byDifficulty: {
+        easy: { ...stats.daily.byDifficulty.easy },
+        medium: { ...stats.daily.byDifficulty.medium },
+        hard: { ...stats.daily.byDifficulty.hard },
+      },
+      lastStartedDate: stats.daily.lastStartedDate,
+      lastWonDate: stats.daily.lastWonDate,
     },
   };
 }
@@ -394,6 +490,15 @@ function normalizeStats(rawStats: unknown): GameStats {
     currentStreak?: unknown;
     bestStreak?: unknown;
     byDifficulty?: Record<string, { started?: unknown; won?: unknown }>;
+    daily?: {
+      gamesStarted?: unknown;
+      gamesWon?: unknown;
+      currentStreak?: unknown;
+      bestStreak?: unknown;
+      byDifficulty?: Record<string, { started?: unknown; won?: unknown }>;
+      lastStartedDate?: unknown;
+      lastWonDate?: unknown;
+    };
   };
 
   const stats: GameStats = {
@@ -406,6 +511,7 @@ function normalizeStats(rawStats: unknown): GameStats {
       medium: { started: 0, won: 0 },
       hard: { started: 0, won: 0 },
     },
+    daily: createDefaultDailyStats(),
   };
 
   for (const difficulty of DIFFICULTIES) {
@@ -420,11 +526,35 @@ function normalizeStats(rawStats: unknown): GameStats {
     stats.bestStreak = stats.currentStreak;
   }
 
+  const dailyEntry = entry.daily;
+  if (dailyEntry && typeof dailyEntry === "object") {
+    stats.daily.gamesStarted = isNonNegativeInteger(dailyEntry.gamesStarted) ? dailyEntry.gamesStarted : 0;
+    stats.daily.gamesWon = isNonNegativeInteger(dailyEntry.gamesWon) ? dailyEntry.gamesWon : 0;
+    stats.daily.currentStreak = isNonNegativeInteger(dailyEntry.currentStreak) ? dailyEntry.currentStreak : 0;
+    stats.daily.bestStreak = isNonNegativeInteger(dailyEntry.bestStreak) ? dailyEntry.bestStreak : 0;
+
+    for (const difficulty of DIFFICULTIES) {
+      const diffEntry = dailyEntry.byDifficulty?.[difficulty];
+      stats.daily.byDifficulty[difficulty] = {
+        started: isNonNegativeInteger(diffEntry?.started) ? diffEntry.started : 0,
+        won: isNonNegativeInteger(diffEntry?.won) ? diffEntry.won : 0,
+      };
+    }
+
+    stats.daily.lastStartedDate = typeof dailyEntry.lastStartedDate === "string" ? dailyEntry.lastStartedDate : null;
+    stats.daily.lastWonDate = typeof dailyEntry.lastWonDate === "string" ? dailyEntry.lastWonDate : null;
+  }
+
+  if (stats.daily.bestStreak < stats.daily.currentStreak) {
+    stats.daily.bestStreak = stats.daily.currentStreak;
+  }
+
   return stats;
 }
 
 function createInitialState(): GameState {
   return {
+    mode: "standard",
     difficulty: "medium",
     configuredHintsPerGame: DEFAULT_HINTS_PER_GAME,
     configuredLivesPerGame: DEFAULT_LIVES_PER_GAME,
@@ -451,6 +581,10 @@ function createInitialState(): GameState {
     livesLeft: DEFAULT_LIVES_PER_GAME,
     lost: false,
     won: false,
+    dailyDate: null,
+    dailySeed: null,
+    standardSession: null,
+    dailySession: null,
   };
 }
 
@@ -474,15 +608,85 @@ function createSnapshot(state: GameState): Snapshot {
   };
 }
 
-function recordGameStart(stats: GameStats, difficulty: Difficulty): GameStats {
+function parseDateKey(value: string): number {
+  const parts = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!parts) {
+    return Number.NaN;
+  }
+  const year = Number(parts[1]);
+  const month = Number(parts[2]);
+  const day = Number(parts[3]);
+  return Date.UTC(year, month - 1, day);
+}
+
+function isPreviousDateKey(previous: string | null, current: string): boolean {
+  if (!previous) {
+    return false;
+  }
+
+  const previousValue = parseDateKey(previous);
+  const currentValue = parseDateKey(current);
+  if (!Number.isFinite(previousValue) || !Number.isFinite(currentValue)) {
+    return false;
+  }
+
+  return currentValue - previousValue === 86400000;
+}
+
+function recordGameStart(
+  stats: GameStats,
+  difficulty: Difficulty,
+  mode: PuzzleMode,
+  dailyDate: string | null,
+): GameStats {
   const next = cloneStats(stats);
+
+  if (mode === "daily") {
+    if (!dailyDate || next.daily.lastStartedDate === dailyDate) {
+      return next;
+    }
+
+    next.daily.gamesStarted += 1;
+    next.daily.byDifficulty[difficulty].started += 1;
+    next.daily.lastStartedDate = dailyDate;
+    return next;
+  }
+
   next.gamesStarted += 1;
   next.byDifficulty[difficulty].started += 1;
   return next;
 }
 
-function recordWin(stats: GameStats, difficulty: Difficulty): GameStats {
+function recordWin(
+  stats: GameStats,
+  difficulty: Difficulty,
+  mode: PuzzleMode,
+  dailyDate: string | null,
+): GameStats {
   const next = cloneStats(stats);
+
+  if (mode === "daily") {
+    if (!dailyDate || next.daily.lastWonDate === dailyDate) {
+      return next;
+    }
+
+    next.daily.gamesWon += 1;
+    next.daily.byDifficulty[difficulty].won += 1;
+
+    if (isPreviousDateKey(next.daily.lastWonDate, dailyDate)) {
+      next.daily.currentStreak += 1;
+    } else {
+      next.daily.currentStreak = 1;
+    }
+
+    if (next.daily.currentStreak > next.daily.bestStreak) {
+      next.daily.bestStreak = next.daily.currentStreak;
+    }
+
+    next.daily.lastWonDate = dailyDate;
+    return next;
+  }
+
   next.gamesWon += 1;
   next.byDifficulty[difficulty].won += 1;
   next.currentStreak += 1;
@@ -497,8 +701,236 @@ function markCurrentGameAsLossIfNeeded(state: GameState): GameStats {
   if (!state.puzzle || state.won || !state.currentGameStarted) {
     return next;
   }
+  if (state.mode === "daily") {
+    return next;
+  }
   next.currentStreak = 0;
   return next;
+}
+
+function isPuzzleMode(value: unknown): value is PuzzleMode {
+  return value === "standard" || value === "daily";
+}
+
+function cloneSessionSnapshot(snapshot: SessionSnapshot): SessionSnapshot {
+  return {
+    difficulty: snapshot.difficulty,
+    puzzle: clone(snapshot.puzzle),
+    solution: clone(snapshot.solution),
+    board: clone(snapshot.board),
+    notes: cloneNotesBoard(snapshot.notes),
+    hintsPerGame: snapshot.hintsPerGame,
+    livesPerGame: snapshot.livesPerGame,
+    hintsLeft: snapshot.hintsLeft,
+    livesLeft: snapshot.livesLeft,
+    annotationMode: snapshot.annotationMode,
+    currentGameStarted: snapshot.currentGameStarted,
+    won: snapshot.won,
+    lost: snapshot.lost,
+  };
+}
+
+function captureSessionFromState(state: GameState): SessionSnapshot | null {
+  if (!state.puzzle || !state.solution || !state.board) {
+    return null;
+  }
+
+  return {
+    difficulty: state.difficulty,
+    puzzle: clone(state.puzzle),
+    solution: clone(state.solution),
+    board: clone(state.board),
+    notes: cloneNotesBoard(state.notes),
+    hintsPerGame: state.hintsPerGame,
+    livesPerGame: state.livesPerGame,
+    hintsLeft: state.hintsLeft,
+    livesLeft: state.livesLeft,
+    annotationMode: state.annotationMode,
+    currentGameStarted: state.currentGameStarted,
+    won: state.won,
+    lost: state.lost,
+  };
+}
+
+function applySessionToState(
+  state: GameState,
+  session: SessionSnapshot,
+  mode: PuzzleMode,
+  dailyMeta?: { date: string; seed: string },
+): GameState {
+  const cloned = cloneSessionSnapshot(session);
+
+  return {
+    ...state,
+    mode,
+    difficulty: cloned.difficulty,
+    puzzle: cloned.puzzle,
+    solution: cloned.solution,
+    board: cloned.board,
+    givens: buildGivens(cloned.puzzle),
+    selected: null,
+    highlightValue: null,
+    fillModeValue: null,
+    annotationMode: cloned.annotationMode,
+    notes: cloned.notes,
+    undoStack: [],
+    redoStack: [],
+    winRecorded: cloned.won,
+    currentGameStarted: cloned.currentGameStarted,
+    hintsPerGame: cloned.hintsPerGame,
+    livesPerGame: cloned.livesPerGame,
+    hintsLeft: cloned.hintsLeft,
+    livesLeft: cloned.livesLeft,
+    lost: cloned.lost,
+    won: cloned.won,
+    dailyDate: mode === "daily" ? dailyMeta?.date ?? null : null,
+    dailySeed: mode === "daily" ? dailyMeta?.seed ?? null : null,
+  };
+}
+
+function stashActiveSession(state: GameState): GameState {
+  const snapshot = captureSessionFromState(state);
+  if (!snapshot) {
+    return state;
+  }
+
+  if (state.mode === "daily" && state.dailyDate && state.dailySeed) {
+    return {
+      ...state,
+      dailySession: {
+        ...snapshot,
+        date: state.dailyDate,
+        seed: state.dailySeed,
+      },
+    };
+  }
+
+  return {
+    ...state,
+    standardSession: snapshot,
+  };
+}
+
+function isSavedSessionPayload(value: unknown): value is SavedSessionPayload {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return isDifficulty(candidate.difficulty)
+    && isBoardShape(candidate.puzzle)
+    && isBoardShape(candidate.solution)
+    && isBoardShape(candidate.board)
+    && isNotesBoardShape(candidate.notes)
+    && isNonNegativeInteger(candidate.hintsPerGame)
+    && isNonNegativeInteger(candidate.livesPerGame)
+    && isNonNegativeInteger(candidate.hintsLeft)
+    && isNonNegativeInteger(candidate.livesLeft)
+    && typeof candidate.annotationMode === "boolean"
+    && typeof candidate.currentGameStarted === "boolean"
+    && typeof candidate.won === "boolean"
+    && typeof candidate.lost === "boolean";
+}
+
+function sessionFromSavedPayload(value: SavedSessionPayload): SessionSnapshot {
+  return {
+    difficulty: value.difficulty,
+    puzzle: clone(value.puzzle),
+    solution: clone(value.solution),
+    board: clone(value.board),
+    notes: cloneNotesBoard(value.notes),
+    hintsPerGame: value.hintsPerGame,
+    livesPerGame: value.livesPerGame,
+    hintsLeft: value.hintsLeft,
+    livesLeft: value.livesLeft,
+    annotationMode: value.annotationMode,
+    currentGameStarted: value.currentGameStarted,
+    won: value.won,
+    lost: value.lost,
+  };
+}
+
+function isSavedDailySessionPayload(value: unknown): value is SavedDailySessionPayload {
+  if (!isSavedSessionPayload(value)) {
+    return false;
+  }
+
+  const candidate = value as Record<string, unknown>;
+  return typeof candidate.date === "string" && typeof candidate.seed === "string";
+}
+
+function serializeSession(snapshot: SessionSnapshot | null): SavedSessionPayload | undefined {
+  if (!snapshot) {
+    return undefined;
+  }
+
+  return {
+    difficulty: snapshot.difficulty,
+    puzzle: snapshot.puzzle,
+    solution: snapshot.solution,
+    board: snapshot.board,
+    notes: snapshot.notes,
+    hintsPerGame: snapshot.hintsPerGame,
+    livesPerGame: snapshot.livesPerGame,
+    hintsLeft: snapshot.hintsLeft,
+    livesLeft: snapshot.livesLeft,
+    annotationMode: snapshot.annotationMode,
+    currentGameStarted: snapshot.currentGameStarted,
+    won: snapshot.won,
+    lost: snapshot.lost,
+  };
+}
+
+function serializeDailySession(snapshot: DailySessionSnapshot | null): SavedDailySessionPayload | undefined {
+  if (!snapshot) {
+    return undefined;
+  }
+
+  return {
+    ...serializeSession(snapshot)!,
+    date: snapshot.date,
+    seed: snapshot.seed,
+  };
+}
+
+function getDailyRootSeed(dayKey: string): string {
+  return `daily:v1:${dayKey}`;
+}
+
+function deriveDailyDifficulty(dayKey: string): Difficulty {
+  const rng = createSeededRng(`${getDailyRootSeed(dayKey)}:difficulty`);
+  const value = rng();
+  if (value < (1 / 3)) {
+    return "easy";
+  }
+  if (value < (2 / 3)) {
+    return "medium";
+  }
+  return "hard";
+}
+
+function getDailyPuzzleSeed(dayKey: string, difficulty: Difficulty): string {
+  return `${getDailyRootSeed(dayKey)}:puzzle:${difficulty}`;
+}
+
+function getCurrentLocalDayKey(referenceTime = Date.now()): string {
+  return dateSeed(new Date(referenceTime), "local");
+}
+
+function formatCountdownToNextDaily(referenceTime = Date.now()): string {
+  const now = new Date(referenceTime);
+  const nextMidnight = new Date(now);
+  nextMidnight.setHours(24, 0, 0, 0);
+  const remainingMs = Math.max(0, nextMidnight.getTime() - now.getTime());
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function isSessionContinuable(session: SessionSnapshot | null): boolean {
+  return Boolean(session && session.currentGameStarted && !session.won && !session.lost);
 }
 
 function countDigitOnBoard(board: Board | null, digit: number): number {
@@ -606,6 +1038,7 @@ function loadSavedGame(): GameState | null {
   }
 
   const candidate = parsed as {
+    mode?: unknown;
     difficulty?: unknown;
     configuredHintsPerGame?: unknown;
     configuredLivesPerGame?: unknown;
@@ -625,6 +1058,10 @@ function loadSavedGame(): GameState | null {
     won?: unknown;
     lost?: unknown;
     currentGameStarted?: unknown;
+    dailyDate?: unknown;
+    dailySeed?: unknown;
+    standardSession?: unknown;
+    dailySession?: unknown;
   };
 
   if (!isDifficulty(candidate.difficulty)) {
@@ -677,6 +1114,15 @@ function loadSavedGame(): GameState | null {
   if (candidate.currentGameStarted !== undefined && typeof candidate.currentGameStarted !== "boolean") {
     return null;
   }
+  if (candidate.mode !== undefined && !isPuzzleMode(candidate.mode)) {
+    return null;
+  }
+  if (candidate.dailyDate !== undefined && candidate.dailyDate !== null && typeof candidate.dailyDate !== "string") {
+    return null;
+  }
+  if (candidate.dailySeed !== undefined && candidate.dailySeed !== null && typeof candidate.dailySeed !== "string") {
+    return null;
+  }
   if (candidate.showMistakes !== undefined && typeof candidate.showMistakes !== "boolean") {
     return null;
   }
@@ -726,8 +1172,23 @@ function loadSavedGame(): GameState | null {
   const inferredStarted = hasUserProgressOnBoard(payload.board, payload.puzzle);
   const livesLeft = payload.livesLeft !== undefined ? payload.livesLeft : payload.livesPerGame;
   const won = payload.won;
+  const mode = candidate.mode ?? "standard";
+  const dailyDate = typeof candidate.dailyDate === "string" ? candidate.dailyDate : null;
+  const dailySeed = typeof candidate.dailySeed === "string" ? candidate.dailySeed : null;
+
+  const standardSession = isSavedSessionPayload(candidate.standardSession)
+    ? sessionFromSavedPayload(candidate.standardSession)
+    : null;
+  const dailySession = isSavedDailySessionPayload(candidate.dailySession)
+    ? {
+      ...sessionFromSavedPayload(candidate.dailySession),
+      date: candidate.dailySession.date,
+      seed: candidate.dailySession.seed,
+    }
+    : null;
 
   return {
+    mode,
     difficulty: payload.difficulty,
     configuredHintsPerGame: payload.configuredHintsPerGame,
     configuredLivesPerGame: payload.configuredLivesPerGame,
@@ -754,6 +1215,10 @@ function loadSavedGame(): GameState | null {
     livesLeft,
     lost: payload.lost === true || (!won && livesLeft === 0),
     won,
+    dailyDate: mode === "daily" ? dailyDate : null,
+    dailySeed: mode === "daily" ? dailySeed : null,
+    standardSession,
+    dailySession,
   };
 }
 
@@ -815,6 +1280,7 @@ export function SudokuApp() {
 
   const [updateStatus, setUpdateStatus] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
+  const [nowTick, setNowTick] = useState(() => Date.now());
 
   const winDialogRef = useRef<HTMLDialogElement>(null);
   const loseDialogRef = useRef<HTMLDialogElement>(null);
@@ -902,13 +1368,14 @@ export function SudokuApp() {
 
   const startNewGame = useCallback(
     (difficultyOverride?: Difficulty) => {
-      const current = stateRef.current;
+      const current = stashActiveSession(stateRef.current);
       const difficulty = difficultyOverride ?? current.difficulty;
       const stats = markCurrentGameAsLossIfNeeded(current);
       const { puzzle, solution, givens } = generatePuzzle(difficulty);
 
       const next: GameState = {
         ...current,
+        mode: "standard",
         difficulty,
         hintsPerGame: current.configuredHintsPerGame,
         livesPerGame: current.configuredLivesPerGame,
@@ -930,6 +1397,9 @@ export function SudokuApp() {
         livesLeft: current.configuredLivesPerGame,
         lost: false,
         won: false,
+        dailyDate: null,
+        dailySeed: null,
+        standardSession: null,
       };
 
       applyState(next);
@@ -940,6 +1410,73 @@ export function SudokuApp() {
     [applyState],
   );
 
+  const startDailyPuzzleAndOpen = useCallback(() => {
+    const current = stashActiveSession(stateRef.current);
+    const dayKey = getCurrentLocalDayKey();
+    const difficulty = deriveDailyDifficulty(dayKey);
+    const seed = getDailyPuzzleSeed(dayKey, difficulty);
+
+    if (current.dailySession && current.dailySession.date === dayKey) {
+      const next = applySessionToState(current, current.dailySession, "daily", { date: dayKey, seed });
+      next.dailySession = null;
+      applyState(next);
+      setWinPromptOpen(false);
+      setLosePromptOpen(false);
+      setActiveView("game");
+
+      if (next.won) {
+        setStatusMessage(`Daily puzzle for ${dayKey} already solved.`);
+      } else {
+        setStatusMessage(`Daily ${difficulty} puzzle resumed for ${dayKey}.`);
+      }
+      return;
+    }
+
+    if (current.mode === "daily" && current.dailyDate === dayKey && current.puzzle && current.solution && current.board) {
+      setActiveView("game");
+      setWinPromptOpen(false);
+      setLosePromptOpen(false);
+      setStatusMessage(`Daily ${difficulty} puzzle resumed for ${dayKey}.`);
+      return;
+    }
+
+    const { puzzle, solution, givens } = generatePuzzle(difficulty, { seed });
+
+    const next: GameState = {
+      ...current,
+      mode: "daily",
+      difficulty,
+      hintsPerGame: current.configuredHintsPerGame,
+      livesPerGame: current.configuredLivesPerGame,
+      puzzle,
+      solution,
+      board: clone(puzzle),
+      givens: buildGivens(puzzle),
+      selected: null,
+      highlightValue: null,
+      fillModeValue: null,
+      annotationMode: false,
+      notes: createEmptyNotesBoard(),
+      undoStack: [],
+      redoStack: [],
+      winRecorded: false,
+      currentGameStarted: false,
+      hintsLeft: current.configuredHintsPerGame,
+      livesLeft: current.configuredLivesPerGame,
+      lost: false,
+      won: false,
+      dailyDate: dayKey,
+      dailySeed: seed,
+      dailySession: null,
+    };
+
+    applyState(next);
+    setWinPromptOpen(false);
+    setLosePromptOpen(false);
+    setActiveView("game");
+    setStatusMessage(`Daily ${difficulty} puzzle ready for ${dayKey} (${givens} givens).`);
+  }, [applyState]);
+
   const startNewGameAndOpen = useCallback(
     (difficultyOverride?: Difficulty) => {
       startNewGame(difficultyOverride);
@@ -947,6 +1484,67 @@ export function SudokuApp() {
     },
     [startNewGame],
   );
+
+  const continueStandardPuzzle = useCallback(() => {
+    const current = stateRef.current;
+
+    if (current.mode === "standard") {
+      setActiveView("game");
+      return;
+    }
+
+    if (!current.standardSession) {
+      startNewGameAndOpen();
+      return;
+    }
+
+    const stashed = stashActiveSession(current);
+    const standardSession = stashed.standardSession;
+    if (!standardSession) {
+      startNewGameAndOpen();
+      return;
+    }
+
+    const next = applySessionToState(stashed, standardSession, "standard");
+    next.standardSession = null;
+    applyState(next);
+    setWinPromptOpen(false);
+    setLosePromptOpen(false);
+    setActiveView("game");
+    setStatusMessage(`Standard ${next.difficulty} puzzle resumed.`);
+  }, [applyState, startNewGameAndOpen]);
+
+  const continueDailyPuzzle = useCallback(() => {
+    const current = stateRef.current;
+    const dayKey = getCurrentLocalDayKey();
+    const difficulty = deriveDailyDifficulty(dayKey);
+    const seed = getDailyPuzzleSeed(dayKey, difficulty);
+
+    if (current.mode === "daily" && current.dailyDate === dayKey && current.puzzle) {
+      setActiveView("game");
+      return;
+    }
+
+    if (current.dailySession && current.dailySession.date === dayKey) {
+      const stashed = stashActiveSession(current);
+      const dailySession = stashed.dailySession;
+      if (!dailySession) {
+        startDailyPuzzleAndOpen();
+        return;
+      }
+
+      const next = applySessionToState(stashed, dailySession, "daily", { date: dayKey, seed });
+      next.dailySession = null;
+      applyState(next);
+      setWinPromptOpen(false);
+      setLosePromptOpen(false);
+      setActiveView("game");
+      setStatusMessage(`Daily ${difficulty} puzzle resumed for ${dayKey}.`);
+      return;
+    }
+
+    startDailyPuzzleAndOpen();
+  }, [applyState, startDailyPuzzleAndOpen]);
 
   const goHome = useCallback(() => {
     setWinPromptOpen(false);
@@ -963,9 +1561,7 @@ export function SudokuApp() {
     setActiveView("stats");
   }, []);
 
-  const continueCurrentPuzzle = useCallback(() => {
-    setActiveView("game");
-  }, []);
+  const continueCurrentPuzzle = continueStandardPuzzle;
 
   const resetCurrentGame = useCallback(() => {
     const current = stateRef.current;
@@ -1033,7 +1629,7 @@ export function SudokuApp() {
       let stats = current.stats;
       let currentGameStarted = current.currentGameStarted;
       if (value !== 0 && current.board[row][col] === 0 && !current.currentGameStarted) {
-        stats = recordGameStart(current.stats, current.difficulty);
+        stats = recordGameStart(current.stats, current.difficulty, current.mode, current.dailyDate);
         currentGameStarted = true;
       }
 
@@ -1071,7 +1667,7 @@ export function SudokuApp() {
       const solved = boardComplete(next.board);
       next.won = solved;
       if (solved && !current.won && !next.winRecorded) {
-        next.stats = recordWin(next.stats, next.difficulty);
+        next.stats = recordWin(next.stats, next.difficulty, next.mode, next.dailyDate);
         next.winRecorded = true;
         setWinPromptOpen(true);
       }
@@ -1240,7 +1836,7 @@ export function SudokuApp() {
     let stats = current.stats;
     let currentGameStarted = current.currentGameStarted;
     if (!current.currentGameStarted) {
-      stats = recordGameStart(current.stats, current.difficulty);
+      stats = recordGameStart(current.stats, current.difficulty, current.mode, current.dailyDate);
       currentGameStarted = true;
     }
 
@@ -1274,7 +1870,7 @@ export function SudokuApp() {
     const solved = boardComplete(next.board);
     next.won = solved;
     if (solved && !current.won && !next.winRecorded) {
-      next.stats = recordWin(next.stats, next.difficulty);
+      next.stats = recordWin(next.stats, next.difficulty, next.mode, next.dailyDate);
       next.winRecorded = true;
       setWinPromptOpen(true);
     }
@@ -1452,7 +2048,7 @@ export function SudokuApp() {
       notes: createEmptyNotesBoard(),
       undoStack: [],
       redoStack: [],
-      stats: recordGameStart(current.stats, current.difficulty),
+      stats: recordGameStart(current.stats, current.difficulty, current.mode, current.dailyDate),
       currentGameStarted: true,
       hintsLeft: current.hintsPerGame,
       livesLeft: current.livesPerGame,
@@ -1535,6 +2131,16 @@ export function SudokuApp() {
   }, []);
 
   useEffect(() => {
+    const timer = window.setInterval(() => {
+      setNowTick(Date.now());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, []);
+
+  useEffect(() => {
     const restored = loadSavedGame();
     if (restored) {
       applyState(restored);
@@ -1548,7 +2154,10 @@ export function SudokuApp() {
       return;
     }
 
+    const saveState = stashActiveSession(state);
+
     const payload: SavedGamePayload = {
+      mode: saveState.mode,
       difficulty: state.difficulty,
       configuredHintsPerGame: state.configuredHintsPerGame,
       configuredLivesPerGame: state.configuredLivesPerGame,
@@ -1568,6 +2177,10 @@ export function SudokuApp() {
       won: state.won,
       lost: state.lost,
       currentGameStarted: state.currentGameStarted,
+      dailyDate: saveState.dailyDate,
+      dailySeed: saveState.dailySeed,
+      standardSession: serializeSession(saveState.standardSession),
+      dailySession: serializeDailySession(saveState.dailySession),
     };
 
     try {
@@ -1745,6 +2358,34 @@ export function SudokuApp() {
 
   const highlighted = state.fillModeValue !== null ? state.fillModeValue : state.highlightValue;
   const showSelectionHighlights = state.fillModeValue === null;
+  const currentSessionSnapshot = useMemo(() => captureSessionFromState(state), [state]);
+  const todayDailyKey = useMemo(() => getCurrentLocalDayKey(nowTick), [nowTick]);
+  const todayDailyDifficulty = useMemo(() => deriveDailyDifficulty(todayDailyKey), [todayDailyKey]);
+  const todayDailySeed = useMemo(() => getDailyPuzzleSeed(todayDailyKey, todayDailyDifficulty), [todayDailyDifficulty, todayDailyKey]);
+
+  const standardSessionForHome = useMemo(() => {
+    if (state.mode === "standard") {
+      return currentSessionSnapshot;
+    }
+    return state.standardSession;
+  }, [currentSessionSnapshot, state.mode, state.standardSession]);
+
+  const dailySessionForToday = useMemo(() => {
+    if (state.mode === "daily" && state.dailyDate === todayDailyKey && currentSessionSnapshot) {
+      return {
+        ...currentSessionSnapshot,
+        date: state.dailyDate,
+        seed: state.dailySeed ?? todayDailySeed,
+      } satisfies DailySessionSnapshot;
+    }
+
+    if (state.dailySession && state.dailySession.date === todayDailyKey) {
+      return state.dailySession;
+    }
+
+    return null;
+  }, [currentSessionSnapshot, state.dailyDate, state.dailySeed, state.dailySession, state.mode, todayDailyKey, todayDailySeed]);
+
   const boardGivens = useMemo(() => givensSetToBooleanBoard(state.givens), [state.givens]);
   const boardNotes = useMemo(() => noteMaskBoardToDigitsBoard(state.notes), [state.notes]);
   const invalidCells = useMemo(() => {
@@ -1761,13 +2402,12 @@ export function SudokuApp() {
       }),
     );
   }, [state.board, state.givens, state.showMistakes, state.solution]);
-  const canContinueCurrentPuzzle = Boolean(
-    state.puzzle
-    && state.board
-    && state.currentGameStarted
-    && !state.won
-    && !state.lost,
-  );
+  const canContinueCurrentPuzzle = isSessionContinuable(standardSessionForHome);
+  const canContinueDailyPuzzle = isSessionContinuable(dailySessionForToday);
+  const dailyCompletedToday = Boolean(dailySessionForToday?.won);
+  const dailyButtonLabel = dailyCompletedToday
+    ? `Next daily puzzle in ${formatCountdownToNextDaily(nowTick)}`
+    : "Daily Puzzle";
 
   const statsOverall = formatLine(state.stats.gamesWon, state.stats.gamesStarted);
   const statsEasy = formatLine(state.stats.byDifficulty.easy.won, state.stats.byDifficulty.easy.started);
@@ -1776,6 +2416,10 @@ export function SudokuApp() {
   const statsOverallRate = calculateRatePercent(state.stats.gamesWon, state.stats.gamesStarted);
   const statsOverallAngle = (statsOverallRate / 100) * 360;
   const statsOverallUnfinished = Math.max(0, state.stats.gamesStarted - state.stats.gamesWon);
+  const dailyStatsOverall = formatLine(state.stats.daily.gamesWon, state.stats.daily.gamesStarted);
+  const dailyStatsEasy = formatLine(state.stats.daily.byDifficulty.easy.won, state.stats.daily.byDifficulty.easy.started);
+  const dailyStatsMedium = formatLine(state.stats.daily.byDifficulty.medium.won, state.stats.daily.byDifficulty.medium.started);
+  const dailyStatsHard = formatLine(state.stats.daily.byDifficulty.hard.won, state.stats.daily.byDifficulty.hard.started);
   const difficultyRateRows: Array<{
     key: Difficulty;
     label: string;
@@ -1827,11 +2471,24 @@ export function SudokuApp() {
             <div className="home-actions" aria-label="Main actions">
               {canContinueCurrentPuzzle ? (
                 <button id="continue-current-puzzle" type="button" onClick={continueCurrentPuzzle}>
-                  Continue Puzzle
+                  Continue Standard
+                </button>
+              ) : null}
+              {canContinueDailyPuzzle && !dailyCompletedToday ? (
+                <button id="continue-daily-puzzle" type="button" onClick={continueDailyPuzzle}>
+                  Continue Daily
                 </button>
               ) : null}
               <button id="new-game" type="button" onClick={() => startNewGameAndOpen()}>
                 New Puzzle
+              </button>
+              <button
+                id="daily-game"
+                type="button"
+                disabled={dailyCompletedToday}
+                onClick={startDailyPuzzleAndOpen}
+              >
+                {dailyCompletedToday ? dailyButtonLabel : `Daily Puzzle (${todayDailyDifficulty})`}
               </button>
               <button id="settings-open" type="button" onClick={openSettingsView}>
                 Settings
@@ -2143,6 +2800,43 @@ export function SudokuApp() {
                       </div>
                     ))}
                   </div>
+                </section>
+
+                <section className="stats-panel" aria-label="Daily puzzle stats">
+                  <h3>Daily Challenge</h3>
+                  <p>
+                    Today:
+                    {" "}
+                    <span id="stats-daily-today">{todayDailyKey}</span>
+                    {" "}
+                    ({todayDailyDifficulty})
+                  </p>
+                  <p>
+                    Daily overall:
+                    {" "}
+                    <span id="stats-daily-overall">{dailyStatsOverall}</span>
+                  </p>
+                  <p>
+                    Daily by difficulty:
+                    {" "}
+                    <span id="stats-daily-easy">Easy {dailyStatsEasy}</span>
+                    {" · "}
+                    <span id="stats-daily-medium">Medium {dailyStatsMedium}</span>
+                    {" · "}
+                    <span id="stats-daily-hard">Hard {dailyStatsHard}</span>
+                  </p>
+                  <p>
+                    Daily streak:
+                    {" "}
+                    <span id="stats-daily-streak">{state.stats.daily.currentStreak}</span>
+                    {" "}
+                    puzzles
+                    {" "}
+                    (best
+                    {" "}
+                    <span id="stats-daily-best-streak">{state.stats.daily.bestStreak}</span>
+                    )
+                  </p>
                 </section>
 
                 <section className="stats-panel stats-panel-streak" aria-label="Current and best streak">
