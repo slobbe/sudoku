@@ -2950,10 +2950,26 @@ export function SudokuApp() {
                       <span className="stats-pie-center">{formatRate(state.stats.gamesWon, state.stats.gamesStarted)}</span>
                     </div>
                     <div className="stats-overview-lines">
-                      <p>
-                        Overall:
-                        {" "}
-                        <span id="stats-overall">{statsOverall}</span>
+                      <p className="stats-overview-combo">
+                        <span>
+                          Overall:
+                          {" "}
+                          <span id="stats-overall">{statsOverall}</span>
+                        </span>
+                        <span>
+                          <span className="stats-flame" aria-hidden="true">
+                            🔥
+                          </span>
+                          {" "}
+                          Streak:
+                          {" "}
+                          <span id="stats-streak">{state.stats.currentStreak}</span>
+                          {" "}
+                          (best
+                          {" "}
+                          <span id="stats-best-streak">{state.stats.bestStreak}</span>
+                          )
+                        </span>
                       </p>
                       <ul className="stats-pie-legend" aria-label="Overall puzzle legend">
                         <li>
@@ -2964,7 +2980,7 @@ export function SudokuApp() {
                         </li>
                         <li>
                           <span className="stats-legend-swatch unfinished" aria-hidden="true" />
-                          Unfinished:
+                          Lost:
                           {" "}
                           {statsOverallUnfinished}
                         </li>
@@ -3008,7 +3024,7 @@ export function SudokuApp() {
                   <div className="daily-summary-line">
                     <span>{`Played: ${state.stats.daily.gamesStarted}`}</span>
                     <span>{`Won: ${state.stats.daily.gamesWon}`}</span>
-                    <span>{`Unfinished: ${Math.max(0, state.stats.daily.gamesStarted - state.stats.daily.gamesWon)}`}</span>
+                    <span>{`Lost: ${Math.max(0, state.stats.daily.gamesStarted - state.stats.daily.gamesWon)}`}</span>
                   </div>
                   <div className="daily-summary-line">
                     <span>
@@ -3088,35 +3104,6 @@ export function SudokuApp() {
                   </div>
                 </section>
 
-                <section className="stats-panel stats-panel-streak" aria-label="Current and best streak">
-                  <h3>Streak Heat</h3>
-                  <div className="stats-streak-grid">
-                    <article className="stats-streak-card">
-                      <p className="stats-streak-label">
-                        <span className="stats-flame" aria-hidden="true">
-                          🔥
-                        </span>
-                        Current streak
-                      </p>
-                      <p className="stats-streak-value">
-                        <span id="stats-streak">{state.stats.currentStreak}</span>
-                        <span className="stats-streak-unit">puzzles</span>
-                      </p>
-                    </article>
-                    <article className="stats-streak-card">
-                      <p className="stats-streak-label">
-                        <span className="stats-flame" aria-hidden="true">
-                          🔥
-                        </span>
-                        Best streak
-                      </p>
-                      <p className="stats-streak-value">
-                        <span id="stats-best-streak">{state.stats.bestStreak}</span>
-                        <span className="stats-streak-unit">puzzles</span>
-                      </p>
-                    </article>
-                  </div>
-                </section>
               </section>
             </div>
           </section>

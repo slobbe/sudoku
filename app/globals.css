@@ -948,16 +948,11 @@ button:not([data-sudoku-cell="true"]):disabled {
 
 .daily-calendar-day-difficulty {
     margin-left: auto;
-    border: 1px solid var(--line-bold);
-    border-radius: 999px;
-    min-width: 1.2rem;
-    padding: 0 0.3rem;
     font-size: 0.68rem;
     font-weight: 700;
-    line-height: 1.2rem;
+    line-height: 1;
     text-align: center;
-    color: var(--ink);
-    background: var(--control-bg);
+    color: var(--muted);
 }
 
 .daily-calendar-legend {
@@ -1035,6 +1030,10 @@ button:not([data-sudoku-cell="true"]):disabled {
     display: flex;
     justify-content: space-between;
     gap: 8px;
+}
+
+.stats-overview-combo {
+    flex-wrap: wrap;
 }
 
 .stats-pie-legend {
