@@ -2424,7 +2424,7 @@ export function SudokuApp() {
       navigator.serviceWorker
         .register("./sw.js")
         .then((registration) => {
-          setUpdateStatus(registration.waiting ? "Update available." : "Updates are active.");
+          setUpdateStatus(registration.waiting ? "Update available" : "Up-to-date");
 
           registration.addEventListener("updatefound", () => {
             const newWorker = registration.installing;
@@ -2432,13 +2432,13 @@ export function SudokuApp() {
               return;
             }
 
-            setUpdateStatus("Downloading update...");
+            setUpdateStatus("Updating...");
             newWorker.addEventListener("statechange", () => {
               if (newWorker.state === "installed") {
                 if (navigator.serviceWorker.controller) {
-                  setUpdateStatus("Update available. Restart app to apply.");
+                  setUpdateStatus("Update available");
                 } else {
-                  setUpdateStatus("Updates are active.");
+                  setUpdateStatus("Up-to-date");
                 }
               }
             });
@@ -3004,7 +3004,7 @@ export function SudokuApp() {
                   {" "}
                   by <span id="app-info-author">{APP_AUTHOR}</span>
                 </p>
-                <p className="app-update-status">{updateStatus || "Update checks active."}</p>
+                <p className="app-update-status">{updateStatus || "Up-to-date"}</p>
               </div>
             </div>
           </section>
