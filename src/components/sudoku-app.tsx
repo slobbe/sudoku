@@ -2554,13 +2554,31 @@ export function SudokuApp() {
     ? `Next daily puzzle in ${formatCountdownToNextDaily(nowTick)}`
     : "Daily Puzzle";
 
-  const statsOverall = formatLine(state.stats.gamesWon, state.stats.gamesStarted);
-  const statsEasy = formatLine(state.stats.byDifficulty.easy.won, state.stats.byDifficulty.easy.started);
-  const statsMedium = formatLine(state.stats.byDifficulty.medium.won, state.stats.byDifficulty.medium.started);
-  const statsHard = formatLine(state.stats.byDifficulty.hard.won, state.stats.byDifficulty.hard.started);
-  const statsOverallRate = calculateRatePercent(state.stats.gamesWon, state.stats.gamesStarted);
+  const overallStarted = state.stats.gamesStarted + state.stats.daily.gamesStarted;
+  const overallWon = state.stats.gamesWon + state.stats.daily.gamesWon;
+  const overallLost = Math.max(0, overallStarted - overallWon);
+
+  const overallByDifficulty = {
+    easy: {
+      started: state.stats.byDifficulty.easy.started + state.stats.daily.byDifficulty.easy.started,
+      won: state.stats.byDifficulty.easy.won + state.stats.daily.byDifficulty.easy.won,
+    },
+    medium: {
+      started: state.stats.byDifficulty.medium.started + state.stats.daily.byDifficulty.medium.started,
+      won: state.stats.byDifficulty.medium.won + state.stats.daily.byDifficulty.medium.won,
+    },
+    hard: {
+      started: state.stats.byDifficulty.hard.started + state.stats.daily.byDifficulty.hard.started,
+      won: state.stats.byDifficulty.hard.won + state.stats.daily.byDifficulty.hard.won,
+    },
+  };
+
+  const statsOverall = formatLine(overallWon, overallStarted);
+  const statsEasy = formatLine(overallByDifficulty.easy.won, overallByDifficulty.easy.started);
+  const statsMedium = formatLine(overallByDifficulty.medium.won, overallByDifficulty.medium.started);
+  const statsHard = formatLine(overallByDifficulty.hard.won, overallByDifficulty.hard.started);
+  const statsOverallRate = calculateRatePercent(overallWon, overallStarted);
   const statsOverallAngle = (statsOverallRate / 100) * 360;
-  const statsOverallUnfinished = Math.max(0, state.stats.gamesStarted - state.stats.gamesWon);
   const dailyStatsOverall = formatLine(state.stats.daily.gamesWon, state.stats.daily.gamesStarted);
   const todayCalendarFallbackEntry = useMemo<DailyHistoryEntry | null>(() => {
     if (!dailySessionForToday) {
@@ -2622,22 +2640,22 @@ export function SudokuApp() {
       key: "easy",
       label: "Easy",
       line: statsEasy,
-      rate: calculateRatePercent(state.stats.byDifficulty.easy.won, state.stats.byDifficulty.easy.started),
-      rateText: formatRate(state.stats.byDifficulty.easy.won, state.stats.byDifficulty.easy.started),
+      rate: calculateRatePercent(overallByDifficulty.easy.won, overallByDifficulty.easy.started),
+      rateText: formatRate(overallByDifficulty.easy.won, overallByDifficulty.easy.started),
     },
     {
       key: "medium",
       label: "Medium",
       line: statsMedium,
-      rate: calculateRatePercent(state.stats.byDifficulty.medium.won, state.stats.byDifficulty.medium.started),
-      rateText: formatRate(state.stats.byDifficulty.medium.won, state.stats.byDifficulty.medium.started),
+      rate: calculateRatePercent(overallByDifficulty.medium.won, overallByDifficulty.medium.started),
+      rateText: formatRate(overallByDifficulty.medium.won, overallByDifficulty.medium.started),
     },
     {
       key: "hard",
       label: "Hard",
       line: statsHard,
-      rate: calculateRatePercent(state.stats.byDifficulty.hard.won, state.stats.byDifficulty.hard.started),
-      rateText: formatRate(state.stats.byDifficulty.hard.won, state.stats.byDifficulty.hard.started),
+      rate: calculateRatePercent(overallByDifficulty.hard.won, overallByDifficulty.hard.started),
+      rateText: formatRate(overallByDifficulty.hard.won, overallByDifficulty.hard.started),
     },
   ];
 
@@ -2941,13 +2959,13 @@ export function SudokuApp() {
                     <div
                       className="stats-pie-chart"
                       role="img"
-                      aria-label={`Overall finished ${formatRate(state.stats.gamesWon, state.stats.gamesStarted)}`}
+                      aria-label={`Overall finished ${formatRate(overallWon, overallStarted)}`}
                       style={{
                         background:
                           `conic-gradient(var(--stats-finished) 0deg ${statsOverallAngle}deg, var(--stats-unfinished) ${statsOverallAngle}deg 360deg)`,
                       }}
                     >
-                      <span className="stats-pie-center">{formatRate(state.stats.gamesWon, state.stats.gamesStarted)}</span>
+                      <span className="stats-pie-center">{formatRate(overallWon, overallStarted)}</span>
                     </div>
                     <div className="stats-overview-lines">
                       <p className="stats-overview-combo">
@@ -2961,7 +2979,7 @@ export function SudokuApp() {
                             🔥
                           </span>
                           {" "}
-                          Streak:
+                          Puzzle Streak:
                           {" "}
                           <span id="stats-streak">{state.stats.currentStreak}</span>
                           {" "}
@@ -2976,13 +2994,13 @@ export function SudokuApp() {
                           <span className="stats-legend-swatch solved" aria-hidden="true" />
                           Won:
                           {" "}
-                          {state.stats.gamesWon}
+                          {overallWon}
                         </li>
                         <li>
                           <span className="stats-legend-swatch unfinished" aria-hidden="true" />
                           Lost:
                           {" "}
-                          {statsOverallUnfinished}
+                          {overallLost}
                         </li>
                       </ul>
                     </div>
@@ -3028,7 +3046,7 @@ export function SudokuApp() {
                   </div>
                   <div className="daily-summary-line">
                     <span>
-                      Streak:
+                      Daily Solve Streak:
                       {" "}
                       <span id="stats-daily-streak">{state.stats.daily.currentStreak}</span>
                       {" "}
