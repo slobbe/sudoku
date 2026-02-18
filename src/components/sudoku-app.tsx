@@ -199,7 +199,7 @@ const SAVE_KEY = "sudoku-pwa-current-game-v1";
 const DOUBLE_TAP_MS = 300;
 
 const APP_NAME = "Sudoku";
-const APP_VERSION = "0.4.1";
+const APP_VERSION = "0.4.2";
 const APP_AUTHOR = "slobbe";
 const APP_REPO_URL = "https://github.com/slobbe/sudoku";
 const APP_LICENSE_URL = "https://github.com/slobbe/sudoku/blob/main/LICENSE";
