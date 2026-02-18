@@ -9,6 +9,13 @@ export type PuzzleCandidate = {
   givens: number;
 };
 
+export type DateSeedMode = "local" | "utc";
+
+export type PuzzleGenerationOptions = {
+  seed?: string | number;
+  rng?: () => number;
+};
+
 type MaskState = {
   rowMask: number[];
   colMask: number[];
@@ -29,6 +36,61 @@ const DIFFICULTY_CLUES: Record<Difficulty, [number, number]> = {
   medium: [32, 36],
   hard: [26, 30],
 };
+
+function normalizeSeed(seed: string | number): string {
+  return typeof seed === "number" ? `n:${seed}` : `s:${seed}`;
+}
+
+function hashSeed(seed: string | number): number {
+  const normalized = normalizeSeed(seed);
+  let hash = 2166136261;
+
+  for (let index = 0; index < normalized.length; index += 1) {
+    hash ^= normalized.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+
+  const value = hash >>> 0;
+  return value === 0 ? 0x9e3779b9 : value;
+}
+
+export function createSeededRng(seed: string | number): () => number {
+  let state = hashSeed(seed);
+
+  return () => {
+    state = (state + 0x6d2b79f5) >>> 0;
+    let output = state;
+    output = Math.imul(output ^ (output >>> 15), output | 1);
+    output ^= output + Math.imul(output ^ (output >>> 7), output | 61);
+    return ((output ^ (output >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+function pad2(value: number): string {
+  return String(value).padStart(2, "0");
+}
+
+export function dateSeed(date: Date = new Date(), mode: DateSeedMode = "local"): string {
+  if (!(date instanceof Date) || Number.isNaN(date.getTime())) {
+    throw new Error("Invalid date provided for dateSeed.");
+  }
+
+  const year = mode === "utc" ? date.getUTCFullYear() : date.getFullYear();
+  const month = mode === "utc" ? date.getUTCMonth() + 1 : date.getMonth() + 1;
+  const day = mode === "utc" ? date.getUTCDate() : date.getDate();
+
+  return `${year}-${pad2(month)}-${pad2(day)}`;
+}
+
+function resolveRng(options?: PuzzleGenerationOptions): () => number {
+  if (options?.rng) {
+    return options.rng;
+  }
+  if (options?.seed !== undefined) {
+    return createSeededRng(options.seed);
+  }
+  return Math.random;
+}
 
 function cloneBoard(board: Board): Board {
   return board.map((row) => row.slice());
@@ -373,8 +435,8 @@ export function solveBoard(inputBoard: unknown): Board | null {
   return gridToBoard(solved);
 }
 
-export function generateSolvedBoard(): Board {
-  return gridToBoard(generateSolvedGrid());
+export function generateSolvedBoard(rng: () => number = Math.random): Board {
+  return gridToBoard(generateSolvedGrid(rng));
 }
 
 function puzzleMatchesSolution(puzzle: Board, solution: Board): boolean {
@@ -399,18 +461,18 @@ function isPuzzleSolutionPairValid(puzzle: Board, solution: Board): boolean {
   return countSolutions(puzzle, 2) === 1;
 }
 
-function randomInt(min: number, max: number): number {
-  return Math.floor(Math.random() * (max - min + 1)) + min;
+function randomInt(min: number, max: number, rng: () => number): number {
+  return Math.floor(rng() * (max - min + 1)) + min;
 }
 
-function targetCluesForDifficulty(difficulty: Difficulty): number {
+function targetCluesForDifficulty(difficulty: Difficulty, rng: () => number): number {
   const range = DIFFICULTY_CLUES[difficulty] ?? DIFFICULTY_CLUES.medium;
-  return randomInt(range[0], range[1]);
+  return randomInt(range[0], range[1], rng);
 }
 
-function carveUniquePuzzle(solvedBoard: Board, cluesTarget: number): { puzzle: Board; givens: number } {
+function carveUniquePuzzle(solvedBoard: Board, cluesTarget: number, rng: () => number): { puzzle: Board; givens: number } {
   const puzzle = cloneBoard(solvedBoard);
-  const cells = shuffled(Array.from({ length: SIZE }, (_, i) => i));
+  const cells = shuffled(Array.from({ length: SIZE }, (_, i) => i), rng);
   let givens = SIZE;
 
   for (const cellIndex of cells) {
@@ -436,13 +498,14 @@ function carveUniquePuzzle(solvedBoard: Board, cluesTarget: number): { puzzle: B
   return { puzzle, givens };
 }
 
-export function generatePuzzle(difficulty: Difficulty = "medium"): PuzzleCandidate {
-  const cluesTarget = targetCluesForDifficulty(difficulty);
+export function generatePuzzle(difficulty: Difficulty = "medium", options: PuzzleGenerationOptions = {}): PuzzleCandidate {
+  const rng = resolveRng(options);
+  const cluesTarget = targetCluesForDifficulty(difficulty, rng);
   let bestCandidate: PuzzleCandidate | null = null;
 
   for (let attempts = 0; attempts < 20; attempts += 1) {
-    const solvedSeed = generateSolvedBoard();
-    const { puzzle, givens } = carveUniquePuzzle(solvedSeed, cluesTarget);
+    const solvedSeed = generateSolvedBoard(rng);
+    const { puzzle, givens } = carveUniquePuzzle(solvedSeed, cluesTarget, rng);
     if (countSolutions(puzzle, 2) !== 1) {
       continue;
     }
@@ -476,8 +539,8 @@ export function generatePuzzle(difficulty: Difficulty = "medium"): PuzzleCandida
     return bestCandidate;
   }
 
-  const emergencySolution = generateSolvedBoard();
-  const emergency = carveUniquePuzzle(emergencySolution, 70);
+  const emergencySolution = generateSolvedBoard(rng);
+  const emergency = carveUniquePuzzle(emergencySolution, 70, rng);
   const solved = solveBoard(emergency.puzzle);
 
   if (solved && isPuzzleSolutionPairValid(emergency.puzzle, solved)) {

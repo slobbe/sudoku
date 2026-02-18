@@ -3,6 +3,8 @@ import {
   boardComplete,
   clone,
   countSolutions,
+  createSeededRng,
+  dateSeed,
   generatePuzzle,
   solveBoard,
 } from "@slobbe/sudoku-engine";
@@ -43,5 +45,47 @@ describe("sudoku engine", () => {
     copied[0][0] = original === 9 ? 8 : 9;
     expect(copied).not.toEqual(sample.puzzle);
     expect(sample.puzzle[0][0]).toBe(original);
+  });
+
+  it("generates deterministic puzzles from the same seed", () => {
+    const first = generatePuzzle("medium", { seed: "daily:2026-02-18" });
+    const second = generatePuzzle("medium", { seed: "daily:2026-02-18" });
+
+    expect(first.puzzle).toEqual(second.puzzle);
+    expect(first.solution).toEqual(second.solution);
+    expect(first.givens).toBe(second.givens);
+  });
+
+  it("generates different puzzles for different seeds", () => {
+    const first = generatePuzzle("medium", { seed: "daily:2026-02-18" });
+    const second = generatePuzzle("medium", { seed: "daily:2026-02-19" });
+
+    expect(first.puzzle).not.toEqual(second.puzzle);
+  });
+
+  it("keeps uniqueness guarantees for seeded puzzles", () => {
+    const seeded = generatePuzzle("hard", { seed: "daily:2026-02-18" });
+    expect(countSolutions(seeded.puzzle, 2)).toBe(1);
+  });
+
+  it("supports explicit rng override", () => {
+    const rngA = createSeededRng("rng-seed");
+    const rngB = createSeededRng("rng-seed");
+
+    const first = generatePuzzle("easy", { rng: rngA });
+    const second = generatePuzzle("easy", { rng: rngB });
+
+    expect(first.puzzle).toEqual(second.puzzle);
+    expect(first.solution).toEqual(second.solution);
+  });
+
+  it("builds local date seeds by default", () => {
+    const localDate = new Date(2026, 1, 3, 8, 30, 0);
+    expect(dateSeed(localDate)).toBe("2026-02-03");
+  });
+
+  it("can build UTC date seeds", () => {
+    const utcDate = new Date(Date.UTC(2026, 1, 3, 23, 30, 0));
+    expect(dateSeed(utcDate, "utc")).toBe("2026-02-03");
   });
 });

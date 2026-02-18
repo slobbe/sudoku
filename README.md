@@ -179,6 +179,17 @@ Puzzle generation and validation logic is extracted to a reusable workspace pack
 - Package name: `@slobbe/sudoku-engine`
 - Core exports: `generatePuzzle`, `solveBoard`, `countSolutions`, `boardComplete`, `isValidPlacement`, `clone`
 - Types: `Board`, `Difficulty`, `PuzzleCandidate`
+- Deterministic helpers: `createSeededRng`, `dateSeed`
+
+Seeded generation example:
+
+```ts
+import { dateSeed, generatePuzzle } from "@slobbe/sudoku-engine";
+
+const daily = generatePuzzle("medium", { seed: dateSeed() });
+```
+
+`dateSeed()` defaults to local date mode, so a new daily puzzle starts at local midnight.
 
 ## Publishing Packages
 
