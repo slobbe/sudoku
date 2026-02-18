@@ -2586,10 +2586,12 @@ export function SudokuApp() {
       ? "lost"
       : null;
   const dailyButtonLabel = dailyResultToday === "won"
-    ? `View Daily Puzzle · next in ${formatCountdownToNextDaily(nowTick)}`
+    ? `View Daily Puzzle (next in ${formatCountdownToNextDaily(nowTick)})`
     : dailyResultToday === "lost"
-      ? `Retry Daily Puzzle · next in ${formatCountdownToNextDaily(nowTick)}`
-      : `Daily Puzzle (${todayDailyDifficulty})`;
+      ? `Retry Daily Puzzle (new in ${formatCountdownToNextDaily(nowTick)})`
+      : canContinueDailyPuzzle
+        ? "Continue Daily Puzzle"
+        : "Daily Puzzle";
 
   const overallStarted = state.stats.gamesStarted + state.stats.daily.gamesStarted;
   const overallWon = state.stats.gamesWon + state.stats.daily.gamesWon;
@@ -2720,18 +2722,13 @@ export function SudokuApp() {
                   Continue Standard
                 </button>
               ) : null}
-              {canContinueDailyPuzzle ? (
-                <button id="continue-daily-puzzle" type="button" onClick={continueDailyPuzzle}>
-                  Continue Daily
-                </button>
-              ) : null}
               <button id="new-game" type="button" onClick={() => startNewGameAndOpen()}>
                 New Puzzle
               </button>
               <button
                 id="daily-game"
                 type="button"
-                onClick={startDailyPuzzleAndOpen}
+                onClick={canContinueDailyPuzzle ? continueDailyPuzzle : startDailyPuzzleAndOpen}
               >
                 {dailyButtonLabel}
               </button>
