@@ -2730,6 +2730,7 @@ export function SudokuApp() {
               <button
                 id="daily-game"
                 type="button"
+                className={dailyResultToday ? "looks-disabled" : undefined}
                 onClick={canContinueDailyPuzzle ? continueDailyPuzzle : startDailyPuzzleAndOpen}
               >
                 {dailyButtonLabel}

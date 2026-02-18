@@ -486,6 +486,19 @@ button:not([data-sudoku-cell="true"]):active {
     flex-shrink: 0;
 }
 
+#daily-game.looks-disabled {
+    opacity: 0.5;
+    color: var(--muted);
+}
+
+#daily-game.looks-disabled:hover,
+#daily-game.looks-disabled:active {
+    opacity: 0.68;
+    color: var(--ink);
+    border-color: var(--line-bold);
+    background: color-mix(in srgb, var(--control-bg) 72%, var(--control-hover));
+}
+
 button:not([data-sudoku-cell="true"]):disabled {
     opacity: 0.45;
     cursor: not-allowed;
