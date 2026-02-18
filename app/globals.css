@@ -269,10 +269,12 @@ body {
     grid-template-rows: 1fr;
     gap: 12px;
     flex: 1;
+    min-height: 0;
 }
 
 .panel-view.stats-view {
     width: 100%;
+    min-height: 0;
 }
 
 .view-title {
@@ -1065,6 +1067,7 @@ button:not([data-sudoku-cell="true"]):disabled {
     grid-template-rows: auto 1fr;
     gap: 12px;
     min-height: 0;
+    overflow-y: auto;
 }
 
 .settings-footer {
