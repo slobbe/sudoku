@@ -329,6 +329,20 @@ body {
     text-align: center;
 }
 
+.game-title-stack {
+    display: grid;
+    justify-items: center;
+    gap: 1px;
+}
+
+.game-subtitle {
+    margin: 0;
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--muted);
+    text-align: center;
+}
+
 .game-subbar {
     width: 100%;
     margin: 0 0 4px;

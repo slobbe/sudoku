@@ -1061,6 +1061,28 @@ function formatDailyEntryLabel(dateKey: string, entry: DailyHistoryEntry | null,
   return `${dateKey}: ${resultLabel} (${entry.difficulty})${todaySuffix}`;
 }
 
+function formatDateKeyForDisplay(dateKey: string): string {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) {
+    return dateKey;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const date = new Date(year, month, day);
+
+  if (Number.isNaN(date.getTime())) {
+    return dateKey;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
 function isSessionContinuable(session: SessionSnapshot | null): boolean {
   return Boolean(session && session.currentGameStarted && !session.won && !session.lost);
 }
@@ -2592,6 +2614,10 @@ export function SudokuApp() {
       : canContinueDailyPuzzle
         ? "Continue Daily Puzzle"
         : "Daily Puzzle";
+  const gameTitle = state.mode === "daily" ? "Daily Sudoku" : "Sudoku";
+  const gameSubtitle = state.mode === "daily"
+    ? formatDateKeyForDisplay(state.dailyDate ?? todayDailyKey)
+    : null;
 
   const overallStarted = state.stats.gamesStarted + state.stats.daily.gamesStarted;
   const overallWon = state.stats.gamesWon + state.stats.daily.gamesWon;
@@ -2750,7 +2776,10 @@ export function SudokuApp() {
               <button id="reset-game" type="button" disabled={state.lost} onClick={resetCurrentGame}>
                 Reset
               </button>
-              <h2 className="game-title">Sudoku</h2>
+              <div className="game-title-stack">
+                <h2 className="game-title">{gameTitle}</h2>
+                {gameSubtitle ? <p className="game-subtitle">{gameSubtitle}</p> : null}
+              </div>
               <button id="home-button" type="button" onClick={goHome}>
                 Home
               </button>
