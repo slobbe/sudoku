@@ -61,7 +61,7 @@ bun run test:watch
 The app is statically exported and deployed via GitHub Actions.
 
 - Workflow: `.github/workflows/deploy-pages.yml`
-- Trigger: push to `main` (or manual dispatch)
+- Trigger: push a tag matching `app-v*` (or manual dispatch)
 - Output folder: `out/`
 
 The workflow computes `NEXT_PUBLIC_BASE_PATH` automatically for user-site vs project-site repos.
@@ -77,7 +77,17 @@ Before shipping an app update, keep these values aligned:
 - `src/components/sudoku-app.tsx` `APP_VERSION`
 - `public/sw.js` `APP_VERSION`
 
-Then push to `main` to trigger the Pages deploy workflow.
+Then create and push an app release tag to trigger the Pages deploy workflow.
+
+Tag format:
+
+- `app-v<version>` deploys the app to GitHub Pages
+
+```bash
+# Example: app 0.4.2
+git tag app-v0.4.2
+git push origin app-v0.4.2
+```
 
 ### NPM Package Publishing
 

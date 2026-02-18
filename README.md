@@ -1,6 +1,6 @@
 # Sudoku PWA
 
-An offline-capable Sudoku app built with Next.js (App Router), React, and TypeScript.
+A Sudoku app built with Next.js (App Router), React, and TypeScript.
 
 ## Features
 
@@ -14,14 +14,9 @@ An offline-capable Sudoku app built with Next.js (App Router), React, and TypeSc
 - Auto-save and restore of your current game
 - Installable PWA with offline support and update detection
 
-## Quick Start
+## Play Online
 
-```bash
-bun install --frozen-lockfile
-bun run dev
-```
-
-Open `http://localhost:3000`.
+The hosted PWA is available at [slobbe.github.io/sudoku](https://slobbe.github.io/sudoku/).
 
 ## Scripts
 
@@ -41,8 +36,8 @@ Open `http://localhost:3000`.
 
 This monorepo also contains reusable workspace packages:
 
-- `@slobbe/sudoku-board` - `packages/sudoku-board/README.md`
-- `@slobbe/sudoku-engine` - `packages/sudoku-engine/README.md`
+- `@slobbe/sudoku-board` - [`packages/sudoku-board/README.md`](/packages/sudoku-board/README.md)
+- `@slobbe/sudoku-engine` - [`packages/sudoku-engine/README.md`](/packages/sudoku-engine/README.md)
 
 ## Project Structure
 
@@ -54,4 +49,4 @@ This monorepo also contains reusable workspace packages:
 
 ## Contributing
 
-Contributor workflows, validation expectations, deployment, and release procedures are documented in `CONTRIBUTING.md`.
+Contributor workflows, validation expectations, deployment, and release procedures are documented in [`CONTRIBUTING.md`](/CONTRIBUTING.md).
