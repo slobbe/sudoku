@@ -1252,6 +1252,22 @@ button:not([data-sudoku-cell="true"]):disabled {
     font-size: 0.8rem;
 }
 
+.app-open-source {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.app-open-source a {
+    color: inherit;
+    text-underline-offset: 2px;
+}
+
+.app-open-source a:hover,
+.app-open-source a:focus-visible {
+    color: var(--ink);
+}
+
 @media (max-width: 900px), (hover: none) and (pointer: coarse) {
     body {
         display: block;
@@ -1316,6 +1332,7 @@ button:not([data-sudoku-cell="true"]):disabled {
 
     .home-actions button,
     .settings-row .settings-control select,
+    .app-open-source,
     .app-update-status {
         width: 100%;
     }

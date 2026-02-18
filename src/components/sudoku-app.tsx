@@ -201,6 +201,8 @@ const DOUBLE_TAP_MS = 300;
 const APP_NAME = "Sudoku";
 const APP_VERSION = "0.4.1";
 const APP_AUTHOR = "slobbe";
+const APP_REPO_URL = "https://github.com/slobbe/sudoku";
+const APP_LICENSE_URL = "https://github.com/slobbe/sudoku/blob/main/LICENSE";
 
 const THEMES: Theme[] = ["slate", "dusk", "mist", "amber"];
 const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
@@ -2996,13 +2998,20 @@ export function SudokuApp() {
                 </div>
               </div>
 
-              <div className="settings-footer" aria-label="App info and update status">
+              <div className="settings-footer" aria-label="App info, source, and update status">
                 <p className="app-info-inline">
                   <span id="app-info-name">{APP_NAME}</span>
                   {" "}
                   <span id="app-info-version">{APP_VERSION}</span>
                   {" "}
                   by <span id="app-info-author">{APP_AUTHOR}</span>
+                </p>
+                <p className="app-open-source">
+                  <a href={APP_REPO_URL} target="_blank" rel="noreferrer">Open source</a>
+                  {" "}
+                  under the
+                  {" "}
+                  <a href={APP_LICENSE_URL} target="_blank" rel="noreferrer">MIT License</a>.
                 </p>
                 <p className="app-update-status">{updateStatus || "Up-to-date"}</p>
               </div>
