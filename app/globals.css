@@ -291,6 +291,12 @@ body {
     align-content: center;
 }
 
+.home-primary-actions {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 8px;
+}
+
 .home-actions button {
     width: 100%;
     min-height: 48px;
@@ -451,6 +457,7 @@ button:not([data-sudoku-cell="true"]):active {
 }
 
 #new-game,
+#continue-current-puzzle,
 #daily-game,
 #home-button,
 #undo,
@@ -470,6 +477,7 @@ button:not([data-sudoku-cell="true"]):active {
 #reset-game,
 #hint,
 #new-game,
+#continue-current-puzzle,
 #daily-game,
 #continue-daily-puzzle,
 #home-button,

@@ -2717,14 +2717,16 @@ export function SudokuApp() {
           <section className="home-view" aria-label="Home menu">
             <h1 className="view-title">Sudoku</h1>
             <div className="home-actions" aria-label="Main actions">
-              {canContinueCurrentPuzzle ? (
-                <button id="continue-current-puzzle" type="button" onClick={continueCurrentPuzzle}>
-                  Continue Standard
+              <div className="home-primary-actions" aria-label="Primary puzzle actions">
+                {canContinueCurrentPuzzle ? (
+                  <button id="continue-current-puzzle" type="button" onClick={continueCurrentPuzzle}>
+                    Continue Puzzle
+                  </button>
+                ) : null}
+                <button id="new-game" type="button" onClick={() => startNewGameAndOpen()}>
+                  New Puzzle
                 </button>
-              ) : null}
-              <button id="new-game" type="button" onClick={() => startNewGameAndOpen()}>
-                New Puzzle
-              </button>
+              </div>
               <button
                 id="daily-game"
                 type="button"
