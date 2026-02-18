@@ -2735,11 +2735,11 @@ export function SudokuApp() {
               >
                 {dailyButtonLabel}
               </button>
-              <button id="settings-open" type="button" onClick={openSettingsView}>
-                Settings
-              </button>
               <button id="stats-open" type="button" onClick={openStatsView}>
                 Statistics
+              </button>
+              <button id="settings-open" type="button" onClick={openSettingsView}>
+                Settings
               </button>
             </div>
             <p className="home-status" aria-live="polite">{statusMessage}</p>

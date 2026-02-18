@@ -425,10 +425,6 @@ body {
     color: var(--error);
 }
 
-#settings-open {
-    font-weight: 700;
-}
-
 button:not([data-sudoku-cell="true"]),
 select {
     border: 1px solid var(--line);
