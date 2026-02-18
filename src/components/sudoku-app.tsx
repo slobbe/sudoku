@@ -41,6 +41,21 @@ type DifficultyStats = {
   won: number;
 };
 
+type DailyResult = "won" | "lost";
+
+type DailyHistoryEntry = {
+  result: DailyResult;
+  difficulty: Difficulty;
+};
+
+type DailyCalendarCell = {
+  key: string;
+  dateNumber: number;
+  isCurrentMonth: boolean;
+  isToday: boolean;
+  entry: DailyHistoryEntry | null;
+};
+
 type DailyStats = {
   gamesStarted: number;
   gamesWon: number;
@@ -49,6 +64,7 @@ type DailyStats = {
   byDifficulty: Record<Difficulty, DifficultyStats>;
   lastStartedDate: string | null;
   lastWonDate: string | null;
+  historyByDate: Record<string, DailyHistoryEntry>;
 };
 
 type NotesBoard = number[][];
@@ -189,6 +205,7 @@ const APP_AUTHOR = "slobbe";
 const THEMES: Theme[] = ["slate", "dusk", "mist", "amber"];
 const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
+const WEEKDAY_SHORT_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const HINT_OPTIONS = Array.from(
   { length: MAX_HINTS_PER_GAME - MIN_HINTS_PER_GAME + 1 },
   (_, index) => MIN_HINTS_PER_GAME + index,
@@ -236,6 +253,7 @@ function createDefaultDailyStats(): DailyStats {
     },
     lastStartedDate: null,
     lastWonDate: null,
+    historyByDate: {},
   };
 }
 
@@ -277,6 +295,7 @@ function cloneStats(stats: GameStats): GameStats {
       },
       lastStartedDate: stats.daily.lastStartedDate,
       lastWonDate: stats.daily.lastWonDate,
+      historyByDate: { ...stats.daily.historyByDate },
     },
   };
 }
@@ -498,6 +517,7 @@ function normalizeStats(rawStats: unknown): GameStats {
       byDifficulty?: Record<string, { started?: unknown; won?: unknown }>;
       lastStartedDate?: unknown;
       lastWonDate?: unknown;
+      historyByDate?: Record<string, { result?: unknown; difficulty?: unknown }>;
     };
   };
 
@@ -543,6 +563,30 @@ function normalizeStats(rawStats: unknown): GameStats {
 
     stats.daily.lastStartedDate = typeof dailyEntry.lastStartedDate === "string" ? dailyEntry.lastStartedDate : null;
     stats.daily.lastWonDate = typeof dailyEntry.lastWonDate === "string" ? dailyEntry.lastWonDate : null;
+
+    const history = dailyEntry.historyByDate;
+    if (history && typeof history === "object") {
+      const historyByDate: Record<string, DailyHistoryEntry> = {};
+
+      for (const [key, value] of Object.entries(history)) {
+        if (!/^(\d{4})-(\d{2})-(\d{2})$/.test(key)) {
+          continue;
+        }
+        if (!value || typeof value !== "object") {
+          continue;
+        }
+
+        const entryValue = value as { result?: unknown; difficulty?: unknown };
+        if ((entryValue.result === "won" || entryValue.result === "lost") && isDifficulty(entryValue.difficulty)) {
+          historyByDate[key] = {
+            result: entryValue.result,
+            difficulty: entryValue.difficulty,
+          };
+        }
+      }
+
+      stats.daily.historyByDate = historyByDate;
+    }
   }
 
   if (stats.daily.bestStreak < stats.daily.currentStreak) {
@@ -666,7 +710,7 @@ function recordWin(
   const next = cloneStats(stats);
 
   if (mode === "daily") {
-    if (!dailyDate || next.daily.lastWonDate === dailyDate) {
+    if (!dailyDate || next.daily.historyByDate[dailyDate]?.result === "won") {
       return next;
     }
 
@@ -684,6 +728,10 @@ function recordWin(
     }
 
     next.daily.lastWonDate = dailyDate;
+    next.daily.historyByDate[dailyDate] = {
+      result: "won",
+      difficulty,
+    };
     return next;
   }
 
@@ -693,6 +741,24 @@ function recordWin(
   if (next.currentStreak > next.bestStreak) {
     next.bestStreak = next.currentStreak;
   }
+  return next;
+}
+
+function recordDailyLoss(stats: GameStats, difficulty: Difficulty, dailyDate: string | null): GameStats {
+  if (!dailyDate) {
+    return stats;
+  }
+
+  const existing = stats.daily.historyByDate[dailyDate];
+  if (existing?.result === "won" || existing?.result === "lost") {
+    return stats;
+  }
+
+  const next = cloneStats(stats);
+  next.daily.historyByDate[dailyDate] = {
+    result: "lost",
+    difficulty,
+  };
   return next;
 }
 
@@ -927,6 +993,72 @@ function formatCountdownToNextDaily(referenceTime = Date.now()): string {
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function getMonthKeyFromDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function parseMonthKey(monthKey: string): { year: number; month: number } {
+  const match = /^(\d{4})-(\d{2})$/.exec(monthKey);
+  if (!match) {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+
+  if (!Number.isInteger(year) || !Number.isInteger(month) || month < 0 || month > 11) {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  }
+
+  return { year, month };
+}
+
+function shiftMonthKey(monthKey: string, delta: number): string {
+  const { year, month } = parseMonthKey(monthKey);
+  const shifted = new Date(year, month + delta, 1);
+  return getMonthKeyFromDate(shifted);
+}
+
+function buildDailyCalendarCells(
+  monthKey: string,
+  todayKey: string,
+  historyByDate: Record<string, DailyHistoryEntry>,
+): DailyCalendarCell[] {
+  const { year, month } = parseMonthKey(monthKey);
+  const firstOfMonth = new Date(year, month, 1);
+  const startOffset = firstOfMonth.getDay();
+  const gridStart = new Date(year, month, 1 - startOffset);
+  const cells: DailyCalendarCell[] = [];
+
+  for (let index = 0; index < 42; index += 1) {
+    const date = new Date(gridStart);
+    date.setDate(gridStart.getDate() + index);
+    const key = dateSeed(date, "local");
+
+    cells.push({
+      key,
+      dateNumber: date.getDate(),
+      isCurrentMonth: date.getMonth() === month,
+      isToday: key === todayKey,
+      entry: historyByDate[key] ?? null,
+    });
+  }
+
+  return cells;
+}
+
+function formatDailyEntryLabel(dateKey: string, entry: DailyHistoryEntry | null, isToday: boolean): string {
+  const todaySuffix = isToday ? " (today)" : "";
+  if (!entry) {
+    return `${dateKey}: no daily result${todaySuffix}`;
+  }
+
+  const resultLabel = entry.result === "won" ? "solved" : "lost";
+  return `${dateKey}: ${resultLabel} (${entry.difficulty})${todaySuffix}`;
 }
 
 function isSessionContinuable(session: SessionSnapshot | null): boolean {
@@ -1281,6 +1413,7 @@ export function SudokuApp() {
   const [updateStatus, setUpdateStatus] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
+  const [dailyCalendarMonthKey, setDailyCalendarMonthKey] = useState(() => getMonthKeyFromDate(new Date()));
 
   const winDialogRef = useRef<HTMLDialogElement>(null);
   const loseDialogRef = useRef<HTMLDialogElement>(null);
@@ -1558,7 +1691,16 @@ export function SudokuApp() {
   }, []);
 
   const openStatsView = useCallback(() => {
+    setDailyCalendarMonthKey(getMonthKeyFromDate(new Date()));
     setActiveView("stats");
+  }, []);
+
+  const showPreviousDailyMonth = useCallback(() => {
+    setDailyCalendarMonthKey((current) => shiftMonthKey(current, -1));
+  }, []);
+
+  const showNextDailyMonth = useCallback(() => {
+    setDailyCalendarMonthKey((current) => shiftMonthKey(current, 1));
   }, []);
 
   const continueCurrentPuzzle = continueStandardPuzzle;
@@ -1682,6 +1824,9 @@ export function SudokuApp() {
             next.lost = true;
             next.fillModeValue = null;
             next.stats = markCurrentGameAsLossIfNeeded(next);
+            if (next.mode === "daily") {
+              next.stats = recordDailyLoss(next.stats, next.difficulty, next.dailyDate);
+            }
             setLosePromptOpen(true);
             setStatusMessage("Out of lives. Start a new puzzle.");
           }
@@ -2417,9 +2562,55 @@ export function SudokuApp() {
   const statsOverallAngle = (statsOverallRate / 100) * 360;
   const statsOverallUnfinished = Math.max(0, state.stats.gamesStarted - state.stats.gamesWon);
   const dailyStatsOverall = formatLine(state.stats.daily.gamesWon, state.stats.daily.gamesStarted);
-  const dailyStatsEasy = formatLine(state.stats.daily.byDifficulty.easy.won, state.stats.daily.byDifficulty.easy.started);
-  const dailyStatsMedium = formatLine(state.stats.daily.byDifficulty.medium.won, state.stats.daily.byDifficulty.medium.started);
-  const dailyStatsHard = formatLine(state.stats.daily.byDifficulty.hard.won, state.stats.daily.byDifficulty.hard.started);
+  const todayCalendarFallbackEntry = useMemo<DailyHistoryEntry | null>(() => {
+    if (!dailySessionForToday) {
+      return null;
+    }
+
+    if (dailySessionForToday.won) {
+      return { result: "won", difficulty: todayDailyDifficulty };
+    }
+
+    if (dailySessionForToday.lost) {
+      return { result: "lost", difficulty: todayDailyDifficulty };
+    }
+
+    return null;
+  }, [dailySessionForToday, todayDailyDifficulty]);
+
+  const effectiveDailyHistory = useMemo(() => {
+    const history = { ...state.stats.daily.historyByDate };
+    if (todayCalendarFallbackEntry && !history[todayDailyKey]) {
+      history[todayDailyKey] = todayCalendarFallbackEntry;
+    }
+    return history;
+  }, [state.stats.daily.historyByDate, todayCalendarFallbackEntry, todayDailyKey]);
+
+  const dailyCalendarCells = useMemo(
+    () => buildDailyCalendarCells(dailyCalendarMonthKey, todayDailyKey, effectiveDailyHistory),
+    [dailyCalendarMonthKey, effectiveDailyHistory, todayDailyKey],
+  );
+  const dailyCalendarMonthLabel = useMemo(() => {
+    const { year, month } = parseMonthKey(dailyCalendarMonthKey);
+    return new Intl.DateTimeFormat(undefined, { month: "long", year: "numeric" }).format(new Date(year, month, 1));
+  }, [dailyCalendarMonthKey]);
+  const dailyMonthSummary = useMemo(() => {
+    let won = 0;
+    let lost = 0;
+
+    for (const cell of dailyCalendarCells) {
+      if (!cell.isCurrentMonth || !cell.entry) {
+        continue;
+      }
+      if (cell.entry.result === "won") {
+        won += 1;
+      } else {
+        lost += 1;
+      }
+    }
+
+    return { won, lost };
+  }, [dailyCalendarCells]);
   const difficultyRateRows: Array<{
     key: Difficulty;
     label: string;
@@ -2804,39 +2995,97 @@ export function SudokuApp() {
 
                 <section className="stats-panel" aria-label="Daily puzzle stats">
                   <h3>Daily Challenge</h3>
-                  <p>
-                    Today:
-                    {" "}
-                    <span id="stats-daily-today">{todayDailyKey}</span>
-                    {" "}
-                    ({todayDailyDifficulty})
-                  </p>
-                  <p>
-                    Daily overall:
-                    {" "}
+                  <div className="daily-summary-line">
+                    <span>
+                      Today:
+                      {" "}
+                      <span id="stats-daily-today">{todayDailyKey}</span>
+                      {" "}
+                      ({todayDailyDifficulty})
+                    </span>
                     <span id="stats-daily-overall">{dailyStatsOverall}</span>
-                  </p>
-                  <p>
-                    Daily by difficulty:
-                    {" "}
-                    <span id="stats-daily-easy">Easy {dailyStatsEasy}</span>
-                    {" · "}
-                    <span id="stats-daily-medium">Medium {dailyStatsMedium}</span>
-                    {" · "}
-                    <span id="stats-daily-hard">Hard {dailyStatsHard}</span>
-                  </p>
-                  <p>
-                    Daily streak:
-                    {" "}
-                    <span id="stats-daily-streak">{state.stats.daily.currentStreak}</span>
-                    {" "}
-                    puzzles
-                    {" "}
-                    (best
-                    {" "}
-                    <span id="stats-daily-best-streak">{state.stats.daily.bestStreak}</span>
-                    )
-                  </p>
+                  </div>
+                  <div className="daily-summary-line">
+                    <span>{`Played: ${state.stats.daily.gamesStarted}`}</span>
+                    <span>{`Won: ${state.stats.daily.gamesWon}`}</span>
+                    <span>{`Unfinished: ${Math.max(0, state.stats.daily.gamesStarted - state.stats.daily.gamesWon)}`}</span>
+                  </div>
+                  <div className="daily-summary-line">
+                    <span>
+                      Streak:
+                      {" "}
+                      <span id="stats-daily-streak">{state.stats.daily.currentStreak}</span>
+                      {" "}
+                      (best
+                      {" "}
+                      <span id="stats-daily-best-streak">{state.stats.daily.bestStreak}</span>
+                      )
+                    </span>
+                    <span>{`Month W/L: ${dailyMonthSummary.won}/${dailyMonthSummary.lost}`}</span>
+                  </div>
+
+                  <div className="daily-calendar-header">
+                    <button
+                      id="daily-calendar-prev"
+                      type="button"
+                      aria-label="Previous month"
+                      onClick={showPreviousDailyMonth}
+                    >
+                      ←
+                    </button>
+                    <p className="daily-calendar-month">{dailyCalendarMonthLabel}</p>
+                    <button
+                      id="daily-calendar-next"
+                      type="button"
+                      aria-label="Next month"
+                      onClick={showNextDailyMonth}
+                    >
+                      →
+                    </button>
+                  </div>
+
+                  <div className="daily-calendar-weekdays" aria-hidden="true">
+                    {WEEKDAY_SHORT_LABELS.map((day) => (
+                      <span key={`weekday-${day}`}>{day}</span>
+                    ))}
+                  </div>
+
+                  <div className="daily-calendar-grid" role="grid" aria-label={`Daily result calendar for ${dailyCalendarMonthLabel}`}>
+                    {dailyCalendarCells.map((cell) => {
+                      const classNames = ["daily-calendar-day"];
+                      if (!cell.isCurrentMonth) {
+                        classNames.push("outside-month");
+                      }
+                      if (cell.entry?.result === "won") {
+                        classNames.push("won");
+                      } else if (cell.entry?.result === "lost") {
+                        classNames.push("lost");
+                      }
+                      if (cell.isToday) {
+                        classNames.push("today");
+                      }
+
+                      const difficultyBadge = cell.entry ? cell.entry.difficulty[0].toUpperCase() : null;
+
+                      return (
+                        <div
+                          key={cell.key}
+                          className={classNames.join(" ")}
+                          role="gridcell"
+                          aria-label={formatDailyEntryLabel(cell.key, cell.entry, cell.isToday)}
+                        >
+                          <span className="daily-calendar-day-number">{cell.dateNumber}</span>
+                          {difficultyBadge ? <span className="daily-calendar-day-difficulty">{difficultyBadge}</span> : null}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="daily-calendar-legend" aria-label="Daily calendar legend">
+                    <span><span className="legend-swatch won" /> Solved</span>
+                    <span><span className="legend-swatch lost" /> Lost</span>
+                    <span><span className="legend-swatch today" /> Today</span>
+                  </div>
                 </section>
 
                 <section className="stats-panel stats-panel-streak" aria-label="Current and best streak">
