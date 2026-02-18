@@ -710,7 +710,7 @@ function recordWin(
   const next = cloneStats(stats);
 
   if (mode === "daily") {
-    if (!dailyDate || next.daily.historyByDate[dailyDate]?.result === "won") {
+    if (!dailyDate || next.daily.historyByDate[dailyDate]) {
       return next;
     }
 
@@ -1549,7 +1549,52 @@ export function SudokuApp() {
     const difficulty = deriveDailyDifficulty(dayKey);
     const seed = getDailyPuzzleSeed(dayKey, difficulty);
 
+    const buildFreshDailyState = (base: GameState): { next: GameState; givens: number } => {
+      const generated = generatePuzzle(difficulty, { seed });
+
+      return {
+        next: {
+          ...base,
+          mode: "daily",
+          difficulty,
+          hintsPerGame: base.configuredHintsPerGame,
+          livesPerGame: base.configuredLivesPerGame,
+          puzzle: generated.puzzle,
+          solution: generated.solution,
+          board: clone(generated.puzzle),
+          givens: buildGivens(generated.puzzle),
+          selected: null,
+          highlightValue: null,
+          fillModeValue: null,
+          annotationMode: false,
+          notes: createEmptyNotesBoard(),
+          undoStack: [],
+          redoStack: [],
+          winRecorded: false,
+          currentGameStarted: false,
+          hintsLeft: base.configuredHintsPerGame,
+          livesLeft: base.configuredLivesPerGame,
+          lost: false,
+          won: false,
+          dailyDate: dayKey,
+          dailySeed: seed,
+          dailySession: null,
+        },
+        givens: generated.givens,
+      };
+    };
+
     if (current.dailySession && current.dailySession.date === dayKey) {
+      if (current.dailySession.lost) {
+        const { next, givens } = buildFreshDailyState(current);
+        applyState(next);
+        setWinPromptOpen(false);
+        setLosePromptOpen(false);
+        setActiveView("game");
+        setStatusMessage(`Daily ${difficulty} puzzle restarted for ${dayKey} (${givens} givens).`);
+        return;
+      }
+
       const next = applySessionToState(current, current.dailySession, "daily", { date: dayKey, seed });
       next.dailySession = null;
       applyState(next);
@@ -1558,7 +1603,7 @@ export function SudokuApp() {
       setActiveView("game");
 
       if (next.won) {
-        setStatusMessage(`Daily puzzle for ${dayKey} already solved.`);
+        setStatusMessage(`Viewing solved daily puzzle for ${dayKey}.`);
       } else {
         setStatusMessage(`Daily ${difficulty} puzzle resumed for ${dayKey}.`);
       }
@@ -1566,42 +1611,28 @@ export function SudokuApp() {
     }
 
     if (current.mode === "daily" && current.dailyDate === dayKey && current.puzzle && current.solution && current.board) {
+      if (current.lost) {
+        const { next, givens } = buildFreshDailyState(current);
+        applyState(next);
+        setWinPromptOpen(false);
+        setLosePromptOpen(false);
+        setActiveView("game");
+        setStatusMessage(`Daily ${difficulty} puzzle restarted for ${dayKey} (${givens} givens).`);
+        return;
+      }
+
       setActiveView("game");
       setWinPromptOpen(false);
       setLosePromptOpen(false);
-      setStatusMessage(`Daily ${difficulty} puzzle resumed for ${dayKey}.`);
+      if (current.won) {
+        setStatusMessage(`Viewing solved daily puzzle for ${dayKey}.`);
+      } else {
+        setStatusMessage(`Daily ${difficulty} puzzle resumed for ${dayKey}.`);
+      }
       return;
     }
 
-    const { puzzle, solution, givens } = generatePuzzle(difficulty, { seed });
-
-    const next: GameState = {
-      ...current,
-      mode: "daily",
-      difficulty,
-      hintsPerGame: current.configuredHintsPerGame,
-      livesPerGame: current.configuredLivesPerGame,
-      puzzle,
-      solution,
-      board: clone(puzzle),
-      givens: buildGivens(puzzle),
-      selected: null,
-      highlightValue: null,
-      fillModeValue: null,
-      annotationMode: false,
-      notes: createEmptyNotesBoard(),
-      undoStack: [],
-      redoStack: [],
-      winRecorded: false,
-      currentGameStarted: false,
-      hintsLeft: current.configuredHintsPerGame,
-      livesLeft: current.configuredLivesPerGame,
-      lost: false,
-      won: false,
-      dailyDate: dayKey,
-      dailySeed: seed,
-      dailySession: null,
-    };
+    const { next, givens } = buildFreshDailyState(current);
 
     applyState(next);
     setWinPromptOpen(false);
@@ -2549,10 +2580,16 @@ export function SudokuApp() {
   }, [state.board, state.givens, state.showMistakes, state.solution]);
   const canContinueCurrentPuzzle = isSessionContinuable(standardSessionForHome);
   const canContinueDailyPuzzle = isSessionContinuable(dailySessionForToday);
-  const dailyCompletedToday = Boolean(dailySessionForToday?.won);
-  const dailyButtonLabel = dailyCompletedToday
-    ? `Next daily puzzle in ${formatCountdownToNextDaily(nowTick)}`
-    : "Daily Puzzle";
+  const dailyResultToday: DailyResult | null = dailySessionForToday?.won
+    ? "won"
+    : dailySessionForToday?.lost
+      ? "lost"
+      : null;
+  const dailyButtonLabel = dailyResultToday === "won"
+    ? `View Daily Puzzle · next in ${formatCountdownToNextDaily(nowTick)}`
+    : dailyResultToday === "lost"
+      ? `Retry Daily Puzzle · next in ${formatCountdownToNextDaily(nowTick)}`
+      : `Daily Puzzle (${todayDailyDifficulty})`;
 
   const overallStarted = state.stats.gamesStarted + state.stats.daily.gamesStarted;
   const overallWon = state.stats.gamesWon + state.stats.daily.gamesWon;
@@ -2683,7 +2720,7 @@ export function SudokuApp() {
                   Continue Standard
                 </button>
               ) : null}
-              {canContinueDailyPuzzle && !dailyCompletedToday ? (
+              {canContinueDailyPuzzle ? (
                 <button id="continue-daily-puzzle" type="button" onClick={continueDailyPuzzle}>
                   Continue Daily
                 </button>
@@ -2694,10 +2731,9 @@ export function SudokuApp() {
               <button
                 id="daily-game"
                 type="button"
-                disabled={dailyCompletedToday}
                 onClick={startDailyPuzzleAndOpen}
               >
-                {dailyCompletedToday ? dailyButtonLabel : `Daily Puzzle (${todayDailyDifficulty})`}
+                {dailyButtonLabel}
               </button>
               <button id="settings-open" type="button" onClick={openSettingsView}>
                 Settings
