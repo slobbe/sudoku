@@ -54,6 +54,10 @@ import {
   type SudokuAppView,
   type SudokuEntryPoint,
 } from "@/lib/routing/entry";
+import {
+  loadSavedGamePayloadFromBrowser,
+  saveSavedGamePayloadToBrowser,
+} from "@/lib/storage/game-storage";
 import { useNostrAccount } from "@/lib/nostr";
 
 type Theme = AppTheme;
@@ -222,7 +226,6 @@ const MIN_HINTS_PER_GAME = 0;
 const MAX_HINTS_PER_GAME = 9;
 const MIN_LIVES_PER_GAME = 1;
 const MAX_LIVES_PER_GAME = 9;
-const SAVE_KEY = "sudoku-pwa-current-game-v1";
 
 const APP_NAME = "Sudoku";
 const APP_VERSION = "0.4.2";
@@ -1112,25 +1115,7 @@ function formatLine(won: number, started: number): string {
 }
 
 function loadSavedGame(): GameState | null {
-  let raw: string | null = null;
-
-  try {
-    raw = window.localStorage.getItem(SAVE_KEY);
-  } catch {
-    return null;
-  }
-
-  if (!raw) {
-    return null;
-  }
-
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    return null;
-  }
-
+  const parsed = loadSavedGamePayloadFromBrowser();
   if (!parsed || typeof parsed !== "object") {
     return null;
   }
@@ -2238,9 +2223,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       dailySession: serializeDailySession(saveState.dailySession),
     };
 
-    try {
-      window.localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
-    } catch {
+    if (!saveSavedGamePayloadToBrowser(payload as Record<string, unknown>)) {
       setStatusMessage("Autosave is unavailable in this browser.");
     }
   }, [isHydrated, state]);

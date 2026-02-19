@@ -5,8 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNostrAccount } from "@/lib/nostr";
 import { applyThemeToDocument, readThemeFromSavedGame } from "@/lib/theme";
 
-const SAVE_KEY = "sudoku-pwa-current-game-v1";
-
 function sanitizeNextPath(nextPath: string | null): string {
   if (!nextPath || !nextPath.startsWith("/") || nextPath.startsWith("//")) {
     return "/";
@@ -42,7 +40,7 @@ export function NostrProfilePage() {
   const [showSecretKey, setShowSecretKey] = useState(false);
 
   useEffect(() => {
-    const savedTheme = readThemeFromSavedGame(SAVE_KEY);
+    const savedTheme = readThemeFromSavedGame();
     applyThemeToDocument(savedTheme);
   }, []);
 

@@ -1,3 +1,8 @@
+import {
+  readLegacySavedGamePayloadFromBrowser,
+  readSavedGameConfigPayloadFromBrowser,
+} from "./storage/game-storage";
+
 export type AppTheme = "slate" | "dusk" | "mist" | "amber";
 
 const APP_THEMES: AppTheme[] = ["slate", "dusk", "mist", "amber"];
@@ -33,20 +38,16 @@ export function applyThemeToDocument(theme: AppTheme): void {
   }
 }
 
-export function readThemeFromSavedGame(saveKey: string): AppTheme {
-  if (typeof window === "undefined") {
-    return "slate";
+export function readThemeFromSavedGame(): AppTheme {
+  const configPayload = readSavedGameConfigPayloadFromBrowser();
+  if (configPayload) {
+    return normalizeAppTheme(configPayload.theme);
   }
 
-  try {
-    const raw = window.localStorage.getItem(saveKey);
-    if (!raw) {
-      return "slate";
-    }
-
-    const parsed = JSON.parse(raw) as { theme?: unknown };
-    return normalizeAppTheme(parsed.theme);
-  } catch {
-    return "slate";
+  const legacyPayload = readLegacySavedGamePayloadFromBrowser();
+  if (legacyPayload) {
+    return normalizeAppTheme(legacyPayload.theme);
   }
+
+  return "slate";
 }
