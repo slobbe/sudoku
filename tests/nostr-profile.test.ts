@@ -8,7 +8,7 @@ import {
 
 describe("nostr profile helpers", () => {
   it("parses object metadata and extracts normalized name", () => {
-    const profile = parseNostrProfileMetadata('{"name":"  Alice  ","about":"Sudoku"}');
+    const profile = parseNostrProfileMetadata('{"name":"legacy","display_name":"  Alice  ","about":"Sudoku"}');
 
     expect(profile).not.toBeNull();
     expect(getNostrProfileName(profile)).toBe("Alice");
@@ -28,23 +28,26 @@ describe("nostr profile helpers", () => {
   });
 
   it("does not mark profile changed when normalized name is unchanged", () => {
-    const merged = mergeNostrProfileName({ name: "alice", about: "player" }, "  alice  ");
+    const merged = mergeNostrProfileName({ name: "alice", display_name: "alice", about: "player" }, "  alice  ");
 
     expect(merged.changed).toBe(false);
     expect(merged.name).toBe("alice");
-    expect(merged.profile).toEqual({ name: "alice", about: "player" });
+    expect(merged.profile).toEqual({ name: "alice", display_name: "alice", about: "player" });
   });
 
   it("updates only name while preserving other metadata fields", () => {
-    const merged = mergeNostrProfileName({ name: "alice", about: "player" }, "bob");
+    const merged = mergeNostrProfileName({ name: "alice", display_name: "alice", about: "player" }, "bob");
 
     expect(merged.changed).toBe(true);
     expect(merged.name).toBe("bob");
-    expect(merged.profile).toEqual({ name: "bob", about: "player" });
+    expect(merged.profile).toEqual({ name: "bob", display_name: "bob", about: "player" });
   });
 
   it("removes name when saving an empty value", () => {
-    const merged = mergeNostrProfileName({ name: "alice", picture: "https://example.com/a.png" }, "   ");
+    const merged = mergeNostrProfileName(
+      { name: "alice", display_name: "alice", picture: "https://example.com/a.png" },
+      "   ",
+    );
 
     expect(merged.changed).toBe(true);
     expect(merged.name).toBeNull();

@@ -1,15 +1,18 @@
 import type { Event, Filter } from "nostr-tools";
 import { SimplePool, verifyEvent } from "nostr-tools";
 import type { NostrIdentity } from "./identity";
+import {
+  DEFAULT_NOSTR_DISCOVERY_RELAYS,
+  fetchNostrRelayList,
+  selectPreferredWriteRelays,
+} from "./relay-discovery";
 
 const PROFILE_KIND = 0;
 const PROFILE_MAX_WAIT_MS = 3500;
 const PROFILE_NAME_MAX_LENGTH = 64;
 
 export const DEFAULT_NOSTR_PROFILE_RELAYS = [
-  "wss://relay.damus.io",
-  "wss://nos.lol",
-  "wss://relay.primal.net",
+  ...DEFAULT_NOSTR_DISCOVERY_RELAYS,
 ];
 
 export type NostrProfileMetadata = Record<string, unknown>;
@@ -25,8 +28,23 @@ export type NostrProfilePublishResult = {
 };
 
 function resolveRelays(relays?: string[]): string[] {
-  const source = relays && relays.length > 0 ? relays : DEFAULT_NOSTR_PROFILE_RELAYS;
+  const source = relays && relays.length > 0 ? relays : [];
   return Array.from(new Set(source.map((relay) => relay.trim()).filter((relay) => relay.length > 0)));
+}
+
+async function resolveProfileRelays(pubkey: string, relays?: string[]): Promise<string[]> {
+  const explicitRelays = resolveRelays(relays);
+  if (explicitRelays.length > 0) {
+    return explicitRelays;
+  }
+
+  const relayList = await fetchNostrRelayList(pubkey, DEFAULT_NOSTR_PROFILE_RELAYS);
+  const discoveredRelays = selectPreferredWriteRelays(relayList);
+  if (discoveredRelays.length > 0) {
+    return discoveredRelays;
+  }
+
+  return DEFAULT_NOSTR_PROFILE_RELAYS;
 }
 
 export function normalizeNostrProfileName(value: unknown): string | null {
@@ -60,6 +78,11 @@ export function getNostrProfileName(profile: NostrProfileMetadata | null): strin
     return null;
   }
 
+  const displayName = normalizeNostrProfileName(profile.display_name);
+  if (displayName) {
+    return displayName;
+  }
+
   return normalizeNostrProfileName(profile.name);
 }
 
@@ -81,8 +104,10 @@ export function mergeNostrProfileName(
   const nextProfile = profile ? { ...profile } : {};
   if (normalizedName) {
     nextProfile.name = normalizedName;
+    nextProfile.display_name = normalizedName;
   } else {
     delete nextProfile.name;
+    delete nextProfile.display_name;
   }
 
   return {
@@ -105,7 +130,7 @@ function isValidProfileEvent(event: Event, pubkey: string): boolean {
 }
 
 export async function fetchLatestNostrProfile(pubkey: string, relays?: string[]): Promise<NostrProfileReadResult> {
-  const resolvedRelays = resolveRelays(relays);
+  const resolvedRelays = await resolveProfileRelays(pubkey, relays);
   if (resolvedRelays.length === 0) {
     return {
       profile: null,
@@ -138,7 +163,7 @@ export async function publishNostrProfileNameIfChanged(
   name: string | null,
   relays?: string[],
 ): Promise<NostrProfilePublishResult> {
-  const resolvedRelays = resolveRelays(relays);
+  const resolvedRelays = await resolveProfileRelays(identity.pubkey, relays);
   if (resolvedRelays.length === 0) {
     return {
       published: false,
