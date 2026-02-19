@@ -21,6 +21,7 @@
     "@slobbe/sudoku-board": "workspace:*",
     "@slobbe/sudoku-engine": "workspace:*",
     "next": "^16.1.6",
+    "nostr-tools": "^2.23.1",
     "react": "^19.2.4",
     "react-dom": "^19.2.4"
   },

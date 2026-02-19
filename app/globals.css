@@ -312,6 +312,13 @@ body {
     text-align: center;
 }
 
+.home-identity-status {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.78rem;
+    text-align: center;
+}
+
 .game-header {
     width: 100%;
     margin: 0 0 2px;
@@ -476,6 +483,7 @@ button:not([data-sudoku-cell="true"]):active {
 #reset-game,
 #hint,
 #continue-daily-puzzle,
+#identity-open,
 #stats-open,
 #settings-open {
     border-color: var(--line-bold);
@@ -491,6 +499,7 @@ button:not([data-sudoku-cell="true"]):active {
 #daily-game,
 #continue-daily-puzzle,
 #home-button,
+#identity-open,
 #stats-open,
 #settings-open {
     flex-shrink: 0;
@@ -800,6 +809,79 @@ button:not([data-sudoku-cell="true"]):disabled {
     width: 100%;
     white-space: normal;
     text-align: center;
+}
+
+.identity-view {
+    align-content: start;
+    grid-template-rows: auto;
+    gap: 10px;
+}
+
+.identity-header {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: center;
+    gap: 8px;
+}
+
+.identity-home-link {
+    border: 1px solid var(--line-bold);
+    border-radius: 2px;
+    padding: 6px 9px;
+    background: var(--control-bg);
+    color: var(--ink);
+    text-decoration: none;
+    font-weight: 700;
+}
+
+.identity-home-link:hover,
+.identity-home-link:focus-visible {
+    background: var(--control-hover);
+}
+
+.identity-card {
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    padding: 10px;
+    display: grid;
+    gap: 8px;
+    background: var(--control-bg);
+}
+
+.identity-card h2,
+.identity-card p,
+.identity-card label {
+    margin: 0;
+}
+
+.identity-card input {
+    border: 1px solid var(--line);
+    border-radius: 2px;
+    padding: 8px;
+    background: var(--paper);
+    color: var(--ink);
+    font: inherit;
+}
+
+.identity-mono {
+    font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
+    font-size: 0.78rem;
+    word-break: break-all;
+}
+
+.identity-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.identity-status,
+.identity-error {
+    margin: 0;
+    font-size: 0.84rem;
+}
+
+.identity-error {
+    color: var(--error);
 }
 
 .settings-card {
@@ -1306,6 +1388,7 @@ button:not([data-sudoku-cell="true"]):disabled {
     .stats-card,
     .home-actions,
     .home-status,
+    .home-identity-status,
     .settings-header,
     .settings-grid,
     .settings-footer,
@@ -1343,6 +1426,18 @@ button:not([data-sudoku-cell="true"]):disabled {
         gap: 5px;
     }
 
+    .identity-header {
+        grid-template-columns: 1fr;
+    }
+
+    .identity-home-link {
+        justify-self: start;
+    }
+
+    .identity-actions {
+        flex-direction: column;
+    }
+
     .settings-row-checkbox {
         grid-template-columns: minmax(0, 1fr) auto;
         align-items: center;
@@ -1367,6 +1462,11 @@ button:not([data-sudoku-cell="true"]):disabled {
         margin-top: auto;
         text-align: center;
         font-size: 0.78rem;
+    }
+
+    .home-identity-status {
+        text-align: center;
+        font-size: 0.72rem;
     }
 
     .settings-card,

@@ -1,8 +1,6 @@
 "use client";
 
 import {
-  type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useMemo,
@@ -16,6 +14,22 @@ import {
   type SudokuBoardCell,
 } from "@slobbe/sudoku-board";
 import {
+  cellKey,
+  createGivensSet,
+} from "@/lib/gameplay/board";
+import {
+  clearPeerNoteDigit,
+  cloneNotesBoard,
+  countDigitOnBoard,
+  createEmptyNotesBoard,
+  noteBit,
+  useSudokuKeyboardController,
+  useSudokuNumpadController,
+  type FillModeEntry,
+  type NotesBoard,
+} from "@/lib/gameplay/controls";
+import { pushBoundedHistory } from "@/lib/gameplay/history";
+import {
   boardComplete,
   clone,
   countSolutions,
@@ -25,9 +39,9 @@ import {
   type Board,
   type Difficulty,
 } from "@slobbe/sudoku-engine";
+import { useNostrAccount } from "@/lib/nostr";
 
 type Theme = "slate" | "dusk" | "mist" | "amber";
-type FillModeEntry = "long-press" | "double-tap";
 type AppView = "home" | "game" | "settings" | "stats";
 type PuzzleMode = "standard" | "daily";
 
@@ -66,8 +80,6 @@ type DailyStats = {
   lastWonDate: string | null;
   historyByDate: Record<string, DailyHistoryEntry>;
 };
-
-type NotesBoard = number[][];
 
 type GameStats = {
   gamesStarted: number;
@@ -196,7 +208,6 @@ const MAX_HINTS_PER_GAME = 9;
 const MIN_LIVES_PER_GAME = 1;
 const MAX_LIVES_PER_GAME = 9;
 const SAVE_KEY = "sudoku-pwa-current-game-v1";
-const DOUBLE_TAP_MS = 300;
 
 const APP_NAME = "Sudoku";
 const APP_VERSION = "0.4.2";
@@ -302,18 +313,6 @@ function cloneStats(stats: GameStats): GameStats {
   };
 }
 
-function keyOf(row: number, col: number): string {
-  return `${row}-${col}`;
-}
-
-function createEmptyNotesBoard(): NotesBoard {
-  return Array.from({ length: 9 }, () => Array<number>(9).fill(0));
-}
-
-function cloneNotesBoard(notes: NotesBoard): NotesBoard {
-  return notes.map((row) => row.slice());
-}
-
 function isNotesBoardShape(notes: unknown): notes is NotesBoard {
   if (!Array.isArray(notes) || notes.length !== 9) {
     return false;
@@ -324,10 +323,6 @@ function isNotesBoardShape(notes: unknown): notes is NotesBoard {
       && row.length === 9
       && row.every((value) => Number.isInteger(value) && value >= 0 && value <= 511),
   );
-}
-
-function noteBit(value: number): number {
-  return 1 << (value - 1);
 }
 
 function pickHomeStatusMessage(previous?: string): string {
@@ -346,29 +341,6 @@ function pickHomeStatusMessage(previous?: string): string {
   return next;
 }
 
-function clearPeerNoteDigit(notes: NotesBoard, board: Board, row: number, col: number, value: number): void {
-  const bit = noteBit(value);
-
-  for (let i = 0; i < 9; i += 1) {
-    if (i !== col && board[row][i] === 0) {
-      notes[row][i] &= ~bit;
-    }
-    if (i !== row && board[i][col] === 0) {
-      notes[i][col] &= ~bit;
-    }
-  }
-
-  const rowStart = Math.floor(row / 3) * 3;
-  const colStart = Math.floor(col / 3) * 3;
-  for (let r = rowStart; r < rowStart + 3; r += 1) {
-    for (let c = colStart; c < colStart + 3; c += 1) {
-      if ((r !== row || c !== col) && board[r][c] === 0) {
-        notes[r][c] &= ~bit;
-      }
-    }
-  }
-}
-
 function isBoardShape(board: unknown): board is Board {
   if (!Array.isArray(board) || board.length !== 9) {
     return false;
@@ -379,18 +351,6 @@ function isBoardShape(board: unknown): board is Board {
       && row.length === 9
       && row.every((value) => Number.isInteger(value) && value >= 0 && value <= 9),
   );
-}
-
-function buildGivens(puzzle: Board): Set<string> {
-  const givens = new Set<string>();
-  for (let row = 0; row < 9; row += 1) {
-    for (let col = 0; col < 9; col += 1) {
-      if (puzzle[row][col] !== 0) {
-        givens.add(keyOf(row, col));
-      }
-    }
-  }
-  return givens;
 }
 
 function normalizeTheme(theme: unknown): Theme {
@@ -835,7 +795,7 @@ function applySessionToState(
     puzzle: cloned.puzzle,
     solution: cloned.solution,
     board: cloned.board,
-    givens: buildGivens(cloned.puzzle),
+    givens: createGivensSet(cloned.puzzle),
     selected: null,
     highlightValue: null,
     fillModeValue: null,
@@ -1089,22 +1049,6 @@ function isSessionContinuable(session: SessionSnapshot | null): boolean {
   return Boolean(session && session.currentGameStarted && !session.won && !session.lost);
 }
 
-function countDigitOnBoard(board: Board | null, digit: number): number {
-  if (!board) {
-    return 0;
-  }
-
-  let count = 0;
-  for (let row = 0; row < 9; row += 1) {
-    for (let col = 0; col < 9; col += 1) {
-      if (board[row][col] === digit) {
-        count += 1;
-      }
-    }
-  }
-  return count;
-}
-
 function isDigitCompletedCorrectly(state: GameState, digit: number): boolean {
   if (!state.board || !state.solution) {
     return false;
@@ -1351,7 +1295,7 @@ function loadSavedGame(): GameState | null {
     puzzle: payload.puzzle,
     solution: payload.solution,
     board: payload.board,
-    givens: buildGivens(payload.puzzle),
+    givens: createGivensSet(payload.puzzle),
     selected: null,
     highlightValue: null,
     fillModeValue: null,
@@ -1385,7 +1329,7 @@ function pickHintCell(state: GameState): CellSelection | null {
 
   if (state.selected) {
     const { row, col } = state.selected;
-    if (!state.givens.has(keyOf(row, col)) && state.board[row][col] === 0) {
+    if (!state.givens.has(cellKey(row, col)) && state.board[row][col] === 0) {
       return { row, col };
     }
   }
@@ -1393,7 +1337,7 @@ function pickHintCell(state: GameState): CellSelection | null {
   const empty: CellSelection[] = [];
   for (let row = 0; row < 9; row += 1) {
     for (let col = 0; col < 9; col += 1) {
-      if (!state.givens.has(keyOf(row, col)) && state.board[row][col] === 0) {
+      if (!state.givens.has(cellKey(row, col)) && state.board[row][col] === 0) {
         empty.push({ row, col });
       }
     }
@@ -1428,6 +1372,7 @@ function syncDialogState(dialog: HTMLDialogElement | null, open: boolean): void 
 export function SudokuApp() {
   const [state, setState] = useState<GameState>(createInitialState);
   const stateRef = useRef<GameState>(state);
+  const { identity: nostrIdentity, status: nostrStatus } = useNostrAccount();
 
   const [activeView, setActiveView] = useState<AppView>("home");
   const [statusMessage, setStatusMessage] = useState<string>(() => HOME_STATUS_MESSAGES[0] ?? "");
@@ -1442,11 +1387,8 @@ export function SudokuApp() {
   const winDialogRef = useRef<HTMLDialogElement>(null);
   const loseDialogRef = useRef<HTMLDialogElement>(null);
 
-  const longPressTimerRef = useRef<number | null>(null);
-  const longPressTriggeredRef = useRef(false);
-  const lastTapDigitRef = useRef<number | null>(null);
-  const lastTapAtRef = useRef(0);
-  const pendingTapTimerRef = useRef<number | null>(null);
+  const applyNumberInputHandlerRef = useRef<(value: number) => void>(() => undefined);
+  const toggleFillModeForDigitHandlerRef = useRef<(value: number) => void>(() => undefined);
 
   const reloadTriggeredByUpdateRef = useRef(false);
 
@@ -1459,25 +1401,27 @@ export function SudokuApp() {
     return sourceState.won || sourceState.lost;
   }, []);
 
-  const clearLongPressTimer = useCallback(() => {
-    if (longPressTimerRef.current !== null) {
-      window.clearTimeout(longPressTimerRef.current);
-      longPressTimerRef.current = null;
-    }
-  }, []);
-
-  const clearPendingTapTimer = useCallback(() => {
-    if (pendingTapTimerRef.current !== null) {
-      window.clearTimeout(pendingTapTimerRef.current);
-      pendingTapTimerRef.current = null;
-    }
-  }, []);
-
-  const resetDoubleTapTracking = useCallback(() => {
-    clearPendingTapTimer();
-    lastTapDigitRef.current = null;
-    lastTapAtRef.current = 0;
-  }, [clearPendingTapTimer]);
+  const {
+    onNumpadClick,
+    onNumpadPointerDown,
+    onNumpadPointerRelease,
+    clearLongPressTimer,
+    resetDoubleTapTracking,
+  } = useSudokuNumpadController({
+    canInteract: () => {
+      const current = stateRef.current;
+      return !current.lost;
+    },
+    getAnnotationMode: () => stateRef.current.annotationMode,
+    getFillModeEntry: () => stateRef.current.fillModeEntry,
+    getFillModeValue: () => stateRef.current.fillModeValue,
+    applyNumberInput: (value) => {
+      applyNumberInputHandlerRef.current(value);
+    },
+    toggleFillModeForDigit: (value) => {
+      toggleFillModeForDigitHandlerRef.current(value);
+    },
+  });
 
   const setFillMode = useCallback(
     (valueOrNull: number | null) => {
@@ -1539,7 +1483,7 @@ export function SudokuApp() {
         puzzle,
         solution,
         board: clone(puzzle),
-        givens: buildGivens(puzzle),
+        givens: createGivensSet(puzzle),
         selected: null,
         highlightValue: null,
         fillModeValue: null,
@@ -1586,7 +1530,7 @@ export function SudokuApp() {
           puzzle: generated.puzzle,
           solution: generated.solution,
           board: clone(generated.puzzle),
-          givens: buildGivens(generated.puzzle),
+          givens: createGivensSet(generated.puzzle),
           selected: null,
           highlightValue: null,
           fillModeValue: null,
@@ -1741,6 +1685,10 @@ export function SudokuApp() {
     setStatusMessage((currentMessage) => pickHomeStatusMessage(currentMessage));
   }, []);
 
+  const openIdentityPage = useCallback(() => {
+    window.location.assign("./identity/");
+  }, []);
+
   const openSettingsView = useCallback(() => {
     setActiveView("settings");
   }, []);
@@ -1816,7 +1764,7 @@ export function SudokuApp() {
       if (!current.board || !current.solution) {
         return;
       }
-      if (isInputLocked(current) || current.givens.has(keyOf(row, col))) {
+      if (isInputLocked(current) || current.givens.has(cellKey(row, col))) {
         return;
       }
       if (current.board[row][col] === value) {
@@ -1832,10 +1780,7 @@ export function SudokuApp() {
 
       const wrongEntry = value !== 0 && value !== current.solution[row][col];
 
-      let undoStack = [...current.undoStack, createSnapshot(current)];
-      if (undoStack.length > 300) {
-        undoStack = undoStack.slice(-300);
-      }
+      const undoStack = pushBoundedHistory(current.undoStack, createSnapshot(current));
 
       const board = clone(current.board);
       board[row][col] = value;
@@ -1904,7 +1849,7 @@ export function SudokuApp() {
 
       const { row, col } = current.selected;
       if (current.annotationMode) {
-        if (!current.board || current.givens.has(keyOf(row, col)) || current.board[row][col] !== 0) {
+        if (!current.board || current.givens.has(cellKey(row, col)) || current.board[row][col] !== 0) {
           return;
         }
 
@@ -1920,10 +1865,7 @@ export function SudokuApp() {
           return;
         }
 
-        let undoStack = [...current.undoStack, createSnapshot(current)];
-        if (undoStack.length > 300) {
-          undoStack = undoStack.slice(-300);
-        }
+        const undoStack = pushBoundedHistory(current.undoStack, createSnapshot(current));
 
         const notes = cloneNotesBoard(current.notes);
         notes[row][col] = nextMask;
@@ -1943,6 +1885,14 @@ export function SudokuApp() {
     },
     [applyState, isInputLocked, setCellValue],
   );
+
+  useEffect(() => {
+    applyNumberInputHandlerRef.current = applyNumberInput;
+  }, [applyNumberInput]);
+
+  useEffect(() => {
+    toggleFillModeForDigitHandlerRef.current = toggleFillModeForDigit;
+  }, [toggleFillModeForDigit]);
 
   const undoMove = useCallback(() => {
     const current = stateRef.current;
@@ -2004,7 +1954,7 @@ export function SudokuApp() {
       let col = (base.col + deltaCol + 9) % 9;
 
       for (let tries = 0; tries < 81; tries += 1) {
-        if (!current.givens.has(keyOf(row, col))) {
+        if (!current.givens.has(cellKey(row, col))) {
           const next: GameState = {
             ...current,
             selected: { row, col },
@@ -2040,10 +1990,7 @@ export function SudokuApp() {
       currentGameStarted = true;
     }
 
-    let undoStack = [...current.undoStack, createSnapshot(current)];
-    if (undoStack.length > 300) {
-      undoStack = undoStack.slice(-300);
-    }
+    const undoStack = pushBoundedHistory(current.undoStack, createSnapshot(current));
 
     const board = clone(current.board);
     const hintValue = current.solution[hintCell.row][hintCell.col];
@@ -2081,36 +2028,6 @@ export function SudokuApp() {
     }
   }, [applyState, isInputLocked]);
 
-  const handleDoubleTapEntry = useCallback(
-    (value: number) => {
-      const now = Date.now();
-      const isSecondTap = lastTapDigitRef.current === value && now - lastTapAtRef.current <= DOUBLE_TAP_MS;
-
-      if (isSecondTap) {
-        resetDoubleTapTracking();
-        toggleFillModeForDigit(value);
-        return;
-      }
-
-      lastTapDigitRef.current = value;
-      lastTapAtRef.current = now;
-
-      clearPendingTapTimer();
-      pendingTapTimerRef.current = window.setTimeout(() => {
-        pendingTapTimerRef.current = null;
-        const current = stateRef.current;
-        if (current.fillModeEntry === "double-tap" && current.fillModeValue === null) {
-          applyNumberInput(value);
-        }
-        if (lastTapDigitRef.current === value) {
-          lastTapDigitRef.current = null;
-          lastTapAtRef.current = 0;
-        }
-      }, DOUBLE_TAP_MS);
-    },
-    [applyNumberInput, clearPendingTapTimer, resetDoubleTapTracking, toggleFillModeForDigit],
-  );
-
   const onBoardCellSelect = useCallback(
     ({ row, col }: SudokuBoardCell) => {
       const current = stateRef.current;
@@ -2119,7 +2036,7 @@ export function SudokuApp() {
       }
 
       if (!current.annotationMode && current.fillModeValue !== null && !isInputLocked(current)) {
-        if (!current.givens.has(keyOf(row, col)) && current.board[row][col] === 0) {
+        if (!current.givens.has(cellKey(row, col)) && current.board[row][col] === 0) {
           const next: GameState = {
             ...current,
             selected: { row, col },
@@ -2134,81 +2051,6 @@ export function SudokuApp() {
     },
     [applySelection, applyState, isInputLocked, setCellValue],
   );
-
-  const onNumpadClick = useCallback(
-    (event: ReactMouseEvent<HTMLElement>) => {
-      const current = stateRef.current;
-      if (current.lost) {
-        return;
-      }
-
-      const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-value]");
-      if (!button || button.disabled) {
-        return;
-      }
-
-      if (longPressTriggeredRef.current) {
-        longPressTriggeredRef.current = false;
-        return;
-      }
-
-      const value = Number(button.dataset.value);
-      if (value < 1 || value > 9) {
-        return;
-      }
-
-      if (current.annotationMode) {
-        applyNumberInput(value);
-        return;
-      }
-
-      if (current.fillModeEntry === "double-tap") {
-        handleDoubleTapEntry(value);
-        return;
-      }
-
-      if (current.fillModeValue !== null) {
-        return;
-      }
-
-      applyNumberInput(value);
-    },
-    [applyNumberInput, handleDoubleTapEntry],
-  );
-
-  const onNumpadPointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLElement>) => {
-      const current = stateRef.current;
-      if (current.lost || current.annotationMode || current.fillModeEntry !== "long-press") {
-        return;
-      }
-
-      const button = (event.target as HTMLElement).closest<HTMLButtonElement>("button[data-value]");
-      if (!button || button.disabled) {
-        return;
-      }
-
-      event.preventDefault();
-
-      const value = Number(button.dataset.value);
-      if (value < 1 || value > 9) {
-        return;
-      }
-
-      longPressTriggeredRef.current = false;
-      clearLongPressTimer();
-      longPressTimerRef.current = window.setTimeout(() => {
-        toggleFillModeForDigit(value);
-        longPressTriggeredRef.current = true;
-        clearLongPressTimer();
-      }, 430);
-    },
-    [clearLongPressTimer, toggleFillModeForDigit],
-  );
-
-  const onNumpadPointerRelease = useCallback(() => {
-    clearLongPressTimer();
-  }, [clearLongPressTimer]);
 
   const closeWinPrompt = useCallback(() => {
     setWinPromptOpen(false);
@@ -2464,97 +2306,23 @@ export function SudokuApp() {
     };
   }, []);
 
-  useEffect(() => {
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (activeView !== "game") {
-        return;
+  useSudokuKeyboardController({
+    canInteract: () => {
+      if (activeView !== "game" || winPromptOpen || losePromptOpen) {
+        return false;
       }
 
       const current = stateRef.current;
-      if (!current.board) {
-        return;
-      }
-      if (winPromptOpen || losePromptOpen) {
-        return;
-      }
-      if (current.lost) {
-        return;
-      }
-
-      if (event.key >= "1" && event.key <= "9") {
-        applyNumberInput(Number(event.key));
-        return;
-      }
-
-      if (!event.metaKey && !event.ctrlKey && event.key.toLowerCase() === "n") {
-        event.preventDefault();
-        toggleAnnotationMode();
-        return;
-      }
-
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "z") {
-        event.preventDefault();
-        if (event.shiftKey) {
-          redoMove();
-        } else {
-          undoMove();
-        }
-        return;
-      }
-
-      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "y") {
-        event.preventDefault();
-        redoMove();
-        return;
-      }
-
-      if (event.key === "Escape" && current.fillModeValue !== null) {
-        setFillMode(null);
-        return;
-      }
-
-      if (event.key === "Backspace" || event.key === "Delete" || event.key === "0") {
-        applyNumberInput(0);
-        return;
-      }
-
-      if (event.key === "ArrowUp") {
-        event.preventDefault();
-        moveSelection(-1, 0);
-      } else if (event.key === "ArrowDown") {
-        event.preventDefault();
-        moveSelection(1, 0);
-      } else if (event.key === "ArrowLeft") {
-        event.preventDefault();
-        moveSelection(0, -1);
-      } else if (event.key === "ArrowRight") {
-        event.preventDefault();
-        moveSelection(0, 1);
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [
+      return Boolean(current.board) && !current.lost;
+    },
     applyNumberInput,
-    losePromptOpen,
-    moveSelection,
-    redoMove,
-    setFillMode,
     toggleAnnotationMode,
     undoMove,
-    winPromptOpen,
-    activeView,
-  ]);
-
-  useEffect(() => {
-    return () => {
-      clearLongPressTimer();
-      clearPendingTapTimer();
-    };
-  }, [clearLongPressTimer, clearPendingTapTimer]);
+    redoMove,
+    hasActiveFillMode: () => stateRef.current.fillModeValue !== null,
+    clearFillMode: () => setFillMode(null),
+    moveSelection,
+  });
 
   const highlighted = state.fillModeValue !== null ? state.fillModeValue : state.highlightValue;
   const showSelectionHighlights = state.fillModeValue === null;
@@ -2595,7 +2363,7 @@ export function SudokuApp() {
 
     return state.board.map((rowValues, row) =>
       rowValues.map((value, col) => {
-        if (value === 0 || state.givens.has(keyOf(row, col))) {
+        if (value === 0 || state.givens.has(cellKey(row, col))) {
           return false;
         }
         return value !== state.solution?.[row]?.[col];
@@ -2738,6 +2506,19 @@ export function SudokuApp() {
     return symbols;
   }, [state.livesLeft, state.livesPerGame]);
 
+  const identityStatusText = useMemo(() => {
+    if (nostrStatus === "loading") {
+      return "Identity: checking session...";
+    }
+
+    if (!nostrIdentity) {
+      return "Identity: not connected";
+    }
+
+    const sourceLabel = nostrIdentity.source === "nip07" ? "NIP-07 extension" : "Session local key";
+    return `Identity: ${sourceLabel} (${nostrIdentity.npub.slice(0, 16)}...)`;
+  }, [nostrIdentity, nostrStatus]);
+
   return (
     <>
       <main className={`app ${activeView === "home" ? "app-home" : activeView === "game" ? "app-game" : "app-panel"}`}>
@@ -2766,11 +2547,15 @@ export function SudokuApp() {
               <button id="stats-open" type="button" onClick={openStatsView}>
                 Statistics
               </button>
+              <button id="identity-open" type="button" onClick={openIdentityPage}>
+                Identity
+              </button>
               <button id="settings-open" type="button" onClick={openSettingsView}>
                 Settings
               </button>
             </div>
             <p className="home-status" aria-live="polite">{statusMessage}</p>
+            <p className="home-identity-status" aria-live="polite">{identityStatusText}</p>
           </section>
         ) : activeView === "game" ? (
           <>

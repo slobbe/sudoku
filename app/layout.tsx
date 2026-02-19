@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { NostrAccountProvider } from "@/components/nostr-account-provider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -34,7 +35,9 @@ type RootLayoutProps = {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" data-theme="slate" data-scroll-lock="on" suppressHydrationWarning>
-      <body>{children}</body>
+      <body>
+        <NostrAccountProvider>{children}</NostrAccountProvider>
+      </body>
     </html>
   );
 }
