@@ -35,6 +35,7 @@ export type NostrAppDataReadResult = {
 export type NostrAppDataPublishResult = {
   published: boolean;
   encryption: NostrAppDataEncryption;
+  updatedAt: string | null;
 };
 
 type EncryptionContext = {
@@ -322,11 +323,14 @@ export async function publishNostrAppDataIfChanged(
   }
 
   let latestPayload: NostrAppDataPayload | null = null;
+  let latestUpdatedAt: string | null = null;
   try {
     const latest = await fetchLatestNostrAppData(identity, resolvedRelays);
     latestPayload = latest.payload;
+    latestUpdatedAt = latest.updatedAt;
   } catch {
     latestPayload = null;
+    latestUpdatedAt = null;
   }
 
   const context = await createEncryptionContext(identity);
@@ -334,6 +338,7 @@ export async function publishNostrAppDataIfChanged(
     return {
       published: false,
       encryption: context.encryption,
+      updatedAt: latestUpdatedAt,
     };
   }
 
@@ -363,6 +368,7 @@ export async function publishNostrAppDataIfChanged(
     return {
       published: true,
       encryption: context.encryption,
+      updatedAt: envelope.updatedAt,
     };
   } finally {
     pool.destroy();

@@ -845,6 +845,9 @@ button:not([data-sudoku-cell="true"]):disabled {
     align-content: start;
     grid-template-rows: auto;
     gap: 10px;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 .profile-card {
@@ -1480,6 +1483,10 @@ button:not([data-sudoku-cell="true"]):disabled {
     .app-open-source,
     .app-update-status {
         width: 100%;
+    }
+
+    .app.app-home .home-bottom-bar {
+        padding-bottom: max(34px, env(safe-area-inset-bottom));
     }
 
     .settings-row {

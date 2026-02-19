@@ -18,6 +18,8 @@ export type NostrAccountContextValue = {
   error: string | null;
   profileSyncStatus: NostrProfileSyncStatus;
   profileSyncMessage: string | null;
+  lastBackupAt: string | null;
+  lastRestoreAt: string | null;
   hasNip07: boolean;
   connectNip07: () => Promise<NostrAccountActionResult>;
   importNsec: (nsec: string) => Promise<NostrAccountActionResult>;

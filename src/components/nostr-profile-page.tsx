@@ -13,6 +13,19 @@ function sanitizeNextPath(nextPath: string | null): string {
   return nextPath;
 }
 
+function formatTimestamp(value: string | null): string {
+  if (!value) {
+    return "Never";
+  }
+
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown";
+  }
+
+  return date.toLocaleString();
+}
+
 export function NostrProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -23,6 +36,8 @@ export function NostrProfilePage() {
     error,
     profileSyncStatus,
     profileSyncMessage,
+    lastBackupAt,
+    lastRestoreAt,
     hasNip07,
     connectNip07,
     importNsec,
@@ -396,6 +411,8 @@ export function NostrProfilePage() {
               {isBackupActionRunning ? "Working..." : "Restore from Nostr"}
             </button>
           </div>
+          <p className="profile-helper">Last backup: {formatTimestamp(lastBackupAt)}</p>
+          <p className="profile-helper">Last restore: {formatTimestamp(lastRestoreAt)}</p>
         </section>
 
         <section className="profile-card" aria-label="About Nostr in this app">

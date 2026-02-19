@@ -51,6 +51,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
   const [hasNip07, setHasNip07] = useState(false);
   const [profileSyncStatus, setProfileSyncStatus] = useState<NostrProfileSyncStatus>("idle");
   const [profileSyncMessage, setProfileSyncMessage] = useState<string | null>(null);
+  const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
+  const [lastRestoreAt, setLastRestoreAt] = useState<string | null>(null);
   const nameRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -170,6 +172,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
         setError(result.error);
         setProfileSyncStatus("idle");
         setProfileSyncMessage(null);
+        setLastBackupAt(null);
+        setLastRestoreAt(null);
       })
       .finally(() => {
         if (cancelled) {
@@ -192,6 +196,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       setError(null);
       setProfileSyncStatus("idle");
       setProfileSyncMessage(null);
+      setLastBackupAt(null);
+      setLastRestoreAt(null);
       return { ok: true };
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Could not connect NIP-07 account.";
@@ -209,6 +215,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       setIdentity(nextIdentity);
       setName(importedName);
       setError(null);
+      setLastBackupAt(null);
+      setLastRestoreAt(null);
 
       const syncResult = await syncProfileFromRelays(nextIdentity);
       if (!syncResult.ok) {
@@ -239,6 +247,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       setIdentity(nextIdentity);
       setName(sessionName);
       setError(null);
+      setLastBackupAt(null);
+      setLastRestoreAt(null);
 
       if (!normalizeNostrProfileName(sessionName)) {
         setProfileSyncStatus("idle");
@@ -328,6 +338,9 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       const message = result.published
         ? `Encrypted backup synced to relays (${result.encryption}).`
         : "Encrypted backup already up to date on relays.";
+      if (result.updatedAt) {
+        setLastBackupAt(result.updatedAt);
+      }
       setProfileSyncStatus(result.published ? "synced" : "up_to_date");
       setProfileSyncMessage(message);
       setError(null);
@@ -369,6 +382,10 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       const message = appData.updatedAt
         ? `Encrypted backup restored from ${new Date(appData.updatedAt).toLocaleString()}.`
         : "Encrypted backup restored from relays.";
+      if (appData.updatedAt) {
+        setLastBackupAt(appData.updatedAt);
+      }
+      setLastRestoreAt(new Date().toISOString());
       setProfileSyncStatus("synced");
       setProfileSyncMessage(message);
       setError(null);
@@ -391,6 +408,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     setError(null);
     setProfileSyncStatus("idle");
     setProfileSyncMessage(null);
+    setLastBackupAt(null);
+    setLastRestoreAt(null);
   }, []);
 
   const getExportableNsec = useCallback(() => getSessionLocalNsec(), []);
@@ -403,6 +422,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       error,
       profileSyncStatus,
       profileSyncMessage,
+      lastBackupAt,
+      lastRestoreAt,
       hasNip07,
       connectNip07,
       importNsec,
@@ -421,6 +442,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       error,
       profileSyncStatus,
       profileSyncMessage,
+      lastBackupAt,
+      lastRestoreAt,
       hasNip07,
       connectNip07,
       importNsec,
