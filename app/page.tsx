@@ -2,7 +2,9 @@ import type { Metadata } from "next";
 import { SudokuApp } from "@/components/sudoku-app";
 
 export const metadata: Metadata = {
-  title: "Home",
+  title: {
+    absolute: "Sudoku",
+  },
   description: "Play Sudoku puzzles with notes, hints, and adjustable challenge settings.",
 };
 
