@@ -152,7 +152,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     let cancelled = false;
 
     void restoreNostrAccountFromSession()
-      .then(async (result) => {
+      .then((result) => {
         if (cancelled) {
           return;
         }
@@ -160,17 +160,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
         setIdentity(result.identity);
         setName(result.name);
         setError(result.error);
-
-        if (!result.identity) {
-          setProfileSyncStatus("idle");
-          setProfileSyncMessage(null);
-          return;
-        }
-
-        await syncProfileFromRelays(result.identity, {
-          showSyncingState: false,
-          isCancelled: () => cancelled,
-        });
+        setProfileSyncStatus("idle");
+        setProfileSyncMessage(null);
       })
       .finally(() => {
         if (cancelled) {
@@ -183,7 +174,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     return () => {
       cancelled = true;
     };
-  }, [syncProfileFromRelays]);
+  }, []);
 
   const connectNip07 = useCallback(async (): Promise<NostrAccountActionResult> => {
     try {
@@ -191,19 +182,9 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       setIdentity(nextIdentity);
       setName(null);
       setError(null);
-
-      const syncResult = await syncProfileFromRelays(nextIdentity);
-      if (!syncResult.ok) {
-        return {
-          ok: true,
-          message: "Connected with NIP-07 extension. Could not refresh profile from relays.",
-        };
-      }
-
-      return {
-        ok: true,
-        message: syncResult.message ?? "Connected with NIP-07 extension.",
-      };
+      setProfileSyncStatus("idle");
+      setProfileSyncMessage(null);
+      return { ok: true };
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Could not connect NIP-07 account.";
       setError(message);
@@ -211,7 +192,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       setProfileSyncMessage("Could not connect NIP-07 identity.");
       return { ok: false, error: message };
     }
-  }, [syncProfileFromRelays]);
+  }, []);
 
   const importNsec = useCallback(async (nsec: string): Promise<NostrAccountActionResult> => {
     try {
@@ -275,9 +256,26 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     }
 
     try {
+      const normalizedNextName = normalizeNostrProfileName(nextName);
+      const currentName = normalizeNostrProfileName(nameRef.current);
+      if (normalizedNextName === currentName) {
+        if (identity.source === "local") {
+          updateSessionAccountName(nextName);
+        }
+
+        setName(normalizedNextName);
+        setProfileSyncStatus("up_to_date");
+        setProfileSyncMessage("Name already synced on Nostr relays.");
+        setError(null);
+        return {
+          ok: true,
+          message: "Name already synced on Nostr relays.",
+        };
+      }
+
       const normalizedName = identity.source === "local"
         ? updateSessionAccountName(nextName)
-        : normalizeNostrProfileName(nextName);
+        : normalizedNextName;
       setName(normalizedName);
       return await publishProfileName(identity, normalizedName);
     } catch (caughtError) {
