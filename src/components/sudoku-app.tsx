@@ -1367,7 +1367,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const { identity: nostrIdentity, name: nostrName, status: nostrStatus } = useNostrAccount();
 
   const [activeView, setActiveView] = useState<AppView>("home");
-  const [statusMessage, setStatusMessage] = useState<string>(() => HOME_STATUS_MESSAGES[0] ?? "");
+  const [, setStatusMessage] = useState<string>(() => HOME_STATUS_MESSAGES[0] ?? "");
   const [winPromptOpen, setWinPromptOpen] = useState(false);
   const [losePromptOpen, setLosePromptOpen] = useState(false);
 
@@ -2483,20 +2483,20 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     return symbols;
   }, [state.livesLeft, state.livesPerGame]);
 
-  const identityStatusText = useMemo(() => {
+  const homeIdentityLabel = useMemo(() => {
     if (nostrStatus === "loading") {
-      return "Identity: checking session...";
+      return "...";
     }
 
     if (nostrName) {
-      return `Playing as ${nostrName}`;
+      return nostrName;
     }
 
     if (nostrIdentity) {
-      return "Playing as anonymous";
+      return "Anonymous";
     }
 
-    return "Playing as guest";
+    return "Guest";
   }, [nostrIdentity, nostrName, nostrStatus]);
 
   if (entryPoint === "daily" && !hasDailyEntryStarted) {
@@ -2535,18 +2535,18 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
               >
                 {dailyButtonLabel}
               </button>
+            </div>
+            <nav className="home-bottom-bar" aria-label="Home quick links">
               <button id="stats-open" type="button" onClick={openStatsView}>
                 Statistics
               </button>
               <button id="identity-open" type="button" onClick={openIdentityPage}>
-                Identity
+                {homeIdentityLabel}
               </button>
               <button id="settings-open" type="button" onClick={openSettingsView}>
                 Settings
               </button>
-            </div>
-            <p className="home-status" aria-live="polite">{statusMessage}</p>
-            <p className="home-identity-status" aria-live="polite">{identityStatusText}</p>
+            </nav>
           </section>
         ) : activeView === "game" ? (
           <>

@@ -291,6 +291,23 @@ body {
     align-content: center;
 }
 
+.home-bottom-bar {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: auto;
+}
+
+.home-bottom-bar button {
+    width: 100%;
+    min-height: 42px;
+    font-size: 0.92rem;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
 .home-primary-actions {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
@@ -1417,6 +1434,7 @@ button:not([data-sudoku-cell="true"]):disabled {
     .settings-card,
     .stats-card,
     .home-actions,
+    .home-bottom-bar,
     .home-status,
     .home-identity-status,
     .settings-header,
@@ -1444,6 +1462,7 @@ button:not([data-sudoku-cell="true"]):disabled {
     }
 
     .home-actions button,
+    .home-bottom-bar button,
     .settings-row .settings-control select,
     .app-open-source,
     .app-update-status {
