@@ -1,9 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNostrAccount } from "@/lib/nostr";
+import { applyThemeToDocument, readThemeFromSavedGame } from "@/lib/theme";
+
+const SAVE_KEY = "sudoku-pwa-current-game-v1";
 
 function sanitizeNextPath(nextPath: string | null): string {
   if (!nextPath || !nextPath.startsWith("/") || nextPath.startsWith("//")) {
@@ -29,6 +31,11 @@ export function NostrIdentityPage() {
 
   const [nsecInput, setNsecInput] = useState("");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    const savedTheme = readThemeFromSavedGame(SAVE_KEY);
+    applyThemeToDocument(savedTheme);
+  }, []);
 
   const nextPath = useMemo(() => sanitizeNextPath(searchParams.get("next")), [searchParams]);
 
@@ -71,10 +78,10 @@ export function NostrIdentityPage() {
   return (
     <main className="app app-panel" aria-label="Nostr identity settings">
       <section className="panel-view identity-view">
-        <header className="identity-header">
-          <h1 className="view-title">Identity</h1>
-          <Link href="/" className="identity-home-link">Home</Link>
-        </header>
+        <div className="settings-header">
+          <h2>Identity</h2>
+          <button id="identity-close" type="button" onClick={() => router.replace("/")}>Home</button>
+        </div>
 
         {status === "loading" ? (
           <p className="identity-status" aria-live="polite">Restoring account session...</p>

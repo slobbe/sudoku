@@ -39,9 +39,14 @@ import {
   type Board,
   type Difficulty,
 } from "@slobbe/sudoku-engine";
+import {
+  applyThemeToDocument,
+  normalizeAppTheme,
+  type AppTheme,
+} from "@/lib/theme";
 import { useNostrAccount } from "@/lib/nostr";
 
-type Theme = "slate" | "dusk" | "mist" | "amber";
+type Theme = AppTheme;
 type AppView = "home" | "game" | "settings" | "stats";
 type PuzzleMode = "standard" | "daily";
 
@@ -215,7 +220,6 @@ const APP_AUTHOR = "slobbe";
 const APP_REPO_URL = "https://github.com/slobbe/sudoku";
 const APP_LICENSE_URL = "https://github.com/slobbe/sudoku/blob/main/LICENSE";
 
-const THEMES: Theme[] = ["slate", "dusk", "mist", "amber"];
 const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 const WEEKDAY_SHORT_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -245,13 +249,6 @@ const HOME_STATUS_MESSAGES = [
   "Tip: use hints sparingly; they are best when progress truly stalls.",
   "No rush: correct and steady beats fast and chaotic.",
 ];
-
-const THEME_COLORS: Record<Theme, string> = {
-  slate: "#151a21",
-  mist: "#161918",
-  dusk: "#171420",
-  amber: "#1d1913",
-};
 
 function createDefaultDailyStats(): DailyStats {
   return {
@@ -354,16 +351,7 @@ function isBoardShape(board: unknown): board is Board {
 }
 
 function normalizeTheme(theme: unknown): Theme {
-  if (theme === "purple") {
-    return "dusk";
-  }
-  if (typeof theme !== "string") {
-    return "slate";
-  }
-  if (THEMES.includes(theme as Theme)) {
-    return theme as Theme;
-  }
-  return "slate";
+  return normalizeAppTheme(theme);
 }
 
 function isDifficulty(value: unknown): value is Difficulty {
@@ -1369,7 +1357,11 @@ function syncDialogState(dialog: HTMLDialogElement | null, open: boolean): void 
   }
 }
 
-export function SudokuApp() {
+type SudokuAppProps = {
+  entryPoint?: "home" | "daily";
+};
+
+export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const [state, setState] = useState<GameState>(createInitialState);
   const stateRef = useRef<GameState>(state);
   const { identity: nostrIdentity, status: nostrStatus } = useNostrAccount();
@@ -1381,6 +1373,7 @@ export function SudokuApp() {
 
   const [updateStatus, setUpdateStatus] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
+  const [hasDailyEntryStarted, setHasDailyEntryStarted] = useState(entryPoint !== "daily");
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [dailyCalendarMonthKey, setDailyCalendarMonthKey] = useState(() => getMonthKeyFromDate(new Date()));
 
@@ -1646,48 +1639,25 @@ export function SudokuApp() {
     setStatusMessage(`Standard ${next.difficulty} puzzle resumed.`);
   }, [applyState, startNewGameAndOpen]);
 
-  const continueDailyPuzzle = useCallback(() => {
-    const current = stateRef.current;
-    const dayKey = getCurrentLocalDayKey();
-    const difficulty = deriveDailyDifficulty(dayKey);
-    const seed = getDailyPuzzleSeed(dayKey, difficulty);
-
-    if (current.mode === "daily" && current.dailyDate === dayKey && current.puzzle) {
-      setActiveView("game");
-      return;
-    }
-
-    if (current.dailySession && current.dailySession.date === dayKey) {
-      const stashed = stashActiveSession(current);
-      const dailySession = stashed.dailySession;
-      if (!dailySession) {
-        startDailyPuzzleAndOpen();
-        return;
-      }
-
-      const next = applySessionToState(stashed, dailySession, "daily", { date: dayKey, seed });
-      next.dailySession = null;
-      applyState(next);
-      setWinPromptOpen(false);
-      setLosePromptOpen(false);
-      setActiveView("game");
-      setStatusMessage(`Daily ${difficulty} puzzle resumed for ${dayKey}.`);
-      return;
-    }
-
-    startDailyPuzzleAndOpen();
-  }, [applyState, startDailyPuzzleAndOpen]);
+  const openDailyPage = useCallback(() => {
+    window.location.assign("./daily/");
+  }, []);
 
   const goHome = useCallback(() => {
+    if (entryPoint === "daily") {
+      window.location.assign("../");
+      return;
+    }
+
     setWinPromptOpen(false);
     setLosePromptOpen(false);
     setActiveView("home");
     setStatusMessage((currentMessage) => pickHomeStatusMessage(currentMessage));
-  }, []);
+  }, [entryPoint]);
 
   const openIdentityPage = useCallback(() => {
-    window.location.assign("./identity/");
-  }, []);
+    window.location.assign(entryPoint === "daily" ? "../identity/" : "./identity/");
+  }, [entryPoint]);
 
   const openSettingsView = useCallback(() => {
     setActiveView("settings");
@@ -2137,11 +2107,7 @@ export function SudokuApp() {
   }, [losePromptOpen]);
 
   useEffect(() => {
-    document.documentElement.dataset.theme = state.theme;
-    const themeMeta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
-    if (themeMeta) {
-      themeMeta.setAttribute("content", THEME_COLORS[state.theme]);
-    }
+    applyThemeToDocument(state.theme);
   }, [state.theme]);
 
   useEffect(() => {
@@ -2190,6 +2156,15 @@ export function SudokuApp() {
     setStatusMessage((currentMessage) => pickHomeStatusMessage(currentMessage));
     setIsHydrated(true);
   }, [applyState]);
+
+  useEffect(() => {
+    if (entryPoint !== "daily" || !isHydrated || hasDailyEntryStarted) {
+      return;
+    }
+
+    setHasDailyEntryStarted(true);
+    startDailyPuzzleAndOpen();
+  }, [entryPoint, hasDailyEntryStarted, isHydrated, startDailyPuzzleAndOpen]);
 
   useEffect(() => {
     if (!isHydrated || !state.puzzle || !state.solution || !state.board) {
@@ -2264,9 +2239,11 @@ export function SudokuApp() {
 
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
 
+    const serviceWorkerPath = entryPoint === "daily" ? "../sw.js" : "./sw.js";
+
     const registerServiceWorker = () => {
       navigator.serviceWorker
-        .register("./sw.js")
+        .register(serviceWorkerPath)
         .then((registration) => {
           setUpdateStatus(registration.waiting ? "Update available" : "Up-to-date");
 
@@ -2304,7 +2281,7 @@ export function SudokuApp() {
       navigator.serviceWorker.removeEventListener("controllerchange", onControllerChange);
       window.removeEventListener("load", registerServiceWorker);
     };
-  }, []);
+  }, [entryPoint]);
 
   useSudokuKeyboardController({
     canInteract: () => {
@@ -2519,6 +2496,17 @@ export function SudokuApp() {
     return `Identity: ${sourceLabel} (${nostrIdentity.npub.slice(0, 16)}...)`;
   }, [nostrIdentity, nostrStatus]);
 
+  if (entryPoint === "daily" && !hasDailyEntryStarted) {
+    return (
+      <main className="app app-home" aria-label="Daily puzzle loading">
+        <section className="home-view">
+          <h1 className="view-title">Daily Sudoku</h1>
+          <p className="home-status" aria-live="polite">Loading daily puzzle...</p>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <>
       <main className={`app ${activeView === "home" ? "app-home" : activeView === "game" ? "app-game" : "app-panel"}`}>
@@ -2540,7 +2528,7 @@ export function SudokuApp() {
                 id="daily-game"
                 type="button"
                 className={dailyResultToday ? "looks-disabled" : undefined}
-                onClick={canContinueDailyPuzzle ? continueDailyPuzzle : startDailyPuzzleAndOpen}
+                onClick={openDailyPage}
               >
                 {dailyButtonLabel}
               </button>

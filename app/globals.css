@@ -817,28 +817,6 @@ button:not([data-sudoku-cell="true"]):disabled {
     gap: 10px;
 }
 
-.identity-header {
-    display: grid;
-    grid-template-columns: 1fr auto;
-    align-items: center;
-    gap: 8px;
-}
-
-.identity-home-link {
-    border: 1px solid var(--line-bold);
-    border-radius: 2px;
-    padding: 6px 9px;
-    background: var(--control-bg);
-    color: var(--ink);
-    text-decoration: none;
-    font-weight: 700;
-}
-
-.identity-home-link:hover,
-.identity-home-link:focus-visible {
-    background: var(--control-hover);
-}
-
 .identity-card {
     border: 1px solid var(--line);
     border-radius: 6px;
@@ -1424,14 +1402,6 @@ button:not([data-sudoku-cell="true"]):disabled {
         grid-template-columns: 1fr;
         align-items: start;
         gap: 5px;
-    }
-
-    .identity-header {
-        grid-template-columns: 1fr;
-    }
-
-    .identity-home-link {
-        justify-self: start;
     }
 
     .identity-actions {
