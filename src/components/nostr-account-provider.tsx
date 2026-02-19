@@ -6,6 +6,7 @@ import {
   clearNostrSession,
   connectNip07Account,
   createSessionLocalAccount,
+  getSessionLocalNsec,
   importNsecAccount,
   restoreNostrAccountFromSession,
 } from "@/lib/nostr/account";
@@ -98,6 +99,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     setError(null);
   }, []);
 
+  const getExportableNsec = useCallback(() => getSessionLocalNsec(), []);
+
   const contextValue = useMemo(
     () => ({
       status,
@@ -107,9 +110,10 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       connectNip07,
       importNsec,
       createLocalAccount,
+      getExportableNsec,
       logout,
     }),
-    [status, identity, error, hasNip07, connectNip07, importNsec, createLocalAccount, logout],
+    [status, identity, error, hasNip07, connectNip07, importNsec, createLocalAccount, getExportableNsec, logout],
   );
 
   return <NostrAccountContext.Provider value={contextValue}>{children}</NostrAccountContext.Provider>;

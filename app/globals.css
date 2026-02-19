@@ -858,6 +858,18 @@ button:not([data-sudoku-cell="true"]):disabled {
     font-size: 0.84rem;
 }
 
+.identity-secret-warning {
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
+.identity-secret-key {
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 8px;
+    background: var(--paper);
+}
+
 .identity-error {
     color: var(--error);
 }

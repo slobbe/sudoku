@@ -57,6 +57,30 @@ export function clearNostrSession(): void {
   storage.removeItem(SESSION_ACCOUNT_NSEC_KEY);
 }
 
+export function getSessionLocalNsec(): string | null {
+  const storage = getSessionStorage();
+  if (!storage) {
+    return null;
+  }
+
+  const mode = readStoredMode(storage);
+  if (mode !== "local") {
+    return null;
+  }
+
+  const storedNsec = storage.getItem(SESSION_ACCOUNT_NSEC_KEY);
+  if (!storedNsec) {
+    return null;
+  }
+
+  const normalized = storedNsec.trim();
+  if (!parseNsecToSecretKey(normalized)) {
+    return null;
+  }
+
+  return normalized;
+}
+
 export async function restoreNostrAccountFromSession(): Promise<NostrAccountRestoreResult> {
   const storage = getSessionStorage();
   if (!storage) {

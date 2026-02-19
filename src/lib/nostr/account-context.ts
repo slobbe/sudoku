@@ -16,6 +16,7 @@ export type NostrAccountContextValue = {
   connectNip07: () => Promise<NostrAccountActionResult>;
   importNsec: (nsec: string) => Promise<NostrAccountActionResult>;
   createLocalAccount: () => Promise<NostrAccountActionResult>;
+  getExportableNsec: () => string | null;
   logout: () => void;
 };
 
