@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNostrAccount } from "@/lib/nostr";
 import { applyThemeToDocument, readThemeFromSavedGame } from "@/lib/theme";
 
@@ -38,10 +38,8 @@ export function NostrIdentityPage() {
   const [nsecInput, setNsecInput] = useState("");
   const [newAccountName, setNewAccountName] = useState("");
   const [editableAccountName, setEditableAccountName] = useState("");
-  const [isEditingAccountName, setIsEditingAccountName] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [showSecretKey, setShowSecretKey] = useState(false);
-  const previousIdentityKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const savedTheme = readThemeFromSavedGame(SAVE_KEY);
@@ -52,10 +50,6 @@ export function NostrIdentityPage() {
   const exportableNsec = useMemo(
     () => (identity?.source === "local" ? getExportableNsec() : null),
     [getExportableNsec, identity],
-  );
-  const identityKey = useMemo(
-    () => (identity ? `${identity.source}:${identity.pubkey}` : null),
-    [identity],
   );
   const profileSyncStatusText = useMemo(() => {
     if (profileSyncStatus === "idle") {
@@ -82,23 +76,8 @@ export function NostrIdentityPage() {
   }, [identity?.source]);
 
   useEffect(() => {
-    const hasIdentityChanged = previousIdentityKeyRef.current !== identityKey;
-    previousIdentityKeyRef.current = identityKey;
-
-    if (hasIdentityChanged) {
-      setEditableAccountName(name ?? "");
-      setIsEditingAccountName(!name || name.trim().length === 0);
-      return;
-    }
-
-    if (!isEditingAccountName) {
-      setEditableAccountName(name ?? "");
-    }
-
-    if ((!name || name.trim().length === 0) && !isEditingAccountName) {
-      setIsEditingAccountName(true);
-    }
-  }, [identityKey, isEditingAccountName, name]);
+    setEditableAccountName(name ?? "");
+  }, [identity?.pubkey, identity?.source, name]);
 
   const completeAuth = useCallback((message: string) => {
     setActionMessage(message);
@@ -156,7 +135,6 @@ export function NostrIdentityPage() {
       return;
     }
 
-    setIsEditingAccountName(editableAccountName.trim().length === 0);
     setActionMessage(
       result.message
       ?? (editableAccountName.trim().length > 0 ? "Name updated." : "Name cleared."),
@@ -207,76 +185,66 @@ export function NostrIdentityPage() {
           <button id="identity-close" type="button" onClick={() => router.replace("/")}>Home</button>
         </div>
 
+        <section className="identity-card" aria-label="Nostr identity basics">
+          <h2>Nostr Identity</h2>
+          <p className="identity-helper">Use an extension, import an nsec, or create a local session key.</p>
+        </section>
+
         {status === "loading" ? (
           <p className="identity-status" aria-live="polite">Restoring account session...</p>
         ) : null}
 
         {identity ? (
           <section className="identity-card" aria-label="Current identity">
-            <h2>Current account</h2>
-            <p>
-              Source:
-              {" "}
-              <strong>{identity.source === "nip07" ? "NIP-07 extension" : "Session local key"}</strong>
-            </p>
-            {name ? (
-              <p>
-                Name:
-                {" "}
-                <strong>{name}</strong>
+            <h2>Current Account</h2>
+            <div className="identity-meta">
+              <p className="identity-meta-row">
+                <span className="identity-meta-label">Source</span>
+                <strong>{identity.source === "nip07" ? "NIP-07 extension" : "Session local key"}</strong>
               </p>
-            ) : null}
-            {name && !isEditingAccountName ? (
+              <p className="identity-meta-row">
+                <span className="identity-meta-label">Name</span>
+                <strong>{name ?? "Not set"}</strong>
+              </p>
+              <p className="identity-meta-row">
+                <span className="identity-meta-label">Npub</span>
+                <span className="identity-mono">{identity.npub}</span>
+              </p>
+            </div>
+
+            <label htmlFor="identity-current-name-input">Display Name</label>
+            <input
+              id="identity-current-name-input"
+              type="text"
+              value={editableAccountName}
+              onChange={(event) => {
+                setEditableAccountName(event.target.value);
+              }}
+              placeholder="sudoku-player"
+              autoComplete="nickname"
+              spellCheck={false}
+              maxLength={64}
+            />
+
+            <div className="identity-actions">
               <button
                 type="button"
+                disabled={profileSyncStatus === "syncing"}
+                onClick={() => { void handleSaveAccountName(); }}
+              >
+                {profileSyncStatus === "syncing" ? "Saving..." : "Save Name"}
+              </button>
+              <button
+                type="button"
+                disabled={profileSyncStatus === "syncing"}
                 onClick={() => {
-                  setIsEditingAccountName(true);
+                  setEditableAccountName(name ?? "");
                 }}
               >
-                Edit Name
+                Reset
               </button>
-            ) : (
-              <>
-                <label htmlFor="identity-current-name-input">Name</label>
-                <input
-                  id="identity-current-name-input"
-                  type="text"
-                  value={editableAccountName}
-                  onChange={(event) => {
-                    setEditableAccountName(event.target.value);
-                  }}
-                  placeholder="sudoku-player"
-                  autoComplete="nickname"
-                  spellCheck={false}
-                  maxLength={64}
-                />
-                <div className="identity-actions">
-                  <button
-                    type="button"
-                    disabled={profileSyncStatus === "syncing"}
-                    onClick={() => { void handleSaveAccountName(); }}
-                  >
-                    Save Name
-                  </button>
-                  {name ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setEditableAccountName(name);
-                        setIsEditingAccountName(false);
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  ) : null}
-                </div>
-              </>
-            )}
-            <p>
-              Npub:
-              {" "}
-              <span className="identity-mono">{identity.npub}</span>
-            </p>
+            </div>
+
             <div className="identity-actions">
               <button
                 type="button"
@@ -285,14 +253,19 @@ export function NostrIdentityPage() {
               >
                 {profileSyncStatus === "syncing" ? "Refreshing..." : "Refresh from Relays"}
               </button>
+              <button type="button" onClick={logout}>
+                Log Out
+              </button>
             </div>
+
             {profileSyncStatusText ? (
               <p className="identity-status" aria-live="polite">{profileSyncStatusText}</p>
             ) : null}
+
             {identity.source === "local" ? (
               <>
                 <p className="identity-secret-warning">
-                  Back up your secret key now. Anyone with this key can control your identity.
+                  Back up your nsec now. Anyone with this key can control your identity.
                 </p>
                 {showSecretKey && exportableNsec ? (
                   <p className="identity-mono identity-secret-key">{exportableNsec}</p>
@@ -315,19 +288,14 @@ export function NostrIdentityPage() {
                 </div>
               </>
             ) : (
-              <p className="identity-secret-warning">Secret key is managed by your NIP-07 extension.</p>
+              <p className="identity-secret-warning">Secret key access is managed by your NIP-07 extension.</p>
             )}
-            <div className="identity-actions">
-              <button type="button" onClick={logout}>
-                Log Out
-              </button>
-            </div>
           </section>
         ) : (
           <>
             <section className="identity-card" aria-label="Connect with NIP-07">
-              <h2>NIP-07 extension</h2>
-              <p>Use a browser Nostr extension account if available.</p>
+              <h2>Connect with Extension</h2>
+              <p className="identity-helper">Use your browser Nostr extension account.</p>
               <button type="button" disabled={!hasNip07 || status === "loading"} onClick={() => { void handleNip07Connect(); }}>
                 {hasNip07 ? "Connect with Extension" : "Extension Not Detected"}
               </button>
@@ -335,7 +303,7 @@ export function NostrIdentityPage() {
 
             <section className="identity-card" aria-label="Import nsec">
               <h2>Import nsec</h2>
-              <p>Import a private key for this browser session only.</p>
+              <p className="identity-helper">Import a private key for this browser session only.</p>
               <label htmlFor="identity-nsec-input">Nsec key</label>
               <input
                 id="identity-nsec-input"
@@ -354,8 +322,8 @@ export function NostrIdentityPage() {
             </section>
 
             <section className="identity-card" aria-label="Generate local session key">
-              <h2>Create new key pair</h2>
-              <p>Create a new local key pair stored in session only.</p>
+              <h2>Create Local Key</h2>
+              <p className="identity-helper">Create a new key pair stored in session only.</p>
               <label htmlFor="identity-name-input">Name</label>
               <input
                 id="identity-name-input"
@@ -375,6 +343,16 @@ export function NostrIdentityPage() {
             </section>
           </>
         )}
+
+        <section className="identity-card" aria-label="About Nostr in this app">
+          <h2>About Nostr</h2>
+          <ul className="identity-info-list">
+            <li><strong>npub</strong> is your public identity key and can be shared.</li>
+            <li><strong>nsec</strong> is your private key and must stay secret.</li>
+            <li>This app is local/session-first and only contacts relays on explicit identity actions.</li>
+            <li>Relay actions include importing an nsec, saving a name, creating a named key, and manual refresh.</li>
+          </ul>
+        </section>
 
         {error ? <p className="identity-error">{error}</p> : null}
         {actionMessage ? <p className="identity-status">{actionMessage}</p> : null}

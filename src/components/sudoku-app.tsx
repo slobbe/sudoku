@@ -1364,7 +1364,7 @@ type SudokuAppProps = {
 export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const [state, setState] = useState<GameState>(createInitialState);
   const stateRef = useRef<GameState>(state);
-  const { identity: nostrIdentity, status: nostrStatus } = useNostrAccount();
+  const { identity: nostrIdentity, name: nostrName, status: nostrStatus } = useNostrAccount();
 
   const [activeView, setActiveView] = useState<AppView>("home");
   const [statusMessage, setStatusMessage] = useState<string>(() => HOME_STATUS_MESSAGES[0] ?? "");
@@ -2488,13 +2488,16 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       return "Identity: checking session...";
     }
 
-    if (!nostrIdentity) {
-      return "Identity: not connected";
+    if (nostrName) {
+      return `Playing as ${nostrName}`;
     }
 
-    const sourceLabel = nostrIdentity.source === "nip07" ? "NIP-07 extension" : "Session local key";
-    return `Identity: ${sourceLabel} (${nostrIdentity.npub.slice(0, 16)}...)`;
-  }, [nostrIdentity, nostrStatus]);
+    if (nostrIdentity) {
+      return "Playing as anonymous";
+    }
+
+    return "Playing as guest";
+  }, [nostrIdentity, nostrName, nostrStatus]);
 
   if (entryPoint === "daily" && !hasDailyEntryStarted) {
     return (
