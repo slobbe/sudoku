@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNostrAccount } from "@/lib/nostr";
 import { applyThemeToDocument, readThemeFromSavedGame } from "@/lib/theme";
 
@@ -23,11 +23,14 @@ export function NostrIdentityPage() {
     identity,
     name,
     error,
+    profileSyncStatus,
+    profileSyncMessage,
     hasNip07,
     connectNip07,
     importNsec,
     createLocalAccount,
     updateLocalAccountName,
+    refreshProfileFromRelays,
     getExportableNsec,
     logout,
   } = useNostrAccount();
@@ -38,6 +41,7 @@ export function NostrIdentityPage() {
   const [isEditingAccountName, setIsEditingAccountName] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [showSecretKey, setShowSecretKey] = useState(false);
+  const previousIdentityKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     const savedTheme = readThemeFromSavedGame(SAVE_KEY);
@@ -49,15 +53,52 @@ export function NostrIdentityPage() {
     () => (identity?.source === "local" ? getExportableNsec() : null),
     [getExportableNsec, identity],
   );
+  const identityKey = useMemo(
+    () => (identity ? `${identity.source}:${identity.pubkey}` : null),
+    [identity],
+  );
+  const profileSyncStatusText = useMemo(() => {
+    if (profileSyncStatus === "idle") {
+      return profileSyncMessage;
+    }
+
+    if (profileSyncStatus === "syncing") {
+      return profileSyncMessage ?? "Syncing profile with relays...";
+    }
+
+    if (profileSyncStatus === "synced") {
+      return profileSyncMessage ?? "Profile synced to relays.";
+    }
+
+    if (profileSyncStatus === "up_to_date") {
+      return profileSyncMessage ?? "Profile is up to date.";
+    }
+
+    return profileSyncMessage ?? "Profile sync failed.";
+  }, [profileSyncMessage, profileSyncStatus]);
 
   useEffect(() => {
     setShowSecretKey(false);
   }, [identity?.source]);
 
   useEffect(() => {
-    setEditableAccountName(name ?? "");
-    setIsEditingAccountName(!name || name.trim().length === 0);
-  }, [name, identity?.source]);
+    const hasIdentityChanged = previousIdentityKeyRef.current !== identityKey;
+    previousIdentityKeyRef.current = identityKey;
+
+    if (hasIdentityChanged) {
+      setEditableAccountName(name ?? "");
+      setIsEditingAccountName(!name || name.trim().length === 0);
+      return;
+    }
+
+    if (!isEditingAccountName) {
+      setEditableAccountName(name ?? "");
+    }
+
+    if ((!name || name.trim().length === 0) && !isEditingAccountName) {
+      setIsEditingAccountName(true);
+    }
+  }, [identityKey, isEditingAccountName, name]);
 
   const completeAuth = useCallback((message: string) => {
     setActionMessage(message);
@@ -95,6 +136,18 @@ export function NostrIdentityPage() {
     setNewAccountName("");
     completeAuth("Created local session key.");
   }, [completeAuth, createLocalAccount, newAccountName]);
+
+  const handleRefreshProfile = useCallback(async () => {
+    const result = await refreshProfileFromRelays();
+    if (!result.ok) {
+      setActionMessage(result.error ?? "Could not refresh profile from relays.");
+      return;
+    }
+
+    if (result.message) {
+      setActionMessage(result.message);
+    }
+  }, [refreshProfileFromRelays]);
 
   const handleSaveAccountName = useCallback(async () => {
     const result = await updateLocalAccountName(editableAccountName);
@@ -173,57 +226,69 @@ export function NostrIdentityPage() {
                 <strong>{name}</strong>
               </p>
             ) : null}
-            {identity.source === "local" ? (
+            {name && !isEditingAccountName ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setIsEditingAccountName(true);
+                }}
+              >
+                Edit Name
+              </button>
+            ) : (
               <>
-                {name && !isEditingAccountName ? (
+                <label htmlFor="identity-current-name-input">Name</label>
+                <input
+                  id="identity-current-name-input"
+                  type="text"
+                  value={editableAccountName}
+                  onChange={(event) => {
+                    setEditableAccountName(event.target.value);
+                  }}
+                  placeholder="sudoku-player"
+                  autoComplete="nickname"
+                  spellCheck={false}
+                  maxLength={64}
+                />
+                <div className="identity-actions">
                   <button
                     type="button"
-                    onClick={() => {
-                      setIsEditingAccountName(true);
-                    }}
+                    disabled={profileSyncStatus === "syncing"}
+                    onClick={() => { void handleSaveAccountName(); }}
                   >
-                    Edit Name
+                    Save Name
                   </button>
-                ) : (
-                  <>
-                    <label htmlFor="identity-current-name-input">Name</label>
-                    <input
-                      id="identity-current-name-input"
-                      type="text"
-                      value={editableAccountName}
-                      onChange={(event) => {
-                        setEditableAccountName(event.target.value);
+                  {name ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditableAccountName(name);
+                        setIsEditingAccountName(false);
                       }}
-                      placeholder="sudoku-player"
-                      autoComplete="nickname"
-                      spellCheck={false}
-                      maxLength={64}
-                    />
-                    <div className="identity-actions">
-                      <button type="button" onClick={() => { void handleSaveAccountName(); }}>
-                        Save Name
-                      </button>
-                      {name ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditableAccountName(name);
-                            setIsEditingAccountName(false);
-                          }}
-                        >
-                          Cancel
-                        </button>
-                      ) : null}
-                    </div>
-                  </>
-                )}
+                    >
+                      Cancel
+                    </button>
+                  ) : null}
+                </div>
               </>
-            ) : null}
+            )}
             <p>
               Npub:
               {" "}
               <span className="identity-mono">{identity.npub}</span>
             </p>
+            <div className="identity-actions">
+              <button
+                type="button"
+                disabled={profileSyncStatus === "syncing"}
+                onClick={() => { void handleRefreshProfile(); }}
+              >
+                {profileSyncStatus === "syncing" ? "Refreshing..." : "Refresh from Relays"}
+              </button>
+            </div>
+            {profileSyncStatusText ? (
+              <p className="identity-status" aria-live="polite">{profileSyncStatusText}</p>
+            ) : null}
             {identity.source === "local" ? (
               <>
                 <p className="identity-secret-warning">

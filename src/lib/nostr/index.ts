@@ -20,6 +20,7 @@ export {
   NostrAccountContext,
   type NostrAccountActionResult,
   type NostrAccountContextValue,
+  type NostrProfileSyncStatus,
   type NostrAccountStatus,
 } from "./account-context";
 
@@ -44,3 +45,12 @@ export {
   type NostrProfilePublishResult,
   type NostrProfileReadResult,
 } from "./profile";
+
+export {
+  DEFAULT_NOSTR_DISCOVERY_RELAYS,
+  fetchNostrRelayList,
+  parseNostrRelayListTags,
+  selectPreferredWriteRelays,
+  type NostrRelayList,
+  type NostrRelayListResult,
+} from "./relay-discovery";
