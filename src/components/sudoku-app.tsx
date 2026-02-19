@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import {
   useCallback,
   useEffect,
@@ -1363,6 +1364,7 @@ type SudokuAppProps = {
 };
 
 export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
+  const router = useRouter();
   const [state, setState] = useState<GameState>(createInitialState);
   const stateRef = useRef<GameState>(state);
   const { identity: nostrIdentity, name: nostrName, status: nostrStatus } = useNostrAccount();
@@ -1655,28 +1657,22 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     setStatusMessage(`Standard ${next.difficulty} puzzle resumed.`);
   }, [applyState, startNewGameAndOpen]);
 
-  const resolvePagePath = useCallback((route: "daily" | "profile" | "settings" | "statistics" | "puzzle") => {
-    const prefix = entryPoint === "home" ? "./" : "../";
-    return `${prefix}${route}/`;
-  }, [entryPoint]);
-
   const openPuzzlePage = useCallback((mode: "continue" | "new") => {
-    const basePath = resolvePagePath("puzzle");
     if (mode === "new") {
-      window.location.assign(`${basePath}?mode=new`);
+      router.push("/puzzle/?mode=new");
       return;
     }
 
-    window.location.assign(basePath);
-  }, [resolvePagePath]);
+    router.push("/puzzle/");
+  }, [router]);
 
   const openDailyPage = useCallback(() => {
-    window.location.assign(resolvePagePath("daily"));
-  }, [resolvePagePath]);
+    router.push("/daily/");
+  }, [router]);
 
   const goHome = useCallback(() => {
     if (entryPoint !== "home") {
-      window.location.assign("../");
+      router.push("/");
       return;
     }
 
@@ -1684,19 +1680,19 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     setLosePromptOpen(false);
     setActiveView("home");
     setStatusMessage((currentMessage) => pickHomeStatusMessage(currentMessage));
-  }, [entryPoint]);
+  }, [entryPoint, router]);
 
   const openProfilePage = useCallback(() => {
-    window.location.assign(resolvePagePath("profile"));
-  }, [resolvePagePath]);
+    router.push("/profile/");
+  }, [router]);
 
   const openSettingsView = useCallback(() => {
-    window.location.assign(resolvePagePath("settings"));
-  }, [resolvePagePath]);
+    router.push("/settings/");
+  }, [router]);
 
   const openStatsView = useCallback(() => {
-    window.location.assign(resolvePagePath("statistics"));
-  }, [resolvePagePath]);
+    router.push("/statistics/");
+  }, [router]);
 
   const showPreviousDailyMonth = useCallback(() => {
     setDailyCalendarMonthKey((current) => shiftMonthKey(current, -1));
