@@ -1651,7 +1651,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     setStatusMessage(`Standard ${next.difficulty} puzzle resumed.`);
   }, [applyState, startNewGameAndOpen]);
 
-  const resolvePagePath = useCallback((route: "daily" | "identity" | "settings" | "statistics" | "puzzle") => {
+  const resolvePagePath = useCallback((route: "daily" | "profile" | "settings" | "statistics" | "puzzle") => {
     const prefix = entryPoint === "home" ? "./" : "../";
     return `${prefix}${route}/`;
   }, [entryPoint]);
@@ -1682,8 +1682,8 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     setStatusMessage((currentMessage) => pickHomeStatusMessage(currentMessage));
   }, [entryPoint]);
 
-  const openIdentityPage = useCallback(() => {
-    window.location.assign(resolvePagePath("identity"));
+  const openProfilePage = useCallback(() => {
+    window.location.assign(resolvePagePath("profile"));
   }, [resolvePagePath]);
 
   const openSettingsView = useCallback(() => {
@@ -2528,7 +2528,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     return symbols;
   }, [state.livesLeft, state.livesPerGame]);
 
-  const homeIdentityLabel = useMemo(() => {
+  const homeProfileLabel = useMemo(() => {
     if (nostrStatus === "loading") {
       return "...";
     }
@@ -2596,8 +2596,8 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
               <button id="stats-open" type="button" onClick={openStatsView}>
                 Statistics
               </button>
-              <button id="identity-open" type="button" onClick={openIdentityPage}>
-                {homeIdentityLabel}
+              <button id="profile-open" type="button" onClick={openProfilePage}>
+                {homeProfileLabel}
               </button>
               <button id="settings-open" type="button" onClick={openSettingsView}>
                 Settings

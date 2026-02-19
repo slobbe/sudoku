@@ -329,7 +329,7 @@ body {
     text-align: center;
 }
 
-.home-identity-status {
+.home-profile-status {
     margin: 0;
     color: var(--muted);
     font-size: 0.78rem;
@@ -500,7 +500,7 @@ button:not([data-sudoku-cell="true"]):active {
 #reset-game,
 #hint,
 #continue-daily-puzzle,
-#identity-open,
+#profile-open,
 #stats-open,
 #settings-open {
     border-color: var(--line-bold);
@@ -516,7 +516,7 @@ button:not([data-sudoku-cell="true"]):active {
 #daily-game,
 #continue-daily-puzzle,
 #home-button,
-#identity-open,
+#profile-open,
 #stats-open,
 #settings-open {
     flex-shrink: 0;
@@ -828,13 +828,13 @@ button:not([data-sudoku-cell="true"]):disabled {
     text-align: center;
 }
 
-.identity-view {
+.profile-view {
     align-content: start;
     grid-template-rows: auto;
     gap: 10px;
 }
 
-.identity-card {
+.profile-card {
     border: 1px solid var(--line);
     border-radius: 6px;
     padding: 12px;
@@ -843,23 +843,23 @@ button:not([data-sudoku-cell="true"]):disabled {
     background: var(--control-bg);
 }
 
-.identity-card h2,
-.identity-card p,
-.identity-card label {
+.profile-card h2,
+.profile-card p,
+.profile-card label {
     margin: 0;
 }
 
-.identity-card h2 {
+.profile-card h2 {
     font-size: 1rem;
     letter-spacing: 0.02em;
 }
 
-.identity-helper {
+.profile-helper {
     color: var(--muted);
     font-size: 0.84rem;
 }
 
-.identity-card input {
+.profile-card input {
     border: 1px solid var(--line);
     border-radius: 2px;
     padding: 8px;
@@ -868,13 +868,13 @@ button:not([data-sudoku-cell="true"]):disabled {
     font: inherit;
 }
 
-.identity-mono {
+.profile-mono {
     font-family: "IBM Plex Mono", "SFMono-Regular", Consolas, monospace;
     font-size: 0.78rem;
     word-break: break-all;
 }
 
-.identity-meta {
+.profile-meta {
     display: grid;
     gap: 6px;
     padding: 8px;
@@ -883,36 +883,36 @@ button:not([data-sudoku-cell="true"]):disabled {
     background: var(--paper);
 }
 
-.identity-meta-row {
+.profile-meta-row {
     display: grid;
     gap: 4px;
 }
 
-.identity-meta-label {
+.profile-meta-label {
     font-size: 0.74rem;
     text-transform: uppercase;
     letter-spacing: 0.04em;
     color: var(--muted);
 }
 
-.identity-actions {
+.profile-actions {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
 }
 
-.identity-status,
-.identity-error {
+.profile-status,
+.profile-error {
     margin: 0;
     font-size: 0.84rem;
 }
 
-.identity-secret-warning {
+.profile-secret-warning {
     color: var(--muted);
     font-size: 0.8rem;
 }
 
-.identity-info-list {
+.profile-info-list {
     margin: 0;
     padding-left: 18px;
     display: grid;
@@ -920,14 +920,14 @@ button:not([data-sudoku-cell="true"]):disabled {
     font-size: 0.84rem;
 }
 
-.identity-secret-key {
+.profile-secret-key {
     border: 1px solid var(--line);
     border-radius: 4px;
     padding: 8px;
     background: var(--paper);
 }
 
-.identity-error {
+.profile-error {
     color: var(--error);
 }
 
@@ -1436,7 +1436,7 @@ button:not([data-sudoku-cell="true"]):disabled {
     .home-actions,
     .home-bottom-bar,
     .home-status,
-    .home-identity-status,
+    .home-profile-status,
     .settings-header,
     .settings-grid,
     .settings-footer,
@@ -1475,7 +1475,7 @@ button:not([data-sudoku-cell="true"]):disabled {
         gap: 5px;
     }
 
-    .identity-actions {
+    .profile-actions {
         flex-direction: column;
     }
 
@@ -1505,7 +1505,7 @@ button:not([data-sudoku-cell="true"]):disabled {
         font-size: 0.78rem;
     }
 
-    .home-identity-status {
+    .home-profile-status {
         text-align: center;
         font-size: 0.72rem;
     }

@@ -15,7 +15,7 @@ function sanitizeNextPath(nextPath: string | null): string {
   return nextPath;
 }
 
-export function NostrIdentityPage() {
+export function NostrProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const {
@@ -178,43 +178,43 @@ export function NostrIdentityPage() {
   }, [exportableNsec]);
 
   return (
-    <main className="app app-panel" aria-label="Nostr identity settings">
-      <section className="panel-view identity-view">
+    <main className="app app-panel" aria-label="Nostr profile settings">
+      <section className="panel-view profile-view">
         <div className="settings-header">
-          <h2>Identity</h2>
-          <button id="identity-close" type="button" onClick={() => router.replace("/")}>Home</button>
+          <h2>Profile</h2>
+          <button id="profile-close" type="button" onClick={() => router.replace("/")}>Home</button>
         </div>
 
-        <section className="identity-card" aria-label="Nostr identity basics">
-          <h2>Nostr Identity</h2>
-          <p className="identity-helper">Use an extension, import an nsec, or create a local session key.</p>
+        <section className="profile-card" aria-label="Nostr profile basics">
+          <h2>Nostr Profile</h2>
+          <p className="profile-helper">Use an extension, import an nsec, or create a local session key.</p>
         </section>
 
         {status === "loading" ? (
-          <p className="identity-status" aria-live="polite">Restoring account session...</p>
+          <p className="profile-status" aria-live="polite">Restoring account session...</p>
         ) : null}
 
         {identity ? (
-          <section className="identity-card" aria-label="Current identity">
-            <h2>Current Account</h2>
-            <div className="identity-meta">
-              <p className="identity-meta-row">
-                <span className="identity-meta-label">Source</span>
+          <section className="profile-card" aria-label="Current profile">
+            <h2>Current Profile</h2>
+            <div className="profile-meta">
+              <p className="profile-meta-row">
+                <span className="profile-meta-label">Source</span>
                 <strong>{identity.source === "nip07" ? "NIP-07 extension" : "Session local key"}</strong>
               </p>
-              <p className="identity-meta-row">
-                <span className="identity-meta-label">Name</span>
+              <p className="profile-meta-row">
+                <span className="profile-meta-label">Name</span>
                 <strong>{name ?? "Not set"}</strong>
               </p>
-              <p className="identity-meta-row">
-                <span className="identity-meta-label">Npub</span>
-                <span className="identity-mono">{identity.npub}</span>
+              <p className="profile-meta-row">
+                <span className="profile-meta-label">Npub</span>
+                <span className="profile-mono">{identity.npub}</span>
               </p>
             </div>
 
-            <label htmlFor="identity-current-name-input">Display Name</label>
+            <label htmlFor="profile-current-name-input">Display Name</label>
             <input
-              id="identity-current-name-input"
+              id="profile-current-name-input"
               type="text"
               value={editableAccountName}
               onChange={(event) => {
@@ -226,7 +226,7 @@ export function NostrIdentityPage() {
               maxLength={64}
             />
 
-            <div className="identity-actions">
+            <div className="profile-actions">
               <button
                 type="button"
                 disabled={profileSyncStatus === "syncing"}
@@ -245,7 +245,7 @@ export function NostrIdentityPage() {
               </button>
             </div>
 
-            <div className="identity-actions">
+            <div className="profile-actions">
               <button
                 type="button"
                 disabled={profileSyncStatus === "syncing"}
@@ -259,18 +259,18 @@ export function NostrIdentityPage() {
             </div>
 
             {profileSyncStatusText ? (
-              <p className="identity-status" aria-live="polite">{profileSyncStatusText}</p>
+              <p className="profile-status" aria-live="polite">{profileSyncStatusText}</p>
             ) : null}
 
             {identity.source === "local" ? (
               <>
-                <p className="identity-secret-warning">
-                  Back up your nsec now. Anyone with this key can control your identity.
+                <p className="profile-secret-warning">
+                  Back up your nsec now. Anyone with this key can control your profile.
                 </p>
                 {showSecretKey && exportableNsec ? (
-                  <p className="identity-mono identity-secret-key">{exportableNsec}</p>
+                  <p className="profile-mono profile-secret-key">{exportableNsec}</p>
                 ) : null}
-                <div className="identity-actions">
+                <div className="profile-actions">
                   <button
                     type="button"
                     onClick={() => {
@@ -288,25 +288,25 @@ export function NostrIdentityPage() {
                 </div>
               </>
             ) : (
-              <p className="identity-secret-warning">Secret key access is managed by your NIP-07 extension.</p>
+              <p className="profile-secret-warning">Secret key access is managed by your NIP-07 extension.</p>
             )}
           </section>
         ) : (
           <>
-            <section className="identity-card" aria-label="Connect with NIP-07">
+            <section className="profile-card" aria-label="Connect with NIP-07">
               <h2>Connect with Extension</h2>
-              <p className="identity-helper">Use your browser Nostr extension account.</p>
+              <p className="profile-helper">Use your browser Nostr extension account.</p>
               <button type="button" disabled={!hasNip07 || status === "loading"} onClick={() => { void handleNip07Connect(); }}>
                 {hasNip07 ? "Connect with Extension" : "Extension Not Detected"}
               </button>
             </section>
 
-            <section className="identity-card" aria-label="Import nsec">
+            <section className="profile-card" aria-label="Import nsec">
               <h2>Import nsec</h2>
-              <p className="identity-helper">Import a private key for this browser session only.</p>
-              <label htmlFor="identity-nsec-input">Nsec key</label>
+              <p className="profile-helper">Import a private key for this browser session only.</p>
+              <label htmlFor="profile-nsec-input">Nsec key</label>
               <input
-                id="identity-nsec-input"
+                id="profile-nsec-input"
                 type="password"
                 value={nsecInput}
                 onChange={(event) => {
@@ -321,12 +321,12 @@ export function NostrIdentityPage() {
               </button>
             </section>
 
-            <section className="identity-card" aria-label="Generate local session key">
+            <section className="profile-card" aria-label="Generate local session key">
               <h2>Create Local Key</h2>
-              <p className="identity-helper">Create a new key pair stored in session only.</p>
-              <label htmlFor="identity-name-input">Name</label>
+              <p className="profile-helper">Create a new key pair stored in session only.</p>
+              <label htmlFor="profile-name-input">Name</label>
               <input
-                id="identity-name-input"
+                id="profile-name-input"
                 type="text"
                 value={newAccountName}
                 onChange={(event) => {
@@ -344,18 +344,18 @@ export function NostrIdentityPage() {
           </>
         )}
 
-        <section className="identity-card" aria-label="About Nostr in this app">
+        <section className="profile-card" aria-label="About Nostr in this app">
           <h2>About Nostr</h2>
-          <ul className="identity-info-list">
-            <li><strong>npub</strong> is your public identity key and can be shared.</li>
+          <ul className="profile-info-list">
+            <li><strong>npub</strong> is your public profile key and can be shared.</li>
             <li><strong>nsec</strong> is your private key and must stay secret.</li>
-            <li>This app is local/session-first and only contacts relays on explicit identity actions.</li>
+            <li>This app is local/session-first and only contacts relays on explicit profile actions.</li>
             <li>Relay actions include importing an nsec, saving a name, creating a named key, and manual refresh.</li>
           </ul>
         </section>
 
-        {error ? <p className="identity-error">{error}</p> : null}
-        {actionMessage ? <p className="identity-status">{actionMessage}</p> : null}
+        {error ? <p className="profile-error">{error}</p> : null}
+        {actionMessage ? <p className="profile-status">{actionMessage}</p> : null}
       </section>
     </main>
   );
