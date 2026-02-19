@@ -21,16 +21,21 @@ export function NostrIdentityPage() {
   const {
     status,
     identity,
+    name,
     error,
     hasNip07,
     connectNip07,
     importNsec,
     createLocalAccount,
+    updateLocalAccountName,
     getExportableNsec,
     logout,
   } = useNostrAccount();
 
   const [nsecInput, setNsecInput] = useState("");
+  const [newAccountName, setNewAccountName] = useState("");
+  const [editableAccountName, setEditableAccountName] = useState("");
+  const [isEditingAccountName, setIsEditingAccountName] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [showSecretKey, setShowSecretKey] = useState(false);
 
@@ -48,6 +53,11 @@ export function NostrIdentityPage() {
   useEffect(() => {
     setShowSecretKey(false);
   }, [identity?.source]);
+
+  useEffect(() => {
+    setEditableAccountName(name ?? "");
+    setIsEditingAccountName(!name || name.trim().length === 0);
+  }, [name, identity?.source]);
 
   const completeAuth = useCallback((message: string) => {
     setActionMessage(message);
@@ -76,14 +86,26 @@ export function NostrIdentityPage() {
   }, [completeAuth, importNsec, nsecInput]);
 
   const handleCreateAccount = useCallback(async () => {
-    const result = await createLocalAccount();
+    const result = await createLocalAccount(newAccountName);
     if (!result.ok) {
       setActionMessage(result.error ?? "Could not create local session account.");
       return;
     }
 
+    setNewAccountName("");
     completeAuth("Created local session key.");
-  }, [completeAuth, createLocalAccount]);
+  }, [completeAuth, createLocalAccount, newAccountName]);
+
+  const handleSaveAccountName = useCallback(async () => {
+    const result = await updateLocalAccountName(editableAccountName);
+    if (!result.ok) {
+      setActionMessage(result.error ?? "Could not update name.");
+      return;
+    }
+
+    setIsEditingAccountName(editableAccountName.trim().length === 0);
+    setActionMessage(editableAccountName.trim().length > 0 ? "Name updated." : "Name cleared.");
+  }, [editableAccountName, updateLocalAccountName]);
 
   const handleCopyNsec = useCallback(async () => {
     if (!exportableNsec) {
@@ -141,6 +163,59 @@ export function NostrIdentityPage() {
               {" "}
               <strong>{identity.source === "nip07" ? "NIP-07 extension" : "Session local key"}</strong>
             </p>
+            {name ? (
+              <p>
+                Name:
+                {" "}
+                <strong>{name}</strong>
+              </p>
+            ) : null}
+            {identity.source === "local" ? (
+              <>
+                {name && !isEditingAccountName ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingAccountName(true);
+                    }}
+                  >
+                    Edit Name
+                  </button>
+                ) : (
+                  <>
+                    <label htmlFor="identity-current-name-input">Name</label>
+                    <input
+                      id="identity-current-name-input"
+                      type="text"
+                      value={editableAccountName}
+                      onChange={(event) => {
+                        setEditableAccountName(event.target.value);
+                      }}
+                      placeholder="sudoku-player"
+                      autoComplete="nickname"
+                      spellCheck={false}
+                      maxLength={64}
+                    />
+                    <div className="identity-actions">
+                      <button type="button" onClick={() => { void handleSaveAccountName(); }}>
+                        Save Name
+                      </button>
+                      {name ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditableAccountName(name);
+                            setIsEditingAccountName(false);
+                          }}
+                        >
+                          Cancel
+                        </button>
+                      ) : null}
+                    </div>
+                  </>
+                )}
+              </>
+            ) : null}
             <p>
               Npub:
               {" "}
@@ -213,6 +288,19 @@ export function NostrIdentityPage() {
             <section className="identity-card" aria-label="Generate local session key">
               <h2>Create new key pair</h2>
               <p>Create a new local key pair stored in session only.</p>
+              <label htmlFor="identity-name-input">Name</label>
+              <input
+                id="identity-name-input"
+                type="text"
+                value={newAccountName}
+                onChange={(event) => {
+                  setNewAccountName(event.target.value);
+                }}
+                placeholder="sudoku-player"
+                autoComplete="nickname"
+                spellCheck={false}
+                maxLength={64}
+              />
               <button type="button" disabled={status === "loading"} onClick={() => { void handleCreateAccount(); }}>
                 Generate Session Key
               </button>

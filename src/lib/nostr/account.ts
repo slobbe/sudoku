@@ -8,13 +8,29 @@ import {
 
 const SESSION_ACCOUNT_MODE_KEY = "sudoku-nostr-account-mode-v1";
 const SESSION_ACCOUNT_NSEC_KEY = "sudoku-nostr-account-nsec-v1";
+const SESSION_ACCOUNT_NAME_KEY = "sudoku-nostr-account-name-v1";
+const MAX_ACCOUNT_NAME_LENGTH = 64;
 
 type StoredMode = "nip07" | "local";
 
 export type NostrAccountRestoreResult = {
   identity: NostrIdentity | null;
   error: string | null;
+  name: string | null;
 };
+
+export function normalizeNostrAccountName(value: unknown): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+
+  return trimmed.slice(0, MAX_ACCOUNT_NAME_LENGTH);
+}
 
 function getSessionStorage(): Storage | null {
   if (typeof window === "undefined") {
@@ -40,11 +56,19 @@ function readStoredMode(storage: Storage): StoredMode | null {
 function persistNip07Mode(storage: Storage): void {
   storage.setItem(SESSION_ACCOUNT_MODE_KEY, "nip07");
   storage.removeItem(SESSION_ACCOUNT_NSEC_KEY);
+  storage.removeItem(SESSION_ACCOUNT_NAME_KEY);
 }
 
-function persistLocalNsec(storage: Storage, nsec: string): void {
+function persistLocalNsec(storage: Storage, nsec: string, name?: string): void {
   storage.setItem(SESSION_ACCOUNT_MODE_KEY, "local");
   storage.setItem(SESSION_ACCOUNT_NSEC_KEY, nsec);
+
+  const normalizedName = normalizeNostrAccountName(name);
+  if (normalizedName) {
+    storage.setItem(SESSION_ACCOUNT_NAME_KEY, normalizedName);
+  } else {
+    storage.removeItem(SESSION_ACCOUNT_NAME_KEY);
+  }
 }
 
 export function clearNostrSession(): void {
@@ -55,6 +79,7 @@ export function clearNostrSession(): void {
 
   storage.removeItem(SESSION_ACCOUNT_MODE_KEY);
   storage.removeItem(SESSION_ACCOUNT_NSEC_KEY);
+  storage.removeItem(SESSION_ACCOUNT_NAME_KEY);
 }
 
 export function getSessionLocalNsec(): string | null {
@@ -81,12 +106,43 @@ export function getSessionLocalNsec(): string | null {
   return normalized;
 }
 
+export function getSessionAccountName(): string | null {
+  const storage = getSessionStorage();
+  if (!storage) {
+    return null;
+  }
+
+  return normalizeNostrAccountName(storage.getItem(SESSION_ACCOUNT_NAME_KEY));
+}
+
+export function updateSessionAccountName(name: string): string | null {
+  const storage = getSessionStorage();
+  if (!storage) {
+    throw new Error("Session storage is unavailable.");
+  }
+
+  const mode = readStoredMode(storage);
+  if (mode !== "local") {
+    throw new Error("Only local session accounts can set a name here.");
+  }
+
+  const normalizedName = normalizeNostrAccountName(name);
+  if (normalizedName) {
+    storage.setItem(SESSION_ACCOUNT_NAME_KEY, normalizedName);
+  } else {
+    storage.removeItem(SESSION_ACCOUNT_NAME_KEY);
+  }
+
+  return normalizedName;
+}
+
 export async function restoreNostrAccountFromSession(): Promise<NostrAccountRestoreResult> {
   const storage = getSessionStorage();
   if (!storage) {
     return {
       identity: null,
       error: "Session storage is unavailable.",
+      name: null,
     };
   }
 
@@ -95,6 +151,7 @@ export async function restoreNostrAccountFromSession(): Promise<NostrAccountRest
     return {
       identity: null,
       error: null,
+      name: null,
     };
   }
 
@@ -104,12 +161,14 @@ export async function restoreNostrAccountFromSession(): Promise<NostrAccountRest
       return {
         identity,
         error: null,
+        name: null,
       };
     } catch {
       clearNostrSession();
       return {
         identity: null,
         error: "NIP-07 session could not be restored.",
+        name: null,
       };
     }
   }
@@ -120,6 +179,7 @@ export async function restoreNostrAccountFromSession(): Promise<NostrAccountRest
     return {
       identity: null,
       error: "Local session key not found.",
+      name: null,
     };
   }
 
@@ -129,12 +189,14 @@ export async function restoreNostrAccountFromSession(): Promise<NostrAccountRest
     return {
       identity: null,
       error: "Stored local session key is invalid.",
+      name: null,
     };
   }
 
   return {
     identity: createLocalIdentity(secretKey),
     error: null,
+    name: normalizeNostrAccountName(storage.getItem(SESSION_ACCOUNT_NAME_KEY)),
   };
 }
 
@@ -166,13 +228,13 @@ export function importNsecAccount(nsec: string): NostrIdentity {
   return identity;
 }
 
-export function createSessionLocalAccount(): NostrIdentity {
+export function createSessionLocalAccount(name?: string): NostrIdentity {
   const storage = getSessionStorage();
   if (!storage) {
     throw new Error("Session storage is unavailable.");
   }
 
   const { identity, nsec } = createRandomLocalIdentity();
-  persistLocalNsec(storage, nsec);
+  persistLocalNsec(storage, nsec, name);
   return identity;
 }

@@ -11,11 +11,13 @@ export type NostrAccountActionResult = {
 export type NostrAccountContextValue = {
   status: NostrAccountStatus;
   identity: NostrIdentity | null;
+  name: string | null;
   error: string | null;
   hasNip07: boolean;
   connectNip07: () => Promise<NostrAccountActionResult>;
   importNsec: (nsec: string) => Promise<NostrAccountActionResult>;
-  createLocalAccount: () => Promise<NostrAccountActionResult>;
+  createLocalAccount: (name?: string) => Promise<NostrAccountActionResult>;
+  updateLocalAccountName: (name: string) => Promise<NostrAccountActionResult>;
   getExportableNsec: () => string | null;
   logout: () => void;
 };

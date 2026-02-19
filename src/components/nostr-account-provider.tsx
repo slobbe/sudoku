@@ -6,9 +6,11 @@ import {
   clearNostrSession,
   connectNip07Account,
   createSessionLocalAccount,
+  getSessionAccountName,
   getSessionLocalNsec,
   importNsecAccount,
   restoreNostrAccountFromSession,
+  updateSessionAccountName,
 } from "@/lib/nostr/account";
 import {
   NostrAccountContext,
@@ -23,6 +25,7 @@ type NostrAccountProviderProps = {
 export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
   const [status, setStatus] = useState<"loading" | "ready">("loading");
   const [identity, setIdentity] = useState<NostrIdentity | null>(null);
+  const [name, setName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [hasNip07, setHasNip07] = useState(false);
 
@@ -40,6 +43,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
         }
 
         setIdentity(result.identity);
+        setName(result.name);
         setError(result.error);
       })
       .finally(() => {
@@ -58,6 +62,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     try {
       const nextIdentity = await connectNip07Account();
       setIdentity(nextIdentity);
+      setName(null);
       setError(null);
       return { ok: true };
     } catch (caughtError) {
@@ -71,6 +76,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     try {
       const nextIdentity = importNsecAccount(nsec);
       setIdentity(nextIdentity);
+      setName(null);
       setError(null);
       return { ok: true };
     } catch (caughtError) {
@@ -80,10 +86,11 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     }
   }, []);
 
-  const createLocalAccount = useCallback(async (): Promise<NostrAccountActionResult> => {
+  const createLocalAccount = useCallback(async (accountName?: string): Promise<NostrAccountActionResult> => {
     try {
-      const nextIdentity = createSessionLocalAccount();
+      const nextIdentity = createSessionLocalAccount(accountName);
       setIdentity(nextIdentity);
+      setName(getSessionAccountName());
       setError(null);
       return { ok: true };
     } catch (caughtError) {
@@ -93,9 +100,23 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     }
   }, []);
 
+  const updateLocalAccountName = useCallback(async (nextName: string): Promise<NostrAccountActionResult> => {
+    try {
+      const normalizedName = updateSessionAccountName(nextName);
+      setName(normalizedName);
+      setError(null);
+      return { ok: true };
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : "Could not update account name.";
+      setError(message);
+      return { ok: false, error: message };
+    }
+  }, []);
+
   const logout = useCallback(() => {
     clearNostrSession();
     setIdentity(null);
+    setName(null);
     setError(null);
   }, []);
 
@@ -105,15 +126,29 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     () => ({
       status,
       identity,
+      name,
       error,
       hasNip07,
       connectNip07,
       importNsec,
       createLocalAccount,
+      updateLocalAccountName,
       getExportableNsec,
       logout,
     }),
-    [status, identity, error, hasNip07, connectNip07, importNsec, createLocalAccount, getExportableNsec, logout],
+    [
+      status,
+      identity,
+      name,
+      error,
+      hasNip07,
+      connectNip07,
+      importNsec,
+      createLocalAccount,
+      updateLocalAccountName,
+      getExportableNsec,
+      logout,
+    ],
   );
 
   return <NostrAccountContext.Provider value={contextValue}>{children}</NostrAccountContext.Provider>;
