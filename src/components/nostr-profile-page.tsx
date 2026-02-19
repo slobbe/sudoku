@@ -29,6 +29,8 @@ export function NostrProfilePage() {
     createLocalAccount,
     updateLocalAccountName,
     refreshProfileFromRelays,
+    backupGameDataToRelays,
+    restoreGameDataFromRelays,
     getExportableNsec,
     logout,
   } = useNostrAccount();
@@ -38,6 +40,7 @@ export function NostrProfilePage() {
   const [editableAccountName, setEditableAccountName] = useState("");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [showSecretKey, setShowSecretKey] = useState(false);
+  const [isBackupActionRunning, setIsBackupActionRunning] = useState(false);
 
   useEffect(() => {
     const savedTheme = readThemeFromSavedGame();
@@ -138,6 +141,36 @@ export function NostrProfilePage() {
       ?? (editableAccountName.trim().length > 0 ? "Name updated." : "Name cleared."),
     );
   }, [editableAccountName, updateLocalAccountName]);
+
+  const handleBackupGameData = useCallback(async () => {
+    setIsBackupActionRunning(true);
+    try {
+      const result = await backupGameDataToRelays();
+      if (!result.ok) {
+        setActionMessage(result.error ?? "Could not back up encrypted game data.");
+        return;
+      }
+
+      setActionMessage(result.message ?? "Encrypted game backup completed.");
+    } finally {
+      setIsBackupActionRunning(false);
+    }
+  }, [backupGameDataToRelays]);
+
+  const handleRestoreGameData = useCallback(async () => {
+    setIsBackupActionRunning(true);
+    try {
+      const result = await restoreGameDataFromRelays();
+      if (!result.ok) {
+        setActionMessage(result.error ?? "Could not restore encrypted game data.");
+        return;
+      }
+
+      setActionMessage(result.message ?? "Encrypted game backup restored.");
+    } finally {
+      setIsBackupActionRunning(false);
+    }
+  }, [restoreGameDataFromRelays]);
 
   const handleCopyNsec = useCallback(async () => {
     if (!exportableNsec) {
@@ -342,13 +375,36 @@ export function NostrProfilePage() {
           </>
         )}
 
+        <section className="profile-card" aria-label="Encrypted game backup">
+          <h2>Game Backup</h2>
+          <p className="profile-helper">
+            Back up your current game, settings, and stats as encrypted app data on Nostr relays.
+          </p>
+          <div className="profile-actions">
+            <button
+              type="button"
+              disabled={isBackupActionRunning || profileSyncStatus === "syncing"}
+              onClick={() => { void handleBackupGameData(); }}
+            >
+              {isBackupActionRunning ? "Working..." : "Backup to Nostr"}
+            </button>
+            <button
+              type="button"
+              disabled={isBackupActionRunning || profileSyncStatus === "syncing"}
+              onClick={() => { void handleRestoreGameData(); }}
+            >
+              {isBackupActionRunning ? "Working..." : "Restore from Nostr"}
+            </button>
+          </div>
+        </section>
+
         <section className="profile-card" aria-label="About Nostr in this app">
           <h2>About Nostr</h2>
           <ul className="profile-info-list">
             <li><strong>npub</strong> is your public profile key and can be shared.</li>
             <li><strong>nsec</strong> is your private key and must stay secret.</li>
             <li>This app is local/session-first and only contacts relays on explicit profile actions.</li>
-            <li>Relay actions include importing an nsec, saving a name, creating a named key, and manual refresh.</li>
+            <li>Relay actions include importing an nsec, saving a name, backup, restore, and manual refresh.</li>
           </ul>
         </section>
 

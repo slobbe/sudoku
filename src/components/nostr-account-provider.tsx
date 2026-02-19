@@ -18,11 +18,19 @@ import {
   publishNostrProfileNameIfChanged,
 } from "@/lib/nostr/profile";
 import {
+  fetchLatestNostrAppData,
+  publishNostrAppDataIfChanged,
+} from "@/lib/nostr/app-data";
+import {
   NostrAccountContext,
   type NostrAccountActionResult,
   type NostrProfileSyncStatus,
 } from "@/lib/nostr/account-context";
 import { hasNip07Support, type NostrIdentity } from "@/lib/nostr/identity";
+import {
+  loadSavedGamePayloadFromBrowser,
+  saveSavedGamePayloadToBrowser,
+} from "@/lib/storage/game-storage";
 
 type NostrAccountProviderProps = {
   children: ReactNode;
@@ -297,6 +305,85 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     return syncProfileFromRelays(identity);
   }, [identity, syncProfileFromRelays]);
 
+  const backupGameDataToRelays = useCallback(async (): Promise<NostrAccountActionResult> => {
+    if (!identity) {
+      const message = "No connected identity available.";
+      setError(message);
+      return { ok: false, error: message };
+    }
+
+    const payload = loadSavedGamePayloadFromBrowser();
+    if (!payload) {
+      const message = "No local game data to back up yet.";
+      setProfileSyncStatus("up_to_date");
+      setProfileSyncMessage(message);
+      return { ok: false, error: message };
+    }
+
+    setProfileSyncStatus("syncing");
+    setProfileSyncMessage("Backing up encrypted game data to Nostr relays...");
+
+    try {
+      const result = await publishNostrAppDataIfChanged(identity, payload);
+      const message = result.published
+        ? `Encrypted backup synced to relays (${result.encryption}).`
+        : "Encrypted backup already up to date on relays.";
+      setProfileSyncStatus(result.published ? "synced" : "up_to_date");
+      setProfileSyncMessage(message);
+      setError(null);
+      return { ok: true, message };
+    } catch (caughtError) {
+      const message = caughtError instanceof Error
+        ? caughtError.message
+        : "Could not back up encrypted game data to relays.";
+      setProfileSyncStatus("failed");
+      setProfileSyncMessage("Encrypted game backup failed.");
+      setError(message);
+      return { ok: false, error: message };
+    }
+  }, [identity]);
+
+  const restoreGameDataFromRelays = useCallback(async (): Promise<NostrAccountActionResult> => {
+    if (!identity) {
+      const message = "No connected identity available.";
+      setError(message);
+      return { ok: false, error: message };
+    }
+
+    setProfileSyncStatus("syncing");
+    setProfileSyncMessage("Restoring encrypted game data from Nostr relays...");
+
+    try {
+      const appData = await fetchLatestNostrAppData(identity);
+      if (!appData.payload) {
+        const message = "No encrypted backup found on relays.";
+        setProfileSyncStatus("up_to_date");
+        setProfileSyncMessage(message);
+        return { ok: false, error: message };
+      }
+
+      if (!saveSavedGamePayloadToBrowser(appData.payload)) {
+        throw new Error("Could not restore backup into local storage.");
+      }
+
+      const message = appData.updatedAt
+        ? `Encrypted backup restored from ${new Date(appData.updatedAt).toLocaleString()}.`
+        : "Encrypted backup restored from relays.";
+      setProfileSyncStatus("synced");
+      setProfileSyncMessage(message);
+      setError(null);
+      return { ok: true, message };
+    } catch (caughtError) {
+      const message = caughtError instanceof Error
+        ? caughtError.message
+        : "Could not restore encrypted game data from relays.";
+      setProfileSyncStatus("failed");
+      setProfileSyncMessage("Encrypted game restore failed.");
+      setError(message);
+      return { ok: false, error: message };
+    }
+  }, [identity]);
+
   const logout = useCallback(() => {
     clearNostrSession();
     setIdentity(null);
@@ -322,6 +409,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       createLocalAccount,
       updateLocalAccountName,
       refreshProfileFromRelays,
+      backupGameDataToRelays,
+      restoreGameDataFromRelays,
       getExportableNsec,
       logout,
     }),
@@ -338,6 +427,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       createLocalAccount,
       updateLocalAccountName,
       refreshProfileFromRelays,
+      backupGameDataToRelays,
+      restoreGameDataFromRelays,
       getExportableNsec,
       logout,
     ],

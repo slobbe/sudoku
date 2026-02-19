@@ -24,6 +24,8 @@ export type NostrAccountContextValue = {
   createLocalAccount: (name?: string) => Promise<NostrAccountActionResult>;
   updateLocalAccountName: (name: string) => Promise<NostrAccountActionResult>;
   refreshProfileFromRelays: () => Promise<NostrAccountActionResult>;
+  backupGameDataToRelays: () => Promise<NostrAccountActionResult>;
+  restoreGameDataFromRelays: () => Promise<NostrAccountActionResult>;
   getExportableNsec: () => string | null;
   logout: () => void;
 };

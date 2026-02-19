@@ -54,3 +54,18 @@ export {
   type NostrRelayList,
   type NostrRelayListResult,
 } from "./relay-discovery";
+
+export {
+  NOSTR_APP_DATA_D_TAG,
+  NOSTR_APP_DATA_TAG,
+  createNostrAppDataEnvelope,
+  fetchLatestNostrAppData,
+  isNostrAppDataPayloadChanged,
+  parseNostrAppDataEnvelope,
+  publishNostrAppDataIfChanged,
+  type NostrAppDataEncryption,
+  type NostrAppDataEnvelope,
+  type NostrAppDataPayload,
+  type NostrAppDataPublishResult,
+  type NostrAppDataReadResult,
+} from "./app-data";
