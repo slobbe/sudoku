@@ -13,6 +13,11 @@ import {
   updateSessionAccountName,
 } from "@/lib/nostr/account";
 import {
+  fetchLatestNostrProfile,
+  normalizeNostrProfileName,
+  publishNostrProfileNameIfChanged,
+} from "@/lib/nostr/profile";
+import {
   NostrAccountContext,
   type NostrAccountActionResult,
 } from "@/lib/nostr/account-context";
@@ -75,9 +80,21 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
   const importNsec = useCallback(async (nsec: string): Promise<NostrAccountActionResult> => {
     try {
       const nextIdentity = importNsecAccount(nsec);
+      const importedName = getSessionAccountName();
       setIdentity(nextIdentity);
-      setName(null);
-      setError(null);
+      setName(importedName);
+
+      try {
+        const profile = await fetchLatestNostrProfile(nextIdentity.pubkey);
+        if (profile.name) {
+          const normalizedName = updateSessionAccountName(profile.name);
+          setName(normalizedName);
+        }
+        setError(null);
+      } catch {
+        setError("Imported key, but could not read kind 0 profile metadata.");
+      }
+
       return { ok: true };
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Could not import nsec account.";
@@ -89,8 +106,33 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
   const createLocalAccount = useCallback(async (accountName?: string): Promise<NostrAccountActionResult> => {
     try {
       const nextIdentity = createSessionLocalAccount(accountName);
+      const sessionName = getSessionAccountName();
+
       setIdentity(nextIdentity);
-      setName(getSessionAccountName());
+      setName(sessionName);
+
+      if (normalizeNostrProfileName(sessionName)) {
+        try {
+          const publishResult = await publishNostrProfileNameIfChanged(nextIdentity, sessionName);
+          setError(null);
+          return {
+            ok: true,
+            message: publishResult.published
+              ? "Name synced to Nostr relays."
+              : "Name already synced on Nostr relays.",
+          };
+        } catch (caughtError) {
+          const message = caughtError instanceof Error
+            ? caughtError.message
+            : "Could not publish kind 0 profile metadata.";
+          setError(message);
+          return {
+            ok: true,
+            message: "Name saved locally, but relay sync failed.",
+          };
+        }
+      }
+
       setError(null);
       return { ok: true };
     } catch (caughtError) {
@@ -104,6 +146,29 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     try {
       const normalizedName = updateSessionAccountName(nextName);
       setName(normalizedName);
+
+      if (identity) {
+        try {
+          const publishResult = await publishNostrProfileNameIfChanged(identity, normalizedName);
+          setError(null);
+          return {
+            ok: true,
+            message: publishResult.published
+              ? "Name synced to Nostr relays."
+              : "Name already synced on Nostr relays.",
+          };
+        } catch (caughtError) {
+          const message = caughtError instanceof Error
+            ? caughtError.message
+            : "Could not publish kind 0 profile metadata.";
+          setError(message);
+          return {
+            ok: true,
+            message: "Name saved locally, but relay sync failed.",
+          };
+        }
+      }
+
       setError(null);
       return { ok: true };
     } catch (caughtError) {
@@ -111,7 +176,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       setError(message);
       return { ok: false, error: message };
     }
-  }, []);
+  }, [identity]);
 
   const logout = useCallback(() => {
     clearNostrSession();

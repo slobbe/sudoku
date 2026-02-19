@@ -6,6 +6,7 @@ export type NostrAccountStatus = "loading" | "ready";
 export type NostrAccountActionResult = {
   ok: boolean;
   error?: string;
+  message?: string;
 };
 
 export type NostrAccountContextValue = {

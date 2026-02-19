@@ -31,3 +31,16 @@ export {
   type NostrMessageSubscription,
   type NostrParsedMessagePredicate,
 } from "./client";
+
+export {
+  DEFAULT_NOSTR_PROFILE_RELAYS,
+  fetchLatestNostrProfile,
+  getNostrProfileName,
+  mergeNostrProfileName,
+  normalizeNostrProfileName,
+  parseNostrProfileMetadata,
+  publishNostrProfileNameIfChanged,
+  type NostrProfileMetadata,
+  type NostrProfilePublishResult,
+  type NostrProfileReadResult,
+} from "./profile";

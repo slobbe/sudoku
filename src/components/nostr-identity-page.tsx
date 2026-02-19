@@ -104,7 +104,10 @@ export function NostrIdentityPage() {
     }
 
     setIsEditingAccountName(editableAccountName.trim().length === 0);
-    setActionMessage(editableAccountName.trim().length > 0 ? "Name updated." : "Name cleared.");
+    setActionMessage(
+      result.message
+      ?? (editableAccountName.trim().length > 0 ? "Name updated." : "Name cleared."),
+    );
   }, [editableAccountName, updateLocalAccountName]);
 
   const handleCopyNsec = useCallback(async () => {
