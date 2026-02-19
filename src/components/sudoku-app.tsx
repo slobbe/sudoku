@@ -45,11 +45,19 @@ import {
   normalizeAppTheme,
   type AppTheme,
 } from "@/lib/theme";
+import {
+  getInitialViewForEntryPoint,
+  isRouteGameLoading,
+  parsePuzzleEntryMode,
+  shouldStartDailyEntry,
+  shouldStartPuzzleEntry,
+  type SudokuAppView,
+  type SudokuEntryPoint,
+} from "@/lib/routing/entry";
 import { useNostrAccount } from "@/lib/nostr";
 
 type Theme = AppTheme;
-type AppView = "home" | "game" | "settings" | "stats";
-type SudokuEntryPoint = "home" | "daily" | "settings" | "statistics" | "puzzle";
+type AppView = SudokuAppView;
 type PuzzleMode = "standard" | "daily";
 
 type CellSelection = {
@@ -1369,21 +1377,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const stateRef = useRef<GameState>(state);
   const { identity: nostrIdentity, name: nostrName, status: nostrStatus } = useNostrAccount();
 
-  const [activeView, setActiveView] = useState<AppView>(() => {
-    if (entryPoint === "settings") {
-      return "settings";
-    }
-
-    if (entryPoint === "statistics") {
-      return "stats";
-    }
-
-    if (entryPoint === "daily" || entryPoint === "puzzle") {
-      return "game";
-    }
-
-    return "home";
-  });
+  const [activeView, setActiveView] = useState<AppView>(() => getInitialViewForEntryPoint(entryPoint));
   const [, setStatusMessage] = useState<string>(() => HOME_STATUS_MESSAGES[0] ?? "");
   const [winPromptOpen, setWinPromptOpen] = useState(false);
   const [losePromptOpen, setLosePromptOpen] = useState(false);
@@ -2182,7 +2176,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   }, [applyState]);
 
   useEffect(() => {
-    if (entryPoint !== "daily" || !isHydrated || hasDailyEntryStarted) {
+    if (!shouldStartDailyEntry({ entryPoint, isHydrated, hasDailyEntryStarted })) {
       return;
     }
 
@@ -2191,13 +2185,12 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   }, [entryPoint, hasDailyEntryStarted, isHydrated, startDailyPuzzleAndOpen]);
 
   useEffect(() => {
-    if (entryPoint !== "puzzle" || !isHydrated || hasPuzzleEntryStarted) {
+    if (!shouldStartPuzzleEntry({ entryPoint, isHydrated, hasPuzzleEntryStarted })) {
       return;
     }
 
     setHasPuzzleEntryStarted(true);
-    const searchParams = new URLSearchParams(window.location.search);
-    const mode = searchParams.get("mode");
+    const mode = parsePuzzleEntryMode(window.location.search);
     if (mode === "new") {
       try {
         window.history.replaceState(null, "", window.location.pathname);
@@ -2410,8 +2403,13 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const gameSubtitle = state.mode === "daily"
     ? formatDateKeyForDisplay(state.dailyDate ?? todayDailyKey)
     : null;
-  const isRouteGameLoading = (entryPoint === "daily" && (!hasDailyEntryStarted || !state.board || state.mode !== "daily"))
-    || (entryPoint === "puzzle" && (!hasPuzzleEntryStarted || !state.board || state.mode !== "standard"));
+  const isRouteEntryGameLoading = isRouteGameLoading({
+    entryPoint,
+    hasDailyEntryStarted,
+    hasPuzzleEntryStarted,
+    hasBoard: Boolean(state.board),
+    mode: state.mode,
+  });
   const routeLoadingTitle = entryPoint === "daily" ? "Daily Sudoku" : "Sudoku";
   const routeLoadingMessage = entryPoint === "daily" ? "Loading daily puzzle..." : "Loading puzzle...";
 
@@ -2589,12 +2587,12 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
         ) : activeView === "game" ? (
           <>
             <div className="game-header" aria-label="Puzzle header">
-              <button id="reset-game" type="button" disabled={isRouteGameLoading || state.lost} onClick={resetCurrentGame}>
+              <button id="reset-game" type="button" disabled={isRouteEntryGameLoading || state.lost} onClick={resetCurrentGame}>
                 Reset
               </button>
               <div className="game-title-stack">
-                <h2 className="game-title">{isRouteGameLoading ? routeLoadingTitle : gameTitle}</h2>
-                {isRouteGameLoading ? (
+                <h2 className="game-title">{isRouteEntryGameLoading ? routeLoadingTitle : gameTitle}</h2>
+                {isRouteEntryGameLoading ? (
                   <p className="game-subtitle">Please wait...</p>
                 ) : gameSubtitle ? (
                   <p className="game-subtitle">{gameSubtitle}</p>
@@ -2606,7 +2604,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
             </div>
 
             <section className="board-wrap" aria-label="Sudoku board">
-              {isRouteGameLoading ? (
+              {isRouteEntryGameLoading ? (
                 <div className="game-loading-card" role="status" aria-live="polite">
                   <p className="home-status">{routeLoadingMessage}</p>
                 </div>
