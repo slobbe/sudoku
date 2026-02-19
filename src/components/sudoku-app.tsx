@@ -1376,6 +1376,10 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       return "stats";
     }
 
+    if (entryPoint === "daily" || entryPoint === "puzzle") {
+      return "game";
+    }
+
     return "home";
   });
   const [, setStatusMessage] = useState<string>(() => HOME_STATUS_MESSAGES[0] ?? "");
@@ -2410,6 +2414,10 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const gameSubtitle = state.mode === "daily"
     ? formatDateKeyForDisplay(state.dailyDate ?? todayDailyKey)
     : null;
+  const isRouteGameLoading = (entryPoint === "daily" && (!hasDailyEntryStarted || !state.board || state.mode !== "daily"))
+    || (entryPoint === "puzzle" && (!hasPuzzleEntryStarted || !state.board || state.mode !== "standard"));
+  const routeLoadingTitle = entryPoint === "daily" ? "Daily Sudoku" : "Sudoku";
+  const routeLoadingMessage = entryPoint === "daily" ? "Loading daily puzzle..." : "Loading puzzle...";
 
   const overallStarted = state.stats.gamesStarted + state.stats.daily.gamesStarted;
   const overallWon = state.stats.gamesWon + state.stats.daily.gamesWon;
@@ -2544,28 +2552,6 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     return "Guest";
   }, [nostrIdentity, nostrName, nostrStatus]);
 
-  if (entryPoint === "daily" && !hasDailyEntryStarted) {
-    return (
-      <main className="app app-home" aria-label="Daily puzzle loading">
-        <section className="home-view">
-          <h1 className="view-title">Daily Sudoku</h1>
-          <p className="home-status" aria-live="polite">Loading daily puzzle...</p>
-        </section>
-      </main>
-    );
-  }
-
-  if (entryPoint === "puzzle" && !hasPuzzleEntryStarted) {
-    return (
-      <main className="app app-home" aria-label="Puzzle loading">
-        <section className="home-view">
-          <h1 className="view-title">Sudoku</h1>
-          <p className="home-status" aria-live="polite">Loading puzzle...</p>
-        </section>
-      </main>
-    );
-  }
-
   return (
     <>
       <main className={`app ${activeView === "home" ? "app-home" : activeView === "game" ? "app-game" : "app-panel"}`}>
@@ -2607,12 +2593,16 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
         ) : activeView === "game" ? (
           <>
             <div className="game-header" aria-label="Puzzle header">
-              <button id="reset-game" type="button" disabled={state.lost} onClick={resetCurrentGame}>
+              <button id="reset-game" type="button" disabled={isRouteGameLoading || state.lost} onClick={resetCurrentGame}>
                 Reset
               </button>
               <div className="game-title-stack">
-                <h2 className="game-title">{gameTitle}</h2>
-                {gameSubtitle ? <p className="game-subtitle">{gameSubtitle}</p> : null}
+                <h2 className="game-title">{isRouteGameLoading ? routeLoadingTitle : gameTitle}</h2>
+                {isRouteGameLoading ? (
+                  <p className="game-subtitle">Please wait...</p>
+                ) : gameSubtitle ? (
+                  <p className="game-subtitle">{gameSubtitle}</p>
+                ) : null}
               </div>
               <button id="home-button" type="button" onClick={goHome}>
                 Home
@@ -2620,93 +2610,99 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
             </div>
 
             <section className="board-wrap" aria-label="Sudoku board">
-              <div className="board-area">
-                <div className="board-stack">
-                  <div className="game-subbar" aria-label="Puzzle quick actions">
-                    <div className="game-subbar-left">
-                      <button id="undo" type="button" title="Undo" disabled={state.lost || state.undoStack.length === 0} onClick={undoMove}>
-                        Undo
-                      </button>
-                      <button id="redo" type="button" title="Redo" disabled={state.lost || state.redoStack.length === 0} onClick={redoMove}>
-                        Redo
-                      </button>
-                    </div>
-                    <p
-                      id="lives"
-                      className={`lives${state.livesLeft === 0 ? " empty" : ""}`}
-                      aria-label={`Lives ${state.livesLeft} of ${state.livesPerGame}`}
-                    >
-                      <span id="lives-display">
-                        {livesText.map((entry) => (
-                          <span key={entry.key} className={entry.className}>
-                            {entry.text}
-                          </span>
-                        ))}
-                      </span>
-                    </p>
-                    <div className="game-subbar-right">
-                      <button
-                        id="annotation-mode"
-                        type="button"
-                        disabled={isInputLocked(state)}
-                        className={state.annotationMode ? "annotation-enabled" : ""}
-                        aria-pressed={state.annotationMode}
-                        onClick={toggleAnnotationMode}
-                      >
-                        Notes
-                      </button>
-                      <button id="hint" type="button" disabled={state.hintsLeft <= 0 || isInputLocked(state)} onClick={handleHint}>
-                        Hint (<span id="hints-left">{state.hintsLeft}</span>)
-                      </button>
-                    </div>
-                  </div>
-
-                  {state.board ? (
-                    <SudokuBoard
-                      id="board"
-                      className="pwa-board-theme"
-                      values={state.board}
-                      notes={boardNotes}
-                      givens={boardGivens}
-                      selectedCell={state.selected}
-                      highlightedDigit={highlighted}
-                      invalidCells={invalidCells}
-                      showSelectionHighlights={showSelectionHighlights}
-                      onSelectCell={onBoardCellSelect}
-                    />
-                  ) : null}
-
-                  <section
-                    className={`numpad${state.fillModeValue !== null ? " fill-mode-active" : ""}${state.annotationMode ? " annotation-mode-active" : ""}`}
-                    aria-label="Number input"
-                    onClick={onNumpadClick}
-                    onPointerDown={onNumpadPointerDown}
-                    onPointerUp={onNumpadPointerRelease}
-                    onPointerLeave={onNumpadPointerRelease}
-                    onPointerCancel={onNumpadPointerRelease}
-                  >
-                    {DIGITS.map((digit) => {
-                      const disabled = state.lost || isDigitCompletedCorrectly(state, digit);
-                      const isFillMode = state.fillModeValue !== null && state.fillModeValue === digit;
-                      const isAnnotationMode = state.annotationMode;
-                      const isCompleted = countDigitOnBoard(state.board, digit) >= 9;
-
-                      return (
-                        <button
-                          key={digit}
-                          type="button"
-                          data-value={digit}
-                          disabled={disabled}
-                          className={isFillMode ? "fill-mode" : isAnnotationMode ? "annotation-mode" : ""}
-                          aria-label={isCompleted ? `Number ${digit} completed` : `Number ${digit}`}
-                        >
-                          {digit}
-                        </button>
-                      );
-                    })}
-                  </section>
+              {isRouteGameLoading ? (
+                <div className="game-loading-card" role="status" aria-live="polite">
+                  <p className="home-status">{routeLoadingMessage}</p>
                 </div>
-              </div>
+              ) : (
+                <div className="board-area">
+                  <div className="board-stack">
+                    <div className="game-subbar" aria-label="Puzzle quick actions">
+                      <div className="game-subbar-left">
+                        <button id="undo" type="button" title="Undo" disabled={state.lost || state.undoStack.length === 0} onClick={undoMove}>
+                          Undo
+                        </button>
+                        <button id="redo" type="button" title="Redo" disabled={state.lost || state.redoStack.length === 0} onClick={redoMove}>
+                          Redo
+                        </button>
+                      </div>
+                      <p
+                        id="lives"
+                        className={`lives${state.livesLeft === 0 ? " empty" : ""}`}
+                        aria-label={`Lives ${state.livesLeft} of ${state.livesPerGame}`}
+                      >
+                        <span id="lives-display">
+                          {livesText.map((entry) => (
+                            <span key={entry.key} className={entry.className}>
+                              {entry.text}
+                            </span>
+                          ))}
+                        </span>
+                      </p>
+                      <div className="game-subbar-right">
+                        <button
+                          id="annotation-mode"
+                          type="button"
+                          disabled={isInputLocked(state)}
+                          className={state.annotationMode ? "annotation-enabled" : ""}
+                          aria-pressed={state.annotationMode}
+                          onClick={toggleAnnotationMode}
+                        >
+                          Notes
+                        </button>
+                        <button id="hint" type="button" disabled={state.hintsLeft <= 0 || isInputLocked(state)} onClick={handleHint}>
+                          Hint (<span id="hints-left">{state.hintsLeft}</span>)
+                        </button>
+                      </div>
+                    </div>
+
+                    {state.board ? (
+                      <SudokuBoard
+                        id="board"
+                        className="pwa-board-theme"
+                        values={state.board}
+                        notes={boardNotes}
+                        givens={boardGivens}
+                        selectedCell={state.selected}
+                        highlightedDigit={highlighted}
+                        invalidCells={invalidCells}
+                        showSelectionHighlights={showSelectionHighlights}
+                        onSelectCell={onBoardCellSelect}
+                      />
+                    ) : null}
+
+                    <section
+                      className={`numpad${state.fillModeValue !== null ? " fill-mode-active" : ""}${state.annotationMode ? " annotation-mode-active" : ""}`}
+                      aria-label="Number input"
+                      onClick={onNumpadClick}
+                      onPointerDown={onNumpadPointerDown}
+                      onPointerUp={onNumpadPointerRelease}
+                      onPointerLeave={onNumpadPointerRelease}
+                      onPointerCancel={onNumpadPointerRelease}
+                    >
+                      {DIGITS.map((digit) => {
+                        const disabled = state.lost || isDigitCompletedCorrectly(state, digit);
+                        const isFillMode = state.fillModeValue !== null && state.fillModeValue === digit;
+                        const isAnnotationMode = state.annotationMode;
+                        const isCompleted = countDigitOnBoard(state.board, digit) >= 9;
+
+                        return (
+                          <button
+                            key={digit}
+                            type="button"
+                            data-value={digit}
+                            disabled={disabled}
+                            className={isFillMode ? "fill-mode" : isAnnotationMode ? "annotation-mode" : ""}
+                            aria-label={isCompleted ? `Number ${digit} completed` : `Number ${digit}`}
+                          >
+                            {digit}
+                          </button>
+                        );
+                      })}
+                    </section>
+                  </div>
+                </div>
+              )}
             </section>
           </>
         ) : activeView === "settings" ? (

@@ -9,7 +9,21 @@ export const metadata: Metadata = {
 
 export default function ProfilePage() {
   return (
-    <Suspense fallback={<main className="app app-panel">Loading profile...</main>}>
+    <Suspense
+      fallback={(
+        <main className="app app-panel" aria-label="Profile loading">
+          <section className="panel-view profile-view">
+            <div className="settings-header">
+              <h2>Profile</h2>
+              <button type="button" disabled>Home</button>
+            </div>
+            <section className="profile-card" aria-label="Loading profile">
+              <p className="profile-status" aria-live="polite">Loading profile...</p>
+            </section>
+          </section>
+        </main>
+      )}
+    >
       <NostrProfilePage />
     </Suspense>
   );

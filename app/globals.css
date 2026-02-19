@@ -550,6 +550,19 @@ button:not([data-sudoku-cell="true"]):disabled {
     min-height: 0;
 }
 
+.game-loading-card {
+    width: min(420px, 100%);
+    margin: auto;
+    padding: 14px;
+    border: 1px solid var(--line);
+    border-radius: 6px;
+    background: var(--control-bg);
+}
+
+.game-loading-card .home-status {
+    margin: 0;
+}
+
 .board-area {
     min-height: 0;
     width: 100%;
