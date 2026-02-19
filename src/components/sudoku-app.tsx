@@ -48,6 +48,7 @@ import { useNostrAccount } from "@/lib/nostr";
 
 type Theme = AppTheme;
 type AppView = "home" | "game" | "settings" | "stats";
+type SudokuEntryPoint = "home" | "daily" | "settings" | "statistics" | "puzzle";
 type PuzzleMode = "standard" | "daily";
 
 type CellSelection = {
@@ -1358,7 +1359,7 @@ function syncDialogState(dialog: HTMLDialogElement | null, open: boolean): void 
 }
 
 type SudokuAppProps = {
-  entryPoint?: "home" | "daily";
+  entryPoint?: SudokuEntryPoint;
 };
 
 export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
@@ -1366,7 +1367,17 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const stateRef = useRef<GameState>(state);
   const { identity: nostrIdentity, name: nostrName, status: nostrStatus } = useNostrAccount();
 
-  const [activeView, setActiveView] = useState<AppView>("home");
+  const [activeView, setActiveView] = useState<AppView>(() => {
+    if (entryPoint === "settings") {
+      return "settings";
+    }
+
+    if (entryPoint === "statistics") {
+      return "stats";
+    }
+
+    return "home";
+  });
   const [, setStatusMessage] = useState<string>(() => HOME_STATUS_MESSAGES[0] ?? "");
   const [winPromptOpen, setWinPromptOpen] = useState(false);
   const [losePromptOpen, setLosePromptOpen] = useState(false);
@@ -1374,6 +1385,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const [updateStatus, setUpdateStatus] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
   const [hasDailyEntryStarted, setHasDailyEntryStarted] = useState(entryPoint !== "daily");
+  const [hasPuzzleEntryStarted, setHasPuzzleEntryStarted] = useState(entryPoint !== "puzzle");
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [dailyCalendarMonthKey, setDailyCalendarMonthKey] = useState(() => getMonthKeyFromDate(new Date()));
 
@@ -1639,12 +1651,27 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     setStatusMessage(`Standard ${next.difficulty} puzzle resumed.`);
   }, [applyState, startNewGameAndOpen]);
 
+  const resolvePagePath = useCallback((route: "daily" | "identity" | "settings" | "statistics" | "puzzle") => {
+    const prefix = entryPoint === "home" ? "./" : "../";
+    return `${prefix}${route}/`;
+  }, [entryPoint]);
+
+  const openPuzzlePage = useCallback((mode: "continue" | "new") => {
+    const basePath = resolvePagePath("puzzle");
+    if (mode === "new") {
+      window.location.assign(`${basePath}?mode=new`);
+      return;
+    }
+
+    window.location.assign(basePath);
+  }, [resolvePagePath]);
+
   const openDailyPage = useCallback(() => {
-    window.location.assign("./daily/");
-  }, []);
+    window.location.assign(resolvePagePath("daily"));
+  }, [resolvePagePath]);
 
   const goHome = useCallback(() => {
-    if (entryPoint === "daily") {
+    if (entryPoint !== "home") {
       window.location.assign("../");
       return;
     }
@@ -1656,17 +1683,16 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   }, [entryPoint]);
 
   const openIdentityPage = useCallback(() => {
-    window.location.assign(entryPoint === "daily" ? "../identity/" : "./identity/");
-  }, [entryPoint]);
+    window.location.assign(resolvePagePath("identity"));
+  }, [resolvePagePath]);
 
   const openSettingsView = useCallback(() => {
-    setActiveView("settings");
-  }, []);
+    window.location.assign(resolvePagePath("settings"));
+  }, [resolvePagePath]);
 
   const openStatsView = useCallback(() => {
-    setDailyCalendarMonthKey(getMonthKeyFromDate(new Date()));
-    setActiveView("stats");
-  }, []);
+    window.location.assign(resolvePagePath("statistics"));
+  }, [resolvePagePath]);
 
   const showPreviousDailyMonth = useCallback(() => {
     setDailyCalendarMonthKey((current) => shiftMonthKey(current, -1));
@@ -1675,8 +1701,6 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const showNextDailyMonth = useCallback(() => {
     setDailyCalendarMonthKey((current) => shiftMonthKey(current, 1));
   }, []);
-
-  const continueCurrentPuzzle = continueStandardPuzzle;
 
   const resetCurrentGame = useCallback(() => {
     const current = stateRef.current;
@@ -2167,6 +2191,27 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   }, [entryPoint, hasDailyEntryStarted, isHydrated, startDailyPuzzleAndOpen]);
 
   useEffect(() => {
+    if (entryPoint !== "puzzle" || !isHydrated || hasPuzzleEntryStarted) {
+      return;
+    }
+
+    setHasPuzzleEntryStarted(true);
+    const searchParams = new URLSearchParams(window.location.search);
+    const mode = searchParams.get("mode");
+    if (mode === "new") {
+      try {
+        window.history.replaceState(null, "", window.location.pathname);
+      } catch {
+        // Ignore history update failures.
+      }
+      startNewGameAndOpen();
+      return;
+    }
+
+    continueStandardPuzzle();
+  }, [continueStandardPuzzle, entryPoint, hasPuzzleEntryStarted, isHydrated, startNewGameAndOpen]);
+
+  useEffect(() => {
     if (!isHydrated || !state.puzzle || !state.solution || !state.board) {
       return;
     }
@@ -2239,7 +2284,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
 
     navigator.serviceWorker.addEventListener("controllerchange", onControllerChange);
 
-    const serviceWorkerPath = entryPoint === "daily" ? "../sw.js" : "./sw.js";
+    const serviceWorkerPath = entryPoint === "home" ? "./sw.js" : "../sw.js";
 
     const registerServiceWorker = () => {
       navigator.serviceWorker
@@ -2510,6 +2555,17 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     );
   }
 
+  if (entryPoint === "puzzle" && !hasPuzzleEntryStarted) {
+    return (
+      <main className="app app-home" aria-label="Puzzle loading">
+        <section className="home-view">
+          <h1 className="view-title">Sudoku</h1>
+          <p className="home-status" aria-live="polite">Loading puzzle...</p>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <>
       <main className={`app ${activeView === "home" ? "app-home" : activeView === "game" ? "app-game" : "app-panel"}`}>
@@ -2519,11 +2575,11 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
             <div className="home-actions" aria-label="Main actions">
               <div className="home-primary-actions" aria-label="Primary puzzle actions">
                 {canContinueCurrentPuzzle ? (
-                  <button id="continue-current-puzzle" type="button" onClick={continueCurrentPuzzle}>
+                  <button id="continue-current-puzzle" type="button" onClick={() => openPuzzlePage("continue")}>
                     Continue Puzzle
                   </button>
                 ) : null}
-                <button id="new-game" type="button" onClick={() => startNewGameAndOpen()}>
+                <button id="new-game" type="button" onClick={() => openPuzzlePage("new")}>
                   New Puzzle
                 </button>
               </div>
