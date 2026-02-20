@@ -67,7 +67,7 @@ import {
 import {
   loadSavedGamePayloadFromBrowser,
   saveSavedGamePayloadToBrowser,
-} from "@/lib/storage/game-storage";
+} from "@/lib/storage/saved-game-repository";
 import { useNostrAccount } from "@/lib/nostr";
 
 type Theme = AppTheme;
@@ -1124,8 +1124,8 @@ function formatLine(won: number, started: number): string {
   return `${won}/${started} (${formatRate(won, started)})`;
 }
 
-function loadSavedGame(): GameState | null {
-  const parsed = loadSavedGamePayloadFromBrowser();
+async function loadSavedGame(): Promise<GameState | null> {
+  const parsed = await loadSavedGamePayloadFromBrowser();
   if (!parsed || typeof parsed !== "object") {
     return null;
   }
@@ -2162,12 +2162,24 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   }, []);
 
   useEffect(() => {
-    const restored = loadSavedGame();
-    if (restored) {
-      applyState(restored);
-    }
-    setStatusMessage((currentMessage) => pickHomeStatusMessage(currentMessage));
-    setIsHydrated(true);
+    let isCancelled = false;
+
+    void (async () => {
+      const restored = await loadSavedGame();
+      if (isCancelled) {
+        return;
+      }
+
+      if (restored) {
+        applyState(restored);
+      }
+      setStatusMessage((currentMessage) => pickHomeStatusMessage(currentMessage));
+      setIsHydrated(true);
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [applyState]);
 
   useEffect(() => {
@@ -2233,9 +2245,18 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       dailySession: serializeDailySession(saveState.dailySession),
     };
 
-    if (!saveSavedGamePayloadToBrowser(payload as Record<string, unknown>)) {
-      setStatusMessage("Autosave is unavailable in this browser.");
-    }
+    let isCancelled = false;
+
+    void (async () => {
+      const saved = await saveSavedGamePayloadToBrowser(payload as Record<string, unknown>);
+      if (!saved && !isCancelled) {
+        setStatusMessage("Autosave is unavailable in this browser.");
+      }
+    })();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [isHydrated, state]);
 
   useEffect(() => {

@@ -30,7 +30,7 @@ import { hasNip07Support, type NostrIdentity } from "@/lib/nostr/identity";
 import {
   loadSavedGamePayloadFromBrowser,
   saveSavedGamePayloadToBrowser,
-} from "@/lib/storage/game-storage";
+} from "@/lib/storage/saved-game-repository";
 
 type NostrAccountProviderProps = {
   children: ReactNode;
@@ -322,7 +322,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       return { ok: false, error: message };
     }
 
-    const payload = loadSavedGamePayloadFromBrowser();
+    const payload = await loadSavedGamePayloadFromBrowser();
     if (!payload) {
       const message = "No local game data to back up yet.";
       setProfileSyncStatus("up_to_date");
@@ -375,7 +375,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
         return { ok: false, error: message };
       }
 
-      if (!saveSavedGamePayloadToBrowser(appData.payload)) {
+      if (!await saveSavedGamePayloadToBrowser(appData.payload)) {
         throw new Error("Could not restore backup into local storage.");
       }
 

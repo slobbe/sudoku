@@ -32,6 +32,11 @@ The hosted PWA is available at [slobbe.github.io/sudoku](https://slobbe.github.i
 - Existing save compatibility is preserved with key `sudoku-pwa-current-game-v1`
 - No account or server backend is required
 
+Developer storage backend flag:
+
+- `NEXT_PUBLIC_SAVED_GAME_BACKEND=local-storage` (default)
+- `NEXT_PUBLIC_SAVED_GAME_BACKEND=indexeddb` currently falls back to local storage until the IndexedDB adapter is added
+
 ## Packages
 
 This monorepo also contains reusable workspace packages:
