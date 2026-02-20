@@ -3,15 +3,16 @@ import {
   readSavedGameConfigPayloadFromBrowser,
 } from "./storage/game-storage";
 
-export type AppTheme = "slate" | "dusk" | "mist" | "amber";
+export type AppTheme = "slate" | "dusk" | "mist" | "amber" | "light";
 
-const APP_THEMES: AppTheme[] = ["slate", "dusk", "mist", "amber"];
+const APP_THEMES: AppTheme[] = ["slate", "dusk", "mist", "amber", "light"];
 
 const THEME_COLORS: Record<AppTheme, string> = {
-  slate: "#151a21",
-  mist: "#161918",
-  dusk: "#171420",
-  amber: "#1d1913",
+  slate: "#101923",
+  mist: "#131917",
+  dusk: "#151422",
+  amber: "#1c1811",
+  light: "#eff3fa",
 };
 
 export function normalizeAppTheme(theme: unknown): AppTheme {

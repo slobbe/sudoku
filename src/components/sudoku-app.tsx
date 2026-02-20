@@ -9,6 +9,14 @@ import {
   useState,
 } from "react";
 import {
+  BarChart3,
+  Lightbulb,
+  PencilLine,
+  Redo2,
+  Settings,
+  Undo2,
+} from "lucide-react";
+import {
   givensSetToBooleanBoard,
   noteMaskBoardToDigitsBoard,
   SudokuBoard,
@@ -225,7 +233,7 @@ const DEFAULT_LIVES_PER_GAME = 3;
 const MIN_HINTS_PER_GAME = 0;
 const MAX_HINTS_PER_GAME = 9;
 const MIN_LIVES_PER_GAME = 1;
-const MAX_LIVES_PER_GAME = 9;
+const MAX_LIVES_PER_GAME = 6;
 
 const APP_NAME = "Sudoku";
 const APP_VERSION = "0.4.2";
@@ -2382,10 +2390,9 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       : canContinueDailyPuzzle
         ? "Continue Daily Puzzle"
         : "Daily Puzzle";
-  const gameTitle = state.mode === "daily" ? "Daily Sudoku" : "Sudoku";
-  const gameSubtitle = state.mode === "daily"
-    ? formatDateKeyForDisplay(state.dailyDate ?? todayDailyKey)
-    : null;
+  const dailyDateLabel = formatDateKeyForDisplay(state.dailyDate ?? todayDailyKey);
+  const gameTitle = state.mode === "daily" ? dailyDateLabel : "Sudoku";
+  const gameSubtitle = null;
   const isRouteEntryGameLoading = isRouteGameLoading({
     entryPoint,
     hasDailyEntryStarted,
@@ -2393,7 +2400,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     hasBoard: Boolean(state.board),
     mode: state.mode,
   });
-  const routeLoadingTitle = entryPoint === "daily" ? "Daily Sudoku" : "Sudoku";
+  const routeLoadingTitle = entryPoint === "daily" ? dailyDateLabel : "Sudoku";
   const routeLoadingMessage = entryPoint === "daily" ? "Loading daily puzzle..." : "Loading puzzle...";
 
   const overallStarted = state.stats.gamesStarted + state.stats.daily.gamesStarted;
@@ -2556,14 +2563,14 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
               </button>
             </div>
             <nav className="home-bottom-bar" aria-label="Home quick links">
-              <button id="stats-open" type="button" onClick={openStatsView}>
-                Statistics
+              <button id="stats-open" type="button" className="icon-button" aria-label="Statistics" title="Statistics" onClick={openStatsView}>
+                <BarChart3 aria-hidden="true" />
               </button>
               <button id="profile-open" type="button" onClick={openProfilePage}>
                 {homeProfileLabel}
               </button>
-              <button id="settings-open" type="button" onClick={openSettingsView}>
-                Settings
+              <button id="settings-open" type="button" className="icon-button" aria-label="Settings" title="Settings" onClick={openSettingsView}>
+                <Settings aria-hidden="true" />
               </button>
             </nav>
           </section>
@@ -2596,11 +2603,27 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
                   <div className="board-stack">
                     <div className="game-subbar" aria-label="Puzzle quick actions">
                       <div className="game-subbar-left">
-                        <button id="undo" type="button" title="Undo" disabled={state.lost || state.undoStack.length === 0} onClick={undoMove}>
-                          Undo
+                        <button
+                          id="undo"
+                          type="button"
+                          className="icon-button"
+                          title="Undo"
+                          aria-label="Undo"
+                          disabled={state.lost || state.undoStack.length === 0}
+                          onClick={undoMove}
+                        >
+                          <Undo2 aria-hidden="true" />
                         </button>
-                        <button id="redo" type="button" title="Redo" disabled={state.lost || state.redoStack.length === 0} onClick={redoMove}>
-                          Redo
+                        <button
+                          id="redo"
+                          type="button"
+                          className="icon-button"
+                          title="Redo"
+                          aria-label="Redo"
+                          disabled={state.lost || state.redoStack.length === 0}
+                          onClick={redoMove}
+                        >
+                          <Redo2 aria-hidden="true" />
                         </button>
                       </div>
                       <p
@@ -2621,14 +2644,25 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
                           id="annotation-mode"
                           type="button"
                           disabled={isInputLocked(state)}
-                          className={state.annotationMode ? "annotation-enabled" : ""}
+                          className={`icon-button${state.annotationMode ? " annotation-enabled" : ""}`}
+                          title="Notes"
+                          aria-label="Notes"
                           aria-pressed={state.annotationMode}
                           onClick={toggleAnnotationMode}
                         >
-                          Notes
+                          <PencilLine aria-hidden="true" />
                         </button>
-                        <button id="hint" type="button" disabled={state.hintsLeft <= 0 || isInputLocked(state)} onClick={handleHint}>
-                          Hint (<span id="hints-left">{state.hintsLeft}</span>)
+                        <button
+                          id="hint"
+                          type="button"
+                          className="icon-button has-count"
+                          title="Hint"
+                          aria-label={`Hint (${state.hintsLeft} left)`}
+                          disabled={state.hintsLeft <= 0 || isInputLocked(state)}
+                          onClick={handleHint}
+                        >
+                          <Lightbulb aria-hidden="true" />
+                          <span id="hints-left" className="hint-count">{state.hintsLeft}</span>
                         </button>
                       </div>
                     </div>
@@ -2798,6 +2832,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
                       <option value="dusk">Dusk</option>
                       <option value="mist">Mist</option>
                       <option value="amber">Amber</option>
+                      <option value="light">Light</option>
                     </select>
                   </div>
                 </div>
