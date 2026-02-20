@@ -761,15 +761,23 @@ button:not([data-sudoku-cell="true"]):disabled {
     --sudoku-cell-ink: var(--cell-ink);
     --sudoku-given-bg: var(--given);
     --sudoku-given-ink: var(--ink);
-    --sudoku-active-bg: var(--active);
-    --sudoku-active-ring: var(--selection-ring);
-    --sudoku-peer-bg: var(--peer);
-    --sudoku-peer-ring: var(--peer-ring);
-    --sudoku-peer-box-bg: var(--peer-box);
-    --sudoku-peer-box-ring: var(--peer-box-ring);
-    --sudoku-match-bg: var(--match-fill);
+    --sudoku-selected-bg: transparent;
+    --sudoku-selected-ring: var(--selection-ring);
+    --sudoku-selected-ring-width: 2px;
+    --sudoku-active-bg: var(--sudoku-selected-bg);
+    --sudoku-active-ring: var(--sudoku-selected-ring);
+    --sudoku-peer-bg: color-mix(in srgb, var(--peer) 88%, var(--cell-bg) 12%);
+    --sudoku-peer-ring: color-mix(in srgb, var(--peer-ring) 92%, var(--line-bold) 8%);
+    --sudoku-peer-ring-width: 2px;
+    --sudoku-peer-box-bg: color-mix(in srgb, var(--peer-box) 94%, var(--accent) 6%);
+    --sudoku-peer-box-ring: transparent;
+    --sudoku-peer-box-ring-width: 0px;
+    --sudoku-match-bg: color-mix(in srgb, var(--match-fill) 58%, transparent);
     --sudoku-match-ink: var(--match-ink);
-    --sudoku-match-ring: var(--match-ring);
+    --sudoku-match-ring: transparent;
+    --sudoku-match-ring-width: 0px;
+    --sudoku-match-font-weight: 900;
+    --sudoku-match-scale: 1.2;
     --sudoku-invalid-ink: var(--error);
     --sudoku-focus-ring: var(--selection-ring);
     --sudoku-note-ink: var(--muted);
@@ -777,141 +785,6 @@ button:not([data-sudoku-cell="true"]):disabled {
     --sudoku-note-highlight-scale: 1.35;
     --sudoku-note-highlight-ink: var(--match-ink);
     --sudoku-selected-note-ink: var(--ink);
-}
-
-.board {
-    font-family: "Space Grotesk", system-ui, sans-serif;
-    width: 100%;
-    height: auto;
-    max-width: 100%;
-    max-height: none;
-    margin: 0;
-    aspect-ratio: 1 / 1;
-    justify-self: stretch;
-    align-self: start;
-    box-sizing: border-box;
-    border: 2px solid var(--box-divider);
-    border-radius: 14px;
-    overflow: hidden;
-    display: grid;
-    grid-template-columns: repeat(9, 1fr);
-    grid-template-rows: repeat(9, 1fr);
-    background: var(--board-bg);
-}
-
-.cell {
-    border: 1px solid var(--line);
-    font-size: clamp(0.72rem, 3.8vw, 2.05rem);
-    font-weight: 700;
-    display: grid;
-    place-items: center;
-    background: var(--cell-bg);
-    color: var(--cell-ink);
-    user-select: none;
-    -webkit-user-select: none;
-    -webkit-touch-callout: none;
-    touch-action: manipulation;
-}
-
-.cell-notes {
-    width: 100%;
-    height: 100%;
-    padding: 4%;
-    display: grid;
-    grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(3, 1fr);
-    color: var(--muted);
-    font-size: clamp(0.38rem, 1.75vw, 0.64rem);
-    font-weight: 600;
-    line-height: 1;
-}
-
-.cell-note {
-    display: grid;
-    place-items: center;
-    transform: scale(1);
-    transition: transform 120ms ease;
-}
-
-.cell-note.highlight {
-    color: var(--match-ink);
-    font-weight: 700;
-    transform: scale(1.5);
-}
-
-.cell-note.empty {
-    opacity: 0;
-}
-
-@supports (width: 1cqi) {
-    .cell {
-        font-size: clamp(0.72rem, 5.1cqi, 2.05rem);
-    }
-
-    .cell-notes {
-        font-size: clamp(0.38rem, 1.85cqi, 0.64rem);
-    }
-}
-
-.cell.box-tone-a {
-    background: var(--box-tone-a);
-}
-
-.cell.box-tone-b {
-    background: var(--box-tone-b);
-}
-
-.cell.given {
-    background: var(--given);
-    color: var(--ink);
-}
-
-.cell.peer {
-    background: var(--peer);
-    box-shadow: inset 0 0 0 1px var(--peer-ring);
-}
-
-.cell.peer-box {
-    background: var(--peer-box);
-    box-shadow: inset 0 0 0 1px var(--peer-box-ring);
-}
-
-.cell.match {
-    font-weight: 900;
-    color: var(--match-ink);
-    background-image: linear-gradient(var(--match-fill), var(--match-fill));
-    text-shadow: none;
-    box-shadow:
-        inset 0 0 0 2px var(--match-ring),
-        inset 0 -3px 0 0 var(--match-ring);
-}
-
-.cell.selected {
-    background: var(--active);
-    box-shadow: inset 0 0 0 2px var(--selection-ring);
-}
-
-.cell.selected .cell-notes {
-    color: var(--ink);
-}
-
-.cell.selected.match {
-    box-shadow:
-        inset 0 0 0 2px var(--selection-ring),
-        inset 0 0 0 4px var(--match-ring),
-        inset 0 -4px 0 0 var(--match-ring);
-}
-
-.cell.invalid {
-    color: var(--error);
-}
-
-.cell.box-right {
-    border-right: 3px solid var(--box-divider);
-}
-
-.cell.box-bottom {
-    border-bottom: 3px solid var(--box-divider);
 }
 
 .numpad {

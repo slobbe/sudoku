@@ -15,13 +15,21 @@
   --_given-ink: var(--sudoku-given-ink, #1b2430);
   --_active-bg: var(--sudoku-active-bg, #cfe0f8);
   --_active-ring: var(--sudoku-active-ring, #5e86c8);
+  --_selected-bg: var(--sudoku-selected-bg, var(--sudoku-active-bg, transparent));
+  --_selected-ring: var(--sudoku-selected-ring, var(--sudoku-active-ring, #5e86c8));
+  --_selected-ring-width: var(--sudoku-selected-ring-width, 2px);
   --_peer-bg: var(--sudoku-peer-bg, #edf2f8);
   --_peer-ring: var(--sudoku-peer-ring, #c3d2e5);
+  --_peer-ring-width: var(--sudoku-peer-ring-width, 2px);
   --_peer-box-bg: var(--sudoku-peer-box-bg, #e7edf5);
   --_peer-box-ring: var(--sudoku-peer-box-ring, #bccbde);
-  --_match-bg: var(--sudoku-match-bg, #b9d4ff66);
+  --_peer-box-ring-width: var(--sudoku-peer-box-ring-width, 1px);
+  --_match-bg: var(--sudoku-match-bg, transparent);
   --_match-ink: var(--sudoku-match-ink, #10243f);
   --_match-ring: var(--sudoku-match-ring, #5f8fd4);
+  --_match-ring-width: var(--sudoku-match-ring-width, 1px);
+  --_match-font-weight: var(--sudoku-match-font-weight, 850);
+  --_match-scale: var(--sudoku-match-scale, 1);
   --_invalid-ink: var(--sudoku-invalid-ink, #c15454);
   --_focus-ring: var(--sudoku-focus-ring, #4d79bf);
   --_note-ink: var(--sudoku-note-ink, #5c6f85);
@@ -30,6 +38,7 @@
   --_note-highlight-ink: var(--sudoku-note-highlight-ink, #17345a);
   --_note-highlight-scale: var(--sudoku-note-highlight-scale, 1.4);
   --_selected-note-ink: var(--sudoku-selected-note-ink, #253245);
+  --_cell-transition: var(--sudoku-cell-transition, background 140ms ease, box-shadow 140ms ease, color 120ms ease);
   font-family: var(--_font-family);
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -133,6 +142,7 @@
   touch-action: manipulation;
   cursor: pointer;
   outline: none;
+  transition: var(--_cell-transition);
 }
 
 .cell:disabled {
@@ -146,34 +156,44 @@
 
 .peer {
   background: var(--_peer-bg);
-  box-shadow: inset 0 0 0 1px var(--_peer-ring);
+  box-shadow: inset 0 0 0 var(--_peer-ring-width) var(--_peer-ring);
 }
 
 .peerBox {
   background: var(--_peer-box-bg);
-  box-shadow: inset 0 0 0 1px var(--_peer-box-ring);
+  box-shadow: inset 0 0 0 var(--_peer-box-ring-width) var(--_peer-box-ring);
 }
 
 .match {
-  font-weight: 900;
+  font-weight: var(--_match-font-weight);
+  font-size: calc(var(--_cell-font-size) * var(--_match-scale));
   color: var(--_match-ink);
   background-image: linear-gradient(var(--_match-bg), var(--_match-bg));
   text-shadow: none;
+  box-shadow: inset 0 0 0 var(--_match-ring-width) var(--_match-ring);
+}
+
+.peer.match {
   box-shadow:
-    inset 0 0 0 2px var(--_match-ring),
-    inset 0 -3px 0 0 var(--_match-ring);
+    inset 0 0 0 var(--_peer-ring-width) var(--_peer-ring),
+    inset 0 0 0 calc(var(--_peer-ring-width) + var(--_match-ring-width)) var(--_match-ring);
+}
+
+.peerBox.match {
+  box-shadow:
+    inset 0 0 0 var(--_peer-box-ring-width) var(--_peer-box-ring),
+    inset 0 0 0 calc(var(--_peer-box-ring-width) + var(--_match-ring-width)) var(--_match-ring);
 }
 
 .selected {
-  background: var(--_active-bg);
-  box-shadow: inset 0 0 0 2px var(--_active-ring);
+  background-image: linear-gradient(var(--_selected-bg), var(--_selected-bg));
+  box-shadow: inset 0 0 0 var(--_selected-ring-width) var(--_selected-ring);
 }
 
 .selected.match {
   box-shadow:
-    inset 0 0 0 2px var(--_active-ring),
-    inset 0 0 0 4px var(--_match-ring),
-    inset 0 -4px 0 0 var(--_match-ring);
+    inset 0 0 0 var(--_selected-ring-width) var(--_selected-ring),
+    inset 0 0 0 calc(var(--_selected-ring-width) + var(--_match-ring-width)) var(--_match-ring);
 }
 
 .invalid {

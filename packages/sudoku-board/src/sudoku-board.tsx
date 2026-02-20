@@ -128,6 +128,9 @@ export function SudokuBoard({
                 && selectedCell.row === row
                 && selectedCell.col === col,
               );
+              let isPeer = false;
+              let isPeerBox = false;
+              const isMatch = Boolean(highlightedDigit !== null && isSudokuDigit(highlightedDigit) && value === highlightedDigit);
 
               if (given) {
                 classes.push(styles.given);
@@ -142,13 +145,15 @@ export function SudokuBoard({
                   && Math.floor(selectedCell.col / 3) === Math.floor(col / 3);
 
                 if (sameRowOrCol) {
+                  isPeer = true;
                   classes.push(styles.peer);
                 } else if (sameBox) {
+                  isPeerBox = true;
                   classes.push(styles.peerBox);
                 }
               }
 
-              if (highlightedDigit !== null && isSudokuDigit(highlightedDigit) && value === highlightedDigit) {
+              if (isMatch) {
                 classes.push(styles.match);
               }
 
@@ -171,6 +176,12 @@ export function SudokuBoard({
                   data-sudoku-cell="true"
                   data-row={row}
                   data-col={col}
+                  data-sudoku-given={given ? "true" : undefined}
+                  data-sudoku-selected={isSelected ? "true" : undefined}
+                  data-sudoku-peer={isPeer ? "true" : undefined}
+                  data-sudoku-peer-box={isPeerBox ? "true" : undefined}
+                  data-sudoku-match={isMatch ? "true" : undefined}
+                  data-sudoku-invalid={isInvalid ? "true" : undefined}
                   role="gridcell"
                   aria-label={labelParts.join(", ")}
                   aria-selected={isSelected || undefined}

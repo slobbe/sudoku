@@ -83,12 +83,45 @@ Common variables:
 
 - `--sudoku-cell-bg`, `--sudoku-cell-bg-alt`, `--sudoku-cell-ink`
 - `--sudoku-given-bg`, `--sudoku-given-ink`
-- `--sudoku-active-bg`, `--sudoku-active-ring`
-- `--sudoku-peer-bg`, `--sudoku-peer-ring`
-- `--sudoku-peer-box-bg`, `--sudoku-peer-box-ring`
-- `--sudoku-match-bg`, `--sudoku-match-ink`, `--sudoku-match-ring`
+- `--sudoku-selected-bg`, `--sudoku-selected-ring`, `--sudoku-selected-ring-width`
+- `--sudoku-peer-bg`, `--sudoku-peer-ring`, `--sudoku-peer-ring-width`
+- `--sudoku-peer-box-bg`, `--sudoku-peer-box-ring`, `--sudoku-peer-box-ring-width`
+- `--sudoku-match-bg`, `--sudoku-match-ink`, `--sudoku-match-ring`, `--sudoku-match-ring-width`, `--sudoku-match-font-weight`, `--sudoku-match-scale`
 - `--sudoku-invalid-ink`, `--sudoku-focus-ring`
 - `--sudoku-note-font-size`, `--sudoku-note-highlight-scale`
+
+Compatibility aliases are preserved:
+
+- `--sudoku-active-bg` maps to selected background fallback
+- `--sudoku-active-ring` maps to selected ring fallback
+
+Each cell button also exposes data attributes for custom selectors:
+
+- `data-sudoku-given="true"`
+- `data-sudoku-selected="true"`
+- `data-sudoku-peer="true"`
+- `data-sudoku-peer-box="true"`
+- `data-sudoku-match="true"`
+- `data-sudoku-invalid="true"`
+
+Example recipe (border-only selected, peer backgrounds, font-led matches):
+
+```css
+.myBoardTheme {
+  --sudoku-selected-bg: transparent;
+  --sudoku-selected-ring: #7ea7d4;
+  --sudoku-selected-ring-width: 2px;
+  --sudoku-peer-bg: #23384d;
+  --sudoku-peer-box-bg: #1f3143;
+  --sudoku-peer-box-ring-width: 2px;
+  --sudoku-match-bg: #8db7e640;
+  --sudoku-match-ink: #edf5ff;
+  --sudoku-match-ring: #8db7e6;
+  --sudoku-match-ring-width: 2px;
+  --sudoku-match-font-weight: 900;
+  --sudoku-match-scale: 1.2;
+}
+```
 
 ## Accessibility
 
