@@ -1,4 +1,5 @@
 import { createLocalStorageSavedGameAdapter } from "./local-storage-adapter";
+import { createIndexedDbSavedGameAdapter } from "./indexeddb-adapter";
 import {
   normalizeSavedGameStorageBackend,
   SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
@@ -24,6 +25,7 @@ export type SavedGameStorageRepositoryOptions = {
 };
 
 const defaultLocalStorageAdapter = createLocalStorageSavedGameAdapter();
+const defaultIndexedDbAdapter = createIndexedDbSavedGameAdapter();
 
 function readConfiguredBackendFromEnv(): unknown {
   if (typeof process === "undefined") {
@@ -53,32 +55,106 @@ export function createSavedGameStorageRepository(
   options: SavedGameStorageRepositoryOptions = {},
 ): SavedGameStorageRepository {
   const localAdapter = options.localAdapter ?? defaultLocalStorageAdapter;
-  const indexedDbAdapter = options.indexedDbAdapter ?? null;
+  const indexedDbAdapter = options.indexedDbAdapter === undefined
+    ? defaultIndexedDbAdapter
+    : options.indexedDbAdapter;
   const supportsIndexedDb = options.supportsIndexedDb ?? supportsIndexedDbByDefault();
   const requestedBackend = options.backend ?? readConfiguredBackendFromEnv();
   const resolvedBackend = resolveSavedGameStorageBackend(requestedBackend, supportsIndexedDb);
 
-  let backend: StorageBackend = SAVED_GAME_STORAGE_BACKEND_LOCAL;
-  let adapter: SavedGameStorageAdapter = localAdapter;
+  const useIndexedDb = resolvedBackend === SAVED_GAME_STORAGE_BACKEND_INDEXEDDB && Boolean(indexedDbAdapter);
 
-  if (resolvedBackend === SAVED_GAME_STORAGE_BACKEND_INDEXEDDB && indexedDbAdapter) {
-    backend = SAVED_GAME_STORAGE_BACKEND_INDEXEDDB;
-    adapter = indexedDbAdapter;
+  const backend: StorageBackend = useIndexedDb
+    ? SAVED_GAME_STORAGE_BACKEND_INDEXEDDB
+    : SAVED_GAME_STORAGE_BACKEND_LOCAL;
+
+  const primaryAdapter: SavedGameStorageAdapter = useIndexedDb
+    ? (indexedDbAdapter as SavedGameStorageAdapter)
+    : localAdapter;
+
+  const secondaryAdapter = useIndexedDb ? localAdapter : null;
+
+  async function loadPayloadWithFallback(): Promise<SavedGamePayload | null> {
+    try {
+      const primaryPayload = await primaryAdapter.loadPayload();
+      if (primaryPayload) {
+        return primaryPayload;
+      }
+    } catch {
+      // Continue with fallback adapter.
+    }
+
+    if (!secondaryAdapter) {
+      return null;
+    }
+
+    const fallbackPayload = await secondaryAdapter.loadPayload();
+    if (!fallbackPayload) {
+      return null;
+    }
+
+    try {
+      await primaryAdapter.savePayload(fallbackPayload);
+    } catch {
+      // Ignore backfill failures and continue returning fallback payload.
+    }
+
+    return fallbackPayload;
+  }
+
+  async function savePayloadWithDualWrite(payload: SavedGamePayload): Promise<boolean> {
+    if (!secondaryAdapter) {
+      return primaryAdapter.savePayload(payload);
+    }
+
+    const [primaryResult, fallbackResult] = await Promise.allSettled([
+      primaryAdapter.savePayload(payload),
+      secondaryAdapter.savePayload(payload),
+    ]);
+
+    const primarySaved = primaryResult.status === "fulfilled" && primaryResult.value;
+    const fallbackSaved = fallbackResult.status === "fulfilled" && fallbackResult.value;
+    return primarySaved || fallbackSaved;
+  }
+
+  async function readConfigWithFallback(): Promise<SavedGamePayload | null> {
+    try {
+      const primaryConfig = await primaryAdapter.readConfigPayload();
+      if (primaryConfig) {
+        return primaryConfig;
+      }
+    } catch {
+      // Continue with fallback adapter.
+    }
+
+    if (!secondaryAdapter) {
+      return null;
+    }
+
+    return secondaryAdapter.readConfigPayload();
+  }
+
+  async function readLegacyWithFallback(): Promise<SavedGamePayload | null> {
+    if (secondaryAdapter) {
+      return secondaryAdapter.readLegacyPayload();
+    }
+
+    return primaryAdapter.readLegacyPayload();
   }
 
   return {
     backend,
     loadSavedGamePayloadFromBrowser() {
-      return adapter.loadPayload();
+      return loadPayloadWithFallback();
     },
     saveSavedGamePayloadToBrowser(payload: SavedGamePayload) {
-      return adapter.savePayload(payload);
+      return savePayloadWithDualWrite(payload);
     },
     readSavedGameConfigPayloadFromBrowser() {
-      return adapter.readConfigPayload();
+      return readConfigWithFallback();
     },
     readLegacySavedGamePayloadFromBrowser() {
-      return adapter.readLegacyPayload();
+      return readLegacyWithFallback();
     },
   };
 }
