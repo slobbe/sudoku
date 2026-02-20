@@ -1,19 +1,27 @@
 {
   "id": "./",
-  "name": "Sudoku PWA",
+  "name": "Sudoku",
   "short_name": "Sudoku",
-  "description": "Sudoku puzzle app with unique boards, 3 difficulties, and hints.",
+  "description": "Modern Sudoku with daily challenge, notes, hints, and offline play.",
   "lang": "en",
   "dir": "ltr",
-  "start_url": "./",
+  "start_url": "./?source=pwa",
   "scope": "./",
   "display": "standalone",
-  "orientation": "portrait",
-  "categories": [
-    "puzzle"
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "browser"
   ],
-  "background_color": "#151a21",
-  "theme_color": "#151a21",
+  "orientation": "portrait",
+  "prefer_related_applications": false,
+  "categories": [
+    "games",
+    "puzzle",
+    "education"
+  ],
+  "background_color": "#101923",
+  "theme_color": "#101923",
   "icons": [
     {
       "src": "./icons/icon-192.png",
@@ -32,7 +40,47 @@
     {
       "name": "New Puzzle",
       "short_name": "New",
-      "url": "./",
+      "description": "Start a fresh puzzle",
+      "url": "./puzzle",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Daily Puzzle",
+      "short_name": "Daily",
+      "description": "Play today's daily Sudoku",
+      "url": "./daily",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Statistics",
+      "short_name": "Stats",
+      "description": "View your progress and streaks",
+      "url": "./statistics",
+      "icons": [
+        {
+          "src": "./icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Settings",
+      "short_name": "Settings",
+      "description": "Adjust themes and gameplay options",
+      "url": "./settings",
       "icons": [
         {
           "src": "./icons/icon-192.png",
