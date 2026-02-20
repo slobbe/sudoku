@@ -284,12 +284,12 @@ body::before {
 }
 
 .app {
-    border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+    /*border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
     border-radius: var(--radius-lg);
     background:
         linear-gradient(160deg, color-mix(in srgb, #ffffff 7%, transparent) 0%, transparent 52%),
         var(--surface-1);
-    box-shadow: var(--shadow-soft);
+    box-shadow: var(--shadow-soft);*/
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -539,21 +539,23 @@ body::before {
 
 #lives-display {
     display: inline-flex;
-    align-items: baseline;
+    align-items: center;
     gap: 0.14em;
 }
 
 .lives-heart {
-    display: inline-block;
-    font-size: 1.12em;
-    line-height: 1;
+    width: 0.95em;
+    height: 0.95em;
+    display: block;
+    flex-shrink: 0;
 }
 
 .lives-miss {
-    display: inline-block;
-    font-size: 0.62em;
-    line-height: 1;
-    transform: translateY(-0.08em);
+    width: 0.95em;
+    height: 0.95em;
+    display: block;
+    flex-shrink: 0;
+    opacity: 0.56;
 }
 
 .lives.empty {
@@ -679,11 +681,13 @@ button:not([data-sudoku-cell="true"]):disabled {
 .hint-count {
     min-width: 1.5em;
     padding: 0.1em 0.42em;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     border-radius: 999px;
-    border: 1px solid color-mix(in srgb, var(--line-bold) 78%, transparent);
-    background: color-mix(in srgb, var(--surface-3) 88%, var(--paper));
     font-size: 0.78em;
     font-weight: 700;
+    line-height: 1;
     font-variant-numeric: tabular-nums;
     text-align: center;
 }

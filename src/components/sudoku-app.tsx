@@ -10,6 +10,8 @@ import {
 } from "react";
 import {
   BarChart3,
+  Heart,
+  HeartCrack,
   Lightbulb,
   PencilLine,
   Redo2,
@@ -2508,13 +2510,13 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     },
   ];
 
-  const livesText = useMemo(() => {
-    const symbols = [] as Array<{ key: string; text: string; className: string }>;
+  const livesDisplay = useMemo(() => {
+    const symbols = [] as Array<{ key: string; isAlive: boolean; className: string }>;
     for (let i = 0; i < state.livesPerGame; i += 1) {
       if (i < state.livesLeft) {
-        symbols.push({ key: `life-${i}`, text: "\u2665", className: "lives-heart" });
+        symbols.push({ key: `life-${i}`, isAlive: true, className: "lives-heart" });
       } else {
-        symbols.push({ key: `life-${i}`, text: "\u2022", className: "lives-miss" });
+        symbols.push({ key: `life-${i}`, isAlive: false, className: "lives-miss" });
       }
     }
     return symbols;
@@ -2632,10 +2634,12 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
                         aria-label={`Lives ${state.livesLeft} of ${state.livesPerGame}`}
                       >
                         <span id="lives-display">
-                          {livesText.map((entry) => (
-                            <span key={entry.key} className={entry.className}>
-                              {entry.text}
-                            </span>
+                          {livesDisplay.map((entry) => (
+                            entry.isAlive ? (
+                              <Heart key={entry.key} className={entry.className} aria-hidden="true" strokeWidth={2.2} />
+                            ) : (
+                              <HeartCrack key={entry.key} className={entry.className} aria-hidden="true" strokeWidth={2.2} />
+                            )
                           ))}
                         </span>
                       </p>
