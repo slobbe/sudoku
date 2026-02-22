@@ -18,12 +18,6 @@
   --_selected-bg: var(--sudoku-selected-bg, var(--sudoku-active-bg, transparent));
   --_selected-ring: var(--sudoku-selected-ring, var(--sudoku-active-ring, #5e86c8));
   --_selected-ring-width: var(--sudoku-selected-ring-width, 2px);
-  --_peer-bg: var(--sudoku-peer-bg, #edf2f8);
-  --_peer-ring: var(--sudoku-peer-ring, #c3d2e5);
-  --_peer-ring-width: var(--sudoku-peer-ring-width, 2px);
-  --_peer-box-bg: var(--sudoku-peer-box-bg, #e7edf5);
-  --_peer-box-ring: var(--sudoku-peer-box-ring, #bccbde);
-  --_peer-box-ring-width: var(--sudoku-peer-box-ring-width, 1px);
   --_match-bg: var(--sudoku-match-bg, transparent);
   --_match-ink: var(--sudoku-match-ink, #10243f);
   --_match-ring: var(--sudoku-match-ring, #5f8fd4);
@@ -66,10 +60,6 @@
     --_given-ink: var(--sudoku-given-ink, #f0f4fa);
     --_active-bg: var(--sudoku-active-bg, #324960);
     --_active-ring: var(--sudoku-active-ring, #83a5cf);
-    --_peer-bg: var(--sudoku-peer-bg, #29333f);
-    --_peer-ring: var(--sudoku-peer-ring, #3e4f61);
-    --_peer-box-bg: var(--sudoku-peer-box-bg, #27313d);
-    --_peer-box-ring: var(--sudoku-peer-box-ring, #3a4a5d);
     --_match-bg: var(--sudoku-match-bg, #7faee633);
     --_match-ink: var(--sudoku-match-ink, #e9f4ff);
     --_match-ring: var(--sudoku-match-ring, #8cb7ea);
@@ -91,10 +81,6 @@
   --_given-ink: var(--sudoku-given-ink, #f0f4fa);
   --_active-bg: var(--sudoku-active-bg, #324960);
   --_active-ring: var(--sudoku-active-ring, #83a5cf);
-  --_peer-bg: var(--sudoku-peer-bg, #29333f);
-  --_peer-ring: var(--sudoku-peer-ring, #3e4f61);
-  --_peer-box-bg: var(--sudoku-peer-box-bg, #27313d);
-  --_peer-box-ring: var(--sudoku-peer-box-ring, #3a4a5d);
   --_match-bg: var(--sudoku-match-bg, #7faee633);
   --_match-ink: var(--sudoku-match-ink, #e9f4ff);
   --_match-ring: var(--sudoku-match-ring, #8cb7ea);
@@ -154,43 +140,22 @@
   color: var(--_given-ink);
 }
 
-.peer {
-  background: var(--_peer-bg);
-  box-shadow: inset 0 0 0 var(--_peer-ring-width) var(--_peer-ring);
-}
-
-.peerBox {
-  background: var(--_peer-box-bg);
-  box-shadow: inset 0 0 0 var(--_peer-box-ring-width) var(--_peer-box-ring);
-}
-
-.match {
+.cell.match {
   font-weight: var(--_match-font-weight);
   font-size: calc(var(--_cell-font-size) * var(--_match-scale));
   color: var(--_match-ink);
+  background-color: var(--_match-bg);
   background-image: linear-gradient(var(--_match-bg), var(--_match-bg));
   text-shadow: none;
   box-shadow: inset 0 0 0 var(--_match-ring-width) var(--_match-ring);
 }
 
-.peer.match {
-  box-shadow:
-    inset 0 0 0 var(--_peer-ring-width) var(--_peer-ring),
-    inset 0 0 0 calc(var(--_peer-ring-width) + var(--_match-ring-width)) var(--_match-ring);
-}
-
-.peerBox.match {
-  box-shadow:
-    inset 0 0 0 var(--_peer-box-ring-width) var(--_peer-box-ring),
-    inset 0 0 0 calc(var(--_peer-box-ring-width) + var(--_match-ring-width)) var(--_match-ring);
-}
-
-.selected {
+.cell.selected {
   background-image: linear-gradient(var(--_selected-bg), var(--_selected-bg));
   box-shadow: inset 0 0 0 var(--_selected-ring-width) var(--_selected-ring);
 }
 
-.selected.match {
+.cell.selected.match {
   box-shadow:
     inset 0 0 0 var(--_selected-ring-width) var(--_selected-ring),
     inset 0 0 0 calc(var(--_selected-ring-width) + var(--_match-ring-width)) var(--_match-ring);
