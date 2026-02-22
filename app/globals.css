@@ -748,10 +748,10 @@ button:not([data-sudoku-cell="true"]):disabled {
     --sudoku-selected-ring-width: 2px;
     --sudoku-active-bg: var(--sudoku-selected-bg);
     --sudoku-active-ring: var(--sudoku-selected-ring);
-    --sudoku-match-bg: color-mix(in srgb, var(--match-fill) 15%, transparent);
+    --sudoku-match-bg: color-mix(in srgb, var(--match-fill) 10%, transparent);
     --sudoku-match-ink: var(--match-ink);
-    --sudoku-match-ring: var(--match-ring);
-    --sudoku-match-ring-width: 1px;
+    --sudoku-match-ring: transparent;
+    --sudoku-match-ring-width: 0px;
     --sudoku-match-font-weight: 900;
     --sudoku-match-scale: 1.2;
     --sudoku-invalid-ink: var(--error);

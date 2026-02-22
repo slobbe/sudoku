@@ -147,7 +147,6 @@
   background-color: var(--_match-bg);
   background-image: linear-gradient(var(--_match-bg), var(--_match-bg));
   text-shadow: none;
-  box-shadow: inset 0 0 0 var(--_match-ring-width) var(--_match-ring);
 }
 
 .cell.selected {
@@ -156,9 +155,7 @@
 }
 
 .cell.selected.match {
-  box-shadow:
-    inset 0 0 0 var(--_selected-ring-width) var(--_selected-ring),
-    inset 0 0 0 calc(var(--_selected-ring-width) + var(--_match-ring-width)) var(--_match-ring);
+  box-shadow: inset 0 0 0 var(--_selected-ring-width) var(--_selected-ring);
 }
 
 .invalid {
