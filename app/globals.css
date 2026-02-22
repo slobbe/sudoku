@@ -365,7 +365,29 @@ body::before {
 }
 
 #profile-open {
-    width: 100%;
+    width: auto;
+    justify-self: center;
+    background: none;
+    border: 0;
+    box-shadow: none;
+    padding: 4px 8px;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.home-bottom-bar #profile-open:hover,
+.home-bottom-bar #profile-open:active {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    transform: none;
+    color: var(--ink);
+}
+
+.home-bottom-bar #profile-open:focus-visible {
+    outline: none;
+    border-color: transparent;
+    box-shadow: none;
 }
 
 #stats-open,
@@ -596,7 +618,6 @@ input:focus-visible {
 #reset-game,
 #hint,
 #continue-daily-puzzle,
-#profile-open,
 #stats-open,
 #settings-open {
     border-color: var(--line-bold);
