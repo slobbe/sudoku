@@ -389,6 +389,10 @@ function isDifficulty(value: unknown): value is Difficulty {
   return typeof value === "string" && DIFFICULTIES.includes(value as Difficulty);
 }
 
+function formatDifficultyLabel(difficulty: Difficulty): string {
+  return `${difficulty[0].toUpperCase()}${difficulty.slice(1)}`;
+}
+
 function isFillModeEntry(value: unknown): value is FillModeEntry {
   return value === "double-tap" || value === "long-press";
 }
@@ -2488,6 +2492,9 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     );
   }, [state.board, state.givens, state.showMistakes, state.solution]);
   const canContinueCurrentPuzzle = isSessionContinuable(standardSessionForHome);
+  const continuePuzzleDifficulty = standardSessionForHome?.difficulty ?? state.difficulty;
+  const continuePuzzleButtonLabel = `Continue Puzzle (${formatDifficultyLabel(continuePuzzleDifficulty)})`;
+  const newPuzzleButtonLabel = `New Puzzle (${formatDifficultyLabel(state.difficulty)})`;
   const canContinueDailyPuzzle = isSessionContinuable(dailySessionForToday);
   const dailyResultToday: DailyResult | null = dailySessionForToday?.won
     ? "won"
@@ -2669,11 +2676,11 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
               <div className="home-primary-actions" aria-label="Primary puzzle actions">
                 {canContinueCurrentPuzzle ? (
                   <button id="continue-current-puzzle" type="button" onClick={() => openPuzzlePage("continue")}>
-                    Continue Puzzle
+                    {continuePuzzleButtonLabel}
                   </button>
                 ) : null}
                 <button id="new-game" type="button" onClick={() => openPuzzlePage("new")}>
-                  New Puzzle
+                  {newPuzzleButtonLabel}
                 </button>
               </div>
               <button
