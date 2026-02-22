@@ -242,7 +242,7 @@ const MIN_LIVES_PER_GAME = 1;
 const MAX_LIVES_PER_GAME = 6;
 
 const APP_NAME = "Sudoku";
-const APP_VERSION = "0.5.0";
+const APP_VERSION = "0.5.1";
 const APP_AUTHOR = "slobbe";
 const APP_REPO_URL = "https://github.com/slobbe/sudoku";
 const APP_LICENSE_URL = "https://github.com/slobbe/sudoku/blob/main/LICENSE";
