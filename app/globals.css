@@ -36,6 +36,7 @@
     --stats-easy: #56c2e7;
     --stats-medium: #deb36c;
     --stats-hard: #e58b8b;
+    --stats-expert: #b992e8;
     --stats-flame-glow: #ff8c52a8;
     --radius-sm: 10px;
     --radius-md: 14px;
@@ -222,6 +223,7 @@
     --stats-easy: #289ac7;
     --stats-medium: #bf8f3e;
     --stats-hard: #c36a6a;
+    --stats-expert: #8557bf;
     --stats-flame-glow: #ff95485f;
     --shadow-soft: 0 12px 30px #10263f1f;
     --shadow-pop: 0 20px 45px #10263f2b;
@@ -1359,6 +1361,10 @@ button:not([data-sudoku-cell="true"]):disabled {
 
 .stats-bar-fill-hard {
     background: linear-gradient(90deg, #bd6d6d 0%, var(--stats-hard) 100%);
+}
+
+.stats-bar-fill-expert {
+    background: linear-gradient(90deg, #8f69c2 0%, var(--stats-expert) 100%);
 }
 
 .stats-bar-line {

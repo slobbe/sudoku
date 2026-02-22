@@ -46,9 +46,9 @@ import {
   countSolutions,
   createSeededRng,
   dateSeed,
-  generatePuzzle,
   type Board,
   type Difficulty,
+  type PuzzleCandidate,
 } from "@slobbe/sudoku-engine";
 import {
   applyThemeToDocument,
@@ -68,6 +68,10 @@ import {
   loadSavedGamePayloadFromBrowser,
   saveSavedGamePayloadToBrowser,
 } from "@/lib/storage/saved-game-repository";
+import {
+  generateGamePuzzle,
+  warmPuzzleQueue,
+} from "@/lib/puzzle-generation/service";
 import { useNostrAccount } from "@/lib/nostr";
 
 type Theme = AppTheme;
@@ -243,7 +247,7 @@ const APP_AUTHOR = "slobbe";
 const APP_REPO_URL = "https://github.com/slobbe/sudoku";
 const APP_LICENSE_URL = "https://github.com/slobbe/sudoku/blob/main/LICENSE";
 
-const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard"];
+const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard", "expert"];
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 const WEEKDAY_SHORT_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
 const HINT_OPTIONS = Array.from(
@@ -283,6 +287,7 @@ function createDefaultDailyStats(): DailyStats {
       easy: { started: 0, won: 0 },
       medium: { started: 0, won: 0 },
       hard: { started: 0, won: 0 },
+      expert: { started: 0, won: 0 },
     },
     lastStartedDate: null,
     lastWonDate: null,
@@ -300,6 +305,7 @@ function createDefaultStats(): GameStats {
       easy: { started: 0, won: 0 },
       medium: { started: 0, won: 0 },
       hard: { started: 0, won: 0 },
+      expert: { started: 0, won: 0 },
     },
     daily: createDefaultDailyStats(),
   };
@@ -315,6 +321,7 @@ function cloneStats(stats: GameStats): GameStats {
       easy: { ...stats.byDifficulty.easy },
       medium: { ...stats.byDifficulty.medium },
       hard: { ...stats.byDifficulty.hard },
+      expert: { ...stats.byDifficulty.expert },
     },
     daily: {
       gamesStarted: stats.daily.gamesStarted,
@@ -325,6 +332,7 @@ function cloneStats(stats: GameStats): GameStats {
         easy: { ...stats.daily.byDifficulty.easy },
         medium: { ...stats.daily.byDifficulty.medium },
         hard: { ...stats.daily.byDifficulty.hard },
+        expert: { ...stats.daily.byDifficulty.expert },
       },
       lastStartedDate: stats.daily.lastStartedDate,
       lastWonDate: stats.daily.lastWonDate,
@@ -503,6 +511,7 @@ function normalizeStats(rawStats: unknown): GameStats {
       easy: { started: 0, won: 0 },
       medium: { started: 0, won: 0 },
       hard: { started: 0, won: 0 },
+      expert: { started: 0, won: 0 },
     },
     daily: createDefaultDailyStats(),
   };
@@ -939,13 +948,16 @@ function getDailyRootSeed(dayKey: string): string {
 function deriveDailyDifficulty(dayKey: string): Difficulty {
   const rng = createSeededRng(`${getDailyRootSeed(dayKey)}:difficulty`);
   const value = rng();
-  if (value < (1 / 3)) {
+  if (value < 0.25) {
     return "easy";
   }
-  if (value < (2 / 3)) {
+  if (value < 0.5) {
     return "medium";
   }
-  return "hard";
+  if (value < 0.75) {
+    return "hard";
+  }
+  return "expert";
 }
 
 function getDailyPuzzleSeed(dayKey: string, difficulty: Difficulty): string {
@@ -1381,6 +1393,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const [isHydrated, setIsHydrated] = useState(false);
   const [hasDailyEntryStarted, setHasDailyEntryStarted] = useState(entryPoint !== "daily");
   const [hasPuzzleEntryStarted, setHasPuzzleEntryStarted] = useState(entryPoint !== "puzzle");
+  const [isGeneratingPuzzle, setIsGeneratingPuzzle] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [dailyCalendarMonthKey, setDailyCalendarMonthKey] = useState(() => getMonthKeyFromDate(new Date()));
 
@@ -1391,6 +1404,50 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const toggleFillModeForDigitHandlerRef = useRef<(value: number) => void>(() => undefined);
 
   const reloadTriggeredByUpdateRef = useRef(false);
+  const generationRequestIdRef = useRef(0);
+  const generationAbortControllerRef = useRef<AbortController | null>(null);
+  const generationInProgressRef = useRef(false);
+
+  const setPuzzleGenerationBusy = useCallback((isBusy: boolean) => {
+    generationInProgressRef.current = isBusy;
+    setIsGeneratingPuzzle(isBusy);
+  }, []);
+
+  const requestExactPuzzle = useCallback(
+    async (difficulty: Difficulty, seed?: string): Promise<PuzzleCandidate | null> => {
+      const requestId = generationRequestIdRef.current + 1;
+      generationRequestIdRef.current = requestId;
+
+      if (generationAbortControllerRef.current) {
+        generationAbortControllerRef.current.abort();
+      }
+
+      const controller = new AbortController();
+      generationAbortControllerRef.current = controller;
+      setPuzzleGenerationBusy(true);
+
+      try {
+        const generated = await generateGamePuzzle({ difficulty, seed, signal: controller.signal });
+        if (controller.signal.aborted || generationRequestIdRef.current !== requestId) {
+          return null;
+        }
+
+        return generated;
+      } catch (error) {
+        if (error instanceof Error && error.name === "AbortError") {
+          return null;
+        }
+
+        return null;
+      } finally {
+        if (generationRequestIdRef.current === requestId) {
+          generationAbortControllerRef.current = null;
+          setPuzzleGenerationBusy(false);
+        }
+      }
+    },
+    [setPuzzleGenerationBusy],
+  );
 
   const applyState = useCallback((next: GameState) => {
     stateRef.current = next;
@@ -1398,7 +1455,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   }, []);
 
   const isInputLocked = useCallback((sourceState: GameState): boolean => {
-    return sourceState.won || sourceState.lost;
+    return sourceState.won || sourceState.lost || generationInProgressRef.current;
   }, []);
 
   const {
@@ -1410,7 +1467,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   } = useSudokuNumpadController({
     canInteract: () => {
       const current = stateRef.current;
-      return !current.lost;
+      return !current.lost && !generationInProgressRef.current;
     },
     getAnnotationMode: () => stateRef.current.annotationMode,
     getFillModeEntry: () => stateRef.current.fillModeEntry,
@@ -1472,43 +1529,53 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       const current = stashActiveSession(stateRef.current);
       const difficulty = difficultyOverride ?? current.difficulty;
       const stats = markCurrentGameAsLossIfNeeded(current);
-      const { puzzle, solution, givens } = generatePuzzle(difficulty);
-
-      const next: GameState = {
-        ...current,
-        mode: "standard",
-        difficulty,
-        hintsPerGame: current.configuredHintsPerGame,
-        livesPerGame: current.configuredLivesPerGame,
-        puzzle,
-        solution,
-        board: clone(puzzle),
-        givens: createGivensSet(puzzle),
-        selected: null,
-        highlightValue: null,
-        fillModeValue: null,
-        annotationMode: false,
-        notes: createEmptyNotesBoard(),
-        undoStack: [],
-        redoStack: [],
-        stats,
-        winRecorded: false,
-        currentGameStarted: false,
-        hintsLeft: current.configuredHintsPerGame,
-        livesLeft: current.configuredLivesPerGame,
-        lost: false,
-        won: false,
-        dailyDate: null,
-        dailySeed: null,
-        standardSession: null,
-      };
-
-      applyState(next);
       setWinPromptOpen(false);
       setLosePromptOpen(false);
-      setStatusMessage(`New ${difficulty} puzzle ready (${givens} givens).`);
+      setStatusMessage(`Generating exact ${difficulty} puzzle...`);
+
+      void (async () => {
+        const generated = await requestExactPuzzle(difficulty);
+        if (!generated) {
+          if (!generationInProgressRef.current) {
+            setStatusMessage(`Could not generate an exact ${difficulty} puzzle. Please try again.`);
+          }
+          return;
+        }
+
+        const next: GameState = {
+          ...current,
+          mode: "standard",
+          difficulty,
+          hintsPerGame: current.configuredHintsPerGame,
+          livesPerGame: current.configuredLivesPerGame,
+          puzzle: generated.puzzle,
+          solution: generated.solution,
+          board: clone(generated.puzzle),
+          givens: createGivensSet(generated.puzzle),
+          selected: null,
+          highlightValue: null,
+          fillModeValue: null,
+          annotationMode: false,
+          notes: createEmptyNotesBoard(),
+          undoStack: [],
+          redoStack: [],
+          stats,
+          winRecorded: false,
+          currentGameStarted: false,
+          hintsLeft: current.configuredHintsPerGame,
+          livesLeft: current.configuredLivesPerGame,
+          lost: false,
+          won: false,
+          dailyDate: null,
+          dailySeed: null,
+          standardSession: null,
+        };
+
+        applyState(next);
+        setStatusMessage(`New ${difficulty} puzzle ready (${generated.givens} givens).`);
+      })();
     },
-    [applyState],
+    [applyState, requestExactPuzzle],
   );
 
   const startDailyPuzzleAndOpen = useCallback(() => {
@@ -1517,11 +1584,22 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     const difficulty = deriveDailyDifficulty(dayKey);
     const seed = getDailyPuzzleSeed(dayKey, difficulty);
 
-    const buildFreshDailyState = (base: GameState): { next: GameState; givens: number } => {
-      const generated = generatePuzzle(difficulty, { seed });
+    const applyFreshDailyState = (base: GameState, reason: "ready" | "restarted") => {
+      setWinPromptOpen(false);
+      setLosePromptOpen(false);
+      setActiveView("game");
+      setStatusMessage(`Generating exact daily ${difficulty} puzzle for ${dayKey}...`);
 
-      return {
-        next: {
+      void (async () => {
+        const generated = await requestExactPuzzle(difficulty, seed);
+        if (!generated) {
+          if (!generationInProgressRef.current) {
+            setStatusMessage(`Could not generate the ${dayKey} daily puzzle. Please try again.`);
+          }
+          return;
+        }
+
+        const next: GameState = {
           ...base,
           mode: "daily",
           difficulty,
@@ -1547,19 +1625,20 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
           dailyDate: dayKey,
           dailySeed: seed,
           dailySession: null,
-        },
-        givens: generated.givens,
-      };
+        };
+
+        applyState(next);
+        setStatusMessage(
+          reason === "restarted"
+            ? `Daily ${difficulty} puzzle restarted for ${dayKey} (${generated.givens} givens).`
+            : `Daily ${difficulty} puzzle ready for ${dayKey} (${generated.givens} givens).`,
+        );
+      })();
     };
 
     if (current.dailySession && current.dailySession.date === dayKey) {
       if (current.dailySession.lost) {
-        const { next, givens } = buildFreshDailyState(current);
-        applyState(next);
-        setWinPromptOpen(false);
-        setLosePromptOpen(false);
-        setActiveView("game");
-        setStatusMessage(`Daily ${difficulty} puzzle restarted for ${dayKey} (${givens} givens).`);
+        applyFreshDailyState(current, "restarted");
         return;
       }
 
@@ -1580,12 +1659,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
 
     if (current.mode === "daily" && current.dailyDate === dayKey && current.puzzle && current.solution && current.board) {
       if (current.lost) {
-        const { next, givens } = buildFreshDailyState(current);
-        applyState(next);
-        setWinPromptOpen(false);
-        setLosePromptOpen(false);
-        setActiveView("game");
-        setStatusMessage(`Daily ${difficulty} puzzle restarted for ${dayKey} (${givens} givens).`);
+        applyFreshDailyState(current, "restarted");
         return;
       }
 
@@ -1600,14 +1674,8 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       return;
     }
 
-    const { next, givens } = buildFreshDailyState(current);
-
-    applyState(next);
-    setWinPromptOpen(false);
-    setLosePromptOpen(false);
-    setActiveView("game");
-    setStatusMessage(`Daily ${difficulty} puzzle ready for ${dayKey} (${givens} givens).`);
-  }, [applyState]);
+    applyFreshDailyState(current, "ready");
+  }, [applyState, requestExactPuzzle]);
 
   const startNewGameAndOpen = useCallback(
     (difficultyOverride?: Difficulty) => {
@@ -2112,6 +2180,14 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   }, [state]);
 
   useEffect(() => {
+    return () => {
+      generationAbortControllerRef.current?.abort();
+      generationAbortControllerRef.current = null;
+      generationInProgressRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     syncDialogState(winDialogRef.current, winPromptOpen);
   }, [winPromptOpen]);
 
@@ -2181,6 +2257,14 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       isCancelled = true;
     };
   }, [applyState]);
+
+  useEffect(() => {
+    if (!isHydrated) {
+      return;
+    }
+
+    warmPuzzleQueue(state.difficulty);
+  }, [isHydrated, state.difficulty]);
 
   useEffect(() => {
     if (!shouldStartDailyEntry({ entryPoint, isHydrated, hasDailyEntryStarted })) {
@@ -2341,6 +2425,10 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
         return false;
       }
 
+      if (isGeneratingPuzzle) {
+        return false;
+      }
+
       const current = stateRef.current;
       return Boolean(current.board) && !current.lost;
     },
@@ -2443,12 +2531,17 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       started: state.stats.byDifficulty.hard.started + state.stats.daily.byDifficulty.hard.started,
       won: state.stats.byDifficulty.hard.won + state.stats.daily.byDifficulty.hard.won,
     },
+    expert: {
+      started: state.stats.byDifficulty.expert.started + state.stats.daily.byDifficulty.expert.started,
+      won: state.stats.byDifficulty.expert.won + state.stats.daily.byDifficulty.expert.won,
+    },
   };
 
   const statsOverall = formatLine(overallWon, overallStarted);
   const statsEasy = formatLine(overallByDifficulty.easy.won, overallByDifficulty.easy.started);
   const statsMedium = formatLine(overallByDifficulty.medium.won, overallByDifficulty.medium.started);
   const statsHard = formatLine(overallByDifficulty.hard.won, overallByDifficulty.hard.started);
+  const statsExpert = formatLine(overallByDifficulty.expert.won, overallByDifficulty.expert.started);
   const statsOverallRate = calculateRatePercent(overallWon, overallStarted);
   const statsOverallAngle = (statsOverallRate / 100) * 360;
   const dailyStatsOverall = formatLine(state.stats.daily.gamesWon, state.stats.daily.gamesStarted);
@@ -2528,6 +2621,13 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       line: statsHard,
       rate: calculateRatePercent(overallByDifficulty.hard.won, overallByDifficulty.hard.started),
       rateText: formatRate(overallByDifficulty.hard.won, overallByDifficulty.hard.started),
+    },
+    {
+      key: "expert",
+      label: "Expert",
+      line: statsExpert,
+      rate: calculateRatePercent(overallByDifficulty.expert.won, overallByDifficulty.expert.started),
+      rateText: formatRate(overallByDifficulty.expert.won, overallByDifficulty.expert.started),
     },
   ];
 
@@ -2767,6 +2867,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
                       <option value="easy">Easy</option>
                       <option value="medium">Medium</option>
                       <option value="hard">Hard</option>
+                      <option value="expert">Expert</option>
                     </select>
                   </div>
                 </div>
@@ -3038,7 +3139,11 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
                         classNames.push("today");
                       }
 
-                      const difficultyBadge = cell.entry ? cell.entry.difficulty[0].toUpperCase() : null;
+                      const difficultyBadge = cell.entry
+                        ? cell.entry.difficulty === "expert"
+                          ? "X"
+                          : cell.entry.difficulty[0].toUpperCase()
+                        : null;
 
                       return (
                         <div

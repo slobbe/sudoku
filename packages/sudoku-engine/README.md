@@ -2,6 +2,10 @@
 
 Framework-agnostic Sudoku generator, solver, and validation utilities.
 
+Difficulty labels are technique-scored (`easy`, `medium`, `hard`, `expert`) instead of clue-count-only.
+Current scoring techniques: naked/hidden singles, locked candidates, naked/hidden pairs, X-Wing, and Swordfish.
+Generation is clue-range sampled independently from requested difficulty; only technique score decides the final label.
+
 ## Install
 
 ```bash
@@ -33,12 +37,14 @@ const daily = generatePuzzle("medium", { seed: `daily:v1:${dateSeed()}` });
 Core functions:
 
 - `generatePuzzle(difficulty?, options?)`
+- `generatePuzzleCandidate(difficultyHint?, options?)`
 - `generateSolvedBoard(rng?)`
 - `solveBoard(inputBoard)`
 - `countSolutions(inputBoard, limit?)`
 - `boardComplete(board)`
 - `isValidPlacement(board, row, col, value)`
 - `clone(board)`
+- `ratePuzzleDifficulty(inputBoard)`
 
 Deterministic helpers:
 
@@ -52,3 +58,7 @@ Types:
 - `PuzzleCandidate`
 - `DateSeedMode`
 - `PuzzleGenerationOptions`
+
+## Tuning
+
+Run `bun run benchmark:difficulty` from `packages/sudoku-engine` to sample score and label distributions by hint.

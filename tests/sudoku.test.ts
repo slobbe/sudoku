@@ -6,6 +6,8 @@ import {
   createSeededRng,
   dateSeed,
   generatePuzzle,
+  generatePuzzleCandidate,
+  ratePuzzleDifficulty,
   solveBoard,
 } from "@slobbe/sudoku-engine";
 
@@ -77,6 +79,30 @@ describe("sudoku engine", () => {
 
     expect(first.puzzle).toEqual(second.puzzle);
     expect(first.solution).toEqual(second.solution);
+  });
+
+  it("supports exact expert generation", () => {
+    const expert = generatePuzzle("expert", { seed: "daily:2026-02-20" });
+    expect(expert.difficulty).toBe("expert");
+  });
+
+  it("scores generated candidate difficulty deterministically", () => {
+    const candidate = generatePuzzleCandidate("hard", { seed: "daily:2026-02-22:candidate" });
+    const analysis = ratePuzzleDifficulty(candidate.puzzle);
+    expect(analysis).not.toBeNull();
+    expect(analysis!.difficulty).toBe(candidate.difficulty);
+    expect(analysis!.score).toBe(candidate.score);
+  });
+
+  it("keeps candidate generation independent from requested difficulty", () => {
+    const seed = "daily:2026-02-23:candidate";
+    const easyHint = generatePuzzleCandidate("easy", { seed });
+    const expertHint = generatePuzzleCandidate("expert", { seed });
+
+    expect(easyHint.puzzle).toEqual(expertHint.puzzle);
+    expect(easyHint.solution).toEqual(expertHint.solution);
+    expect(easyHint.givens).toBe(expertHint.givens);
+    expect(easyHint.difficulty).toBe(expertHint.difficulty);
   });
 
   it("builds local date seeds by default", () => {

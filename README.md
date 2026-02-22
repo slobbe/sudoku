@@ -5,8 +5,9 @@ A Sudoku app built with Next.js (App Router), React, and TypeScript.
 ## Features
 
 - Unique puzzle generation
-- Three difficulties: Easy, Medium, Hard
+- Four technique-scored difficulties: Easy, Medium, Hard, Expert
 - Daily Sudoku mode with deterministic date-based puzzles
+- Background puzzle generation with cache-backed prewarming
 - Configurable hints and lives
 - Undo/redo and annotation (notes) mode
 - Mistake highlighting against the solution
