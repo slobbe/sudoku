@@ -3,7 +3,11 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useNostrAccount } from "@/lib/nostr";
-import type { NostrActionStatus } from "@/lib/nostr";
+import {
+  buildNostrTroubleshootingHint,
+  formatNostrActionStatusText,
+  isNostrNoBackupState,
+} from "@/lib/nostr/status-copy";
 import { applyThemeToDocument, readThemeFromSavedGame } from "@/lib/theme";
 
 function sanitizeNextPath(nextPath: string | null): string {
@@ -27,86 +31,12 @@ function formatTimestamp(value: string | null): string {
   return date.toLocaleString();
 }
 
-function formatActionStatusText(
-  status: NostrActionStatus,
-  message: string | null,
-  fallbackSyncing: string,
-  fallbackSynced: string,
-  fallbackUpToDate: string,
-  fallbackFailed: string,
-): string | null {
-  if (status === "idle") {
-    return message;
-  }
-
-  if (status === "syncing") {
-    return message ?? fallbackSyncing;
-  }
-
-  if (status === "synced") {
-    return message ?? fallbackSynced;
-  }
-
-  if (status === "up_to_date") {
-    return message ?? fallbackUpToDate;
-  }
-
-  return message ?? fallbackFailed;
-}
-
 function formatEncryptionLabel(encryption: "nip44" | "nip04" | null): string {
   if (!encryption) {
     return "Unknown";
   }
 
   return encryption.toUpperCase();
-}
-
-function formatActionLabel(status: NostrActionStatus): string {
-  if (status === "syncing") {
-    return "syncing";
-  }
-
-  if (status === "synced") {
-    return "synced";
-  }
-
-  if (status === "up_to_date") {
-    return "up to date";
-  }
-
-  if (status === "failed") {
-    return "failed";
-  }
-
-  return "idle";
-}
-
-function buildTroubleshootingHint(params: {
-  profileStatus: NostrActionStatus;
-  profileMessage: string | null;
-  backupStatus: NostrActionStatus;
-  backupMessage: string | null;
-  restoreStatus: NostrActionStatus;
-  restoreMessage: string | null;
-  lastBackupAt: string | null;
-  lastRestoreAt: string | null;
-  lastBackupEncryption: "nip44" | "nip04" | null;
-  lastRestoreEncryption: "nip44" | "nip04" | null;
-}) {
-  const lines = [
-    "Sudoku Nostr troubleshooting snapshot",
-    `- Profile status: ${formatActionLabel(params.profileStatus)}${params.profileMessage ? ` (${params.profileMessage})` : ""}`,
-    `- Backup status: ${formatActionLabel(params.backupStatus)}${params.backupMessage ? ` (${params.backupMessage})` : ""}`,
-    `- Restore status: ${formatActionLabel(params.restoreStatus)}${params.restoreMessage ? ` (${params.restoreMessage})` : ""}`,
-    `- Last backup: ${formatTimestamp(params.lastBackupAt)}`,
-    `- Last restore: ${formatTimestamp(params.lastRestoreAt)}`,
-    `- Backup encryption: ${formatEncryptionLabel(params.lastBackupEncryption)}`,
-    `- Restore encryption: ${formatEncryptionLabel(params.lastRestoreEncryption)}`,
-    "- Local browser data stays unchanged unless restore succeeds.",
-  ];
-
-  return lines.join("\n");
 }
 
 export function NostrProfilePage() {
@@ -179,35 +109,41 @@ export function NostrProfilePage() {
     [getExportableNsec, identity],
   );
   const profileStatusText = useMemo(
-    () => formatActionStatusText(
+    () => formatNostrActionStatusText(
       profileStatus,
       profileMessage,
-      "Syncing profile with relays...",
-      "Profile synced to relays.",
-      "Profile is up to date.",
-      "Profile sync failed.",
+      {
+        syncing: "Syncing profile with relays...",
+        synced: "Profile synced to relays.",
+        upToDate: "Profile is up to date.",
+        failed: "Profile sync failed.",
+      },
     ),
     [profileMessage, profileStatus],
   );
   const backupStatusText = useMemo(
-    () => formatActionStatusText(
+    () => formatNostrActionStatusText(
       backupStatus,
       backupMessage,
-      "Backing up encrypted game data to relays...",
-      "Encrypted backup synced.",
-      "Encrypted backup is already up to date.",
-      "Encrypted backup failed.",
+      {
+        syncing: "Backing up encrypted game data to relays...",
+        synced: "Encrypted backup synced.",
+        upToDate: "Encrypted backup is already up to date.",
+        failed: "Encrypted backup failed.",
+      },
     ),
     [backupMessage, backupStatus],
   );
   const restoreStatusText = useMemo(
-    () => formatActionStatusText(
+    () => formatNostrActionStatusText(
       restoreStatus,
       restoreMessage,
-      "Restoring encrypted game data from relays...",
-      "Encrypted backup restored.",
-      "No new restore updates.",
-      "Encrypted restore failed.",
+      {
+        syncing: "Restoring encrypted game data from relays...",
+        synced: "Encrypted backup restored.",
+        upToDate: "No new restore updates.",
+        failed: "Encrypted restore failed.",
+      },
     ),
     [restoreMessage, restoreStatus],
   );
@@ -226,10 +162,10 @@ export function NostrProfilePage() {
   const isProfileFailure = profileStatus === "failed";
   const isBackupFailure = backupStatus === "failed";
   const isRestoreFailure = restoreStatus === "failed";
-  const hasNoBackupOnRelays = restoreStatus === "up_to_date" && restoreMessage === "No encrypted backup found on relays.";
+  const hasNoBackupOnRelays = isNostrNoBackupState(restoreStatus, restoreMessage);
   const shouldShowRecoveryOptions = Boolean(error) || isProfileFailure || isBackupFailure || isRestoreFailure || hasNoBackupOnRelays;
   const shouldShowReconnectExtension = identity?.source === "nip07" && (isProfileFailure || isBackupFailure || isRestoreFailure);
-  const troubleshootingHint = useMemo(() => buildTroubleshootingHint({
+  const troubleshootingHint = useMemo(() => buildNostrTroubleshootingHint({
     profileStatus,
     profileMessage,
     backupStatus,
@@ -240,6 +176,8 @@ export function NostrProfilePage() {
     lastRestoreAt,
     lastBackupEncryption,
     lastRestoreEncryption,
+    formatTimestamp,
+    formatEncryptionLabel,
   }), [
     profileStatus,
     profileMessage,

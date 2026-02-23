@@ -28,6 +28,7 @@ import {
 } from "@/lib/nostr/app-data";
 import { hasNip07Support, type NostrIdentity } from "@/lib/nostr/identity";
 import { emitNostrRestoreCompletedEvent } from "@/lib/nostr/restore-event";
+import { NOSTR_NO_BACKUP_FOUND_MESSAGE } from "@/lib/nostr/status-copy";
 import {
   fetchLatestNostrProfile,
   normalizeNostrProfileName,
@@ -509,7 +510,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     try {
       const appData = await fetchLatestNostrAppData(identity);
       if (!appData.payload) {
-        const message = "No encrypted backup found on relays.";
+        const message = NOSTR_NO_BACKUP_FOUND_MESSAGE;
         setRestoreStatus("up_to_date");
         setRestoreMessage(message);
         return { ok: false, reason: "no_backup", error: message, message };
