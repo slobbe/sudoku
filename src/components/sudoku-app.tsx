@@ -65,6 +65,11 @@ import {
   type SudokuEntryPoint,
 } from "@/lib/routing/entry";
 import {
+  candidateCountFromCurrentState,
+  resolveAwardedPuzzlePoints,
+  scoreEntryAction,
+} from "@/lib/scoring/points";
+import {
   loadSavedGamePayloadFromBrowser,
   readSavedGameStorageDiagnosticsFromBrowser,
   saveSavedGamePayloadToBrowser,
@@ -83,6 +88,7 @@ import { useNostrAccount } from "@/lib/nostr";
 type Theme = AppTheme;
 type AppView = SudokuAppView;
 type PuzzleMode = "standard" | "daily";
+type ScoredCellKey = string;
 
 type CellSelection = {
   row: number;
@@ -112,6 +118,7 @@ type DailyCalendarCell = {
 type DailyStats = {
   gamesStarted: number;
   gamesWon: number;
+  dailyPoints: number;
   currentStreak: number;
   bestStreak: number;
   byDifficulty: Record<Difficulty, DifficultyStats>;
@@ -123,6 +130,8 @@ type DailyStats = {
 type GameStats = {
   gamesStarted: number;
   gamesWon: number;
+  totalPoints: number;
+  pointsByDifficulty: Record<Difficulty, number>;
   currentStreak: number;
   bestStreak: number;
   byDifficulty: Record<Difficulty, DifficultyStats>;
@@ -135,6 +144,8 @@ type SessionSnapshot = {
   solution: Board;
   board: Board;
   notes: NotesBoard;
+  currentGamePoints: number;
+  scoredCells: Set<ScoredCellKey>;
   hintsPerGame: number;
   livesPerGame: number;
   hintsLeft: number;
@@ -153,6 +164,8 @@ type DailySessionSnapshot = SessionSnapshot & {
 type Snapshot = {
   board: Board;
   notes: NotesBoard;
+  currentGamePoints: number;
+  scoredCells: Set<ScoredCellKey>;
   selected: CellSelection | null;
   highlightValue: number | null;
   won: boolean;
@@ -178,6 +191,8 @@ type GameState = {
   undoStack: Snapshot[];
   redoStack: Snapshot[];
   stats: GameStats;
+  currentGamePoints: number;
+  scoredCells: Set<ScoredCellKey>;
   winRecorded: boolean;
   currentGameStarted: boolean;
   hintsPerGame: number;
@@ -198,6 +213,8 @@ type SavedSessionPayload = {
   solution: Board;
   board: Board;
   notes: NotesBoard;
+  currentGamePoints?: number;
+  scoredCells?: string[];
   hintsPerGame: number;
   livesPerGame: number;
   hintsLeft: number;
@@ -227,6 +244,8 @@ type SavedGamePayload = {
   livesLeft: number;
   annotationMode: boolean;
   notes: NotesBoard;
+  currentGamePoints?: number;
+  scoredCells?: string[];
   showMistakes: boolean;
   fillModeEntry: FillModeEntry;
   theme: Theme;
@@ -283,10 +302,47 @@ const HOME_STATUS_MESSAGES = [
   "No rush: correct and steady beats fast and chaotic.",
 ];
 
+function createDefaultPointsByDifficulty(): Record<Difficulty, number> {
+  return {
+    easy: 0,
+    medium: 0,
+    hard: 0,
+    expert: 0,
+  };
+}
+
+function isScoredCellKey(value: unknown): value is ScoredCellKey {
+  return typeof value === "string" && /^([0-8])-([0-8])$/.test(value);
+}
+
+function normalizeScoredCells(raw: unknown): Set<ScoredCellKey> {
+  if (!Array.isArray(raw)) {
+    return new Set<ScoredCellKey>();
+  }
+
+  const next = new Set<ScoredCellKey>();
+  for (const value of raw) {
+    if (isScoredCellKey(value)) {
+      next.add(value);
+    }
+  }
+
+  return next;
+}
+
+function cloneScoredCells(scoredCells: Set<ScoredCellKey>): Set<ScoredCellKey> {
+  return new Set<ScoredCellKey>(scoredCells);
+}
+
+function serializeScoredCells(scoredCells: Set<ScoredCellKey>): string[] {
+  return Array.from(scoredCells);
+}
+
 function createDefaultDailyStats(): DailyStats {
   return {
     gamesStarted: 0,
     gamesWon: 0,
+    dailyPoints: 0,
     currentStreak: 0,
     bestStreak: 0,
     byDifficulty: {
@@ -305,6 +361,8 @@ function createDefaultStats(): GameStats {
   return {
     gamesStarted: 0,
     gamesWon: 0,
+    totalPoints: 0,
+    pointsByDifficulty: createDefaultPointsByDifficulty(),
     currentStreak: 0,
     bestStreak: 0,
     byDifficulty: {
@@ -321,6 +379,8 @@ function cloneStats(stats: GameStats): GameStats {
   return {
     gamesStarted: stats.gamesStarted,
     gamesWon: stats.gamesWon,
+    totalPoints: stats.totalPoints,
+    pointsByDifficulty: { ...stats.pointsByDifficulty },
     currentStreak: stats.currentStreak,
     bestStreak: stats.bestStreak,
     byDifficulty: {
@@ -332,6 +392,7 @@ function cloneStats(stats: GameStats): GameStats {
     daily: {
       gamesStarted: stats.daily.gamesStarted,
       gamesWon: stats.daily.gamesWon,
+      dailyPoints: stats.daily.dailyPoints,
       currentStreak: stats.daily.currentStreak,
       bestStreak: stats.daily.bestStreak,
       byDifficulty: {
@@ -497,12 +558,15 @@ function normalizeStats(rawStats: unknown): GameStats {
   const entry = rawStats as {
     gamesStarted?: unknown;
     gamesWon?: unknown;
+    totalPoints?: unknown;
+    pointsByDifficulty?: Record<string, unknown>;
     currentStreak?: unknown;
     bestStreak?: unknown;
     byDifficulty?: Record<string, { started?: unknown; won?: unknown }>;
     daily?: {
       gamesStarted?: unknown;
       gamesWon?: unknown;
+      dailyPoints?: unknown;
       currentStreak?: unknown;
       bestStreak?: unknown;
       byDifficulty?: Record<string, { started?: unknown; won?: unknown }>;
@@ -515,6 +579,8 @@ function normalizeStats(rawStats: unknown): GameStats {
   const stats: GameStats = {
     gamesStarted: isNonNegativeInteger(entry.gamesStarted) ? entry.gamesStarted : 0,
     gamesWon: isNonNegativeInteger(entry.gamesWon) ? entry.gamesWon : 0,
+    totalPoints: isNonNegativeInteger(entry.totalPoints) ? entry.totalPoints : 0,
+    pointsByDifficulty: createDefaultPointsByDifficulty(),
     currentStreak: isNonNegativeInteger(entry.currentStreak) ? entry.currentStreak : 0,
     bestStreak: isNonNegativeInteger(entry.bestStreak) ? entry.bestStreak : 0,
     byDifficulty: {
@@ -532,6 +598,9 @@ function normalizeStats(rawStats: unknown): GameStats {
       started: isNonNegativeInteger(diffEntry?.started) ? diffEntry.started : 0,
       won: isNonNegativeInteger(diffEntry?.won) ? diffEntry.won : 0,
     };
+
+    const pointsForDifficulty = entry.pointsByDifficulty?.[difficulty];
+    stats.pointsByDifficulty[difficulty] = isNonNegativeInteger(pointsForDifficulty) ? pointsForDifficulty : 0;
   }
 
   if (stats.bestStreak < stats.currentStreak) {
@@ -542,6 +611,7 @@ function normalizeStats(rawStats: unknown): GameStats {
   if (dailyEntry && typeof dailyEntry === "object") {
     stats.daily.gamesStarted = isNonNegativeInteger(dailyEntry.gamesStarted) ? dailyEntry.gamesStarted : 0;
     stats.daily.gamesWon = isNonNegativeInteger(dailyEntry.gamesWon) ? dailyEntry.gamesWon : 0;
+    stats.daily.dailyPoints = isNonNegativeInteger(dailyEntry.dailyPoints) ? dailyEntry.dailyPoints : 0;
     stats.daily.currentStreak = isNonNegativeInteger(dailyEntry.currentStreak) ? dailyEntry.currentStreak : 0;
     stats.daily.bestStreak = isNonNegativeInteger(dailyEntry.bestStreak) ? dailyEntry.bestStreak : 0;
 
@@ -609,6 +679,8 @@ function createInitialState(): GameState {
     undoStack: [],
     redoStack: [],
     stats: createDefaultStats(),
+    currentGamePoints: 0,
+    scoredCells: new Set<ScoredCellKey>(),
     winRecorded: false,
     currentGameStarted: false,
     hintsPerGame: DEFAULT_HINTS_PER_GAME,
@@ -629,6 +701,8 @@ function createSnapshot(state: GameState): Snapshot {
     return {
       board: Array.from({ length: 9 }, () => Array(9).fill(0)),
       notes: cloneNotesBoard(state.notes),
+      currentGamePoints: state.currentGamePoints,
+      scoredCells: cloneScoredCells(state.scoredCells),
       selected: state.selected ? { ...state.selected } : null,
       highlightValue: state.highlightValue,
       won: state.won,
@@ -638,6 +712,8 @@ function createSnapshot(state: GameState): Snapshot {
   return {
     board: clone(state.board),
     notes: cloneNotesBoard(state.notes),
+    currentGamePoints: state.currentGamePoints,
+    scoredCells: cloneScoredCells(state.scoredCells),
     selected: state.selected ? { ...state.selected } : null,
     highlightValue: state.highlightValue,
     won: state.won,
@@ -698,8 +774,10 @@ function recordWin(
   difficulty: Difficulty,
   mode: PuzzleMode,
   dailyDate: string | null,
+  awardedPoints: number,
 ): GameStats {
   const next = cloneStats(stats);
+  const clampedAwardedPoints = Math.max(0, Math.trunc(awardedPoints));
 
   if (mode === "daily") {
     if (!dailyDate || next.daily.historyByDate[dailyDate]) {
@@ -707,7 +785,10 @@ function recordWin(
     }
 
     next.daily.gamesWon += 1;
+    next.daily.dailyPoints += clampedAwardedPoints;
     next.daily.byDifficulty[difficulty].won += 1;
+    next.totalPoints += clampedAwardedPoints;
+    next.pointsByDifficulty[difficulty] += clampedAwardedPoints;
 
     if (isPreviousDateKey(next.daily.lastWonDate, dailyDate)) {
       next.daily.currentStreak += 1;
@@ -728,6 +809,8 @@ function recordWin(
   }
 
   next.gamesWon += 1;
+  next.totalPoints += clampedAwardedPoints;
+  next.pointsByDifficulty[difficulty] += clampedAwardedPoints;
   next.byDifficulty[difficulty].won += 1;
   next.currentStreak += 1;
   if (next.currentStreak > next.bestStreak) {
@@ -777,6 +860,8 @@ function cloneSessionSnapshot(snapshot: SessionSnapshot): SessionSnapshot {
     solution: clone(snapshot.solution),
     board: clone(snapshot.board),
     notes: cloneNotesBoard(snapshot.notes),
+    currentGamePoints: snapshot.currentGamePoints,
+    scoredCells: cloneScoredCells(snapshot.scoredCells),
     hintsPerGame: snapshot.hintsPerGame,
     livesPerGame: snapshot.livesPerGame,
     hintsLeft: snapshot.hintsLeft,
@@ -799,6 +884,8 @@ function captureSessionFromState(state: GameState): SessionSnapshot | null {
     solution: clone(state.solution),
     board: clone(state.board),
     notes: cloneNotesBoard(state.notes),
+    currentGamePoints: state.currentGamePoints,
+    scoredCells: cloneScoredCells(state.scoredCells),
     hintsPerGame: state.hintsPerGame,
     livesPerGame: state.livesPerGame,
     hintsLeft: state.hintsLeft,
@@ -833,6 +920,8 @@ function applySessionToState(
     notes: cloned.notes,
     undoStack: [],
     redoStack: [],
+    currentGamePoints: cloned.currentGamePoints,
+    scoredCells: cloneScoredCells(cloned.scoredCells),
     winRecorded: cloned.won,
     currentGameStarted: cloned.currentGameStarted,
     hintsPerGame: cloned.hintsPerGame,
@@ -887,7 +976,15 @@ function isSavedSessionPayload(value: unknown): value is SavedSessionPayload {
     && typeof candidate.annotationMode === "boolean"
     && typeof candidate.currentGameStarted === "boolean"
     && typeof candidate.won === "boolean"
-    && typeof candidate.lost === "boolean";
+    && typeof candidate.lost === "boolean"
+    && (
+      candidate.currentGamePoints === undefined
+      || isNonNegativeInteger(candidate.currentGamePoints)
+    )
+    && (
+      candidate.scoredCells === undefined
+      || Array.isArray(candidate.scoredCells)
+    );
 }
 
 function sessionFromSavedPayload(value: SavedSessionPayload): SessionSnapshot {
@@ -897,6 +994,8 @@ function sessionFromSavedPayload(value: SavedSessionPayload): SessionSnapshot {
     solution: clone(value.solution),
     board: clone(value.board),
     notes: cloneNotesBoard(value.notes),
+    currentGamePoints: isNonNegativeInteger(value.currentGamePoints) ? value.currentGamePoints : 0,
+    scoredCells: normalizeScoredCells(value.scoredCells),
     hintsPerGame: value.hintsPerGame,
     livesPerGame: value.livesPerGame,
     hintsLeft: value.hintsLeft,
@@ -928,6 +1027,8 @@ function serializeSession(snapshot: SessionSnapshot | null): SavedSessionPayload
     solution: snapshot.solution,
     board: snapshot.board,
     notes: snapshot.notes,
+    currentGamePoints: snapshot.currentGamePoints,
+    scoredCells: serializeScoredCells(snapshot.scoredCells),
     hintsPerGame: snapshot.hintsPerGame,
     livesPerGame: snapshot.livesPerGame,
     hintsLeft: snapshot.hintsLeft,
@@ -1194,6 +1295,8 @@ async function loadSavedGame(): Promise<GameState | null> {
     livesLeft?: unknown;
     annotationMode?: unknown;
     notes?: unknown;
+    currentGamePoints?: unknown;
+    scoredCells?: unknown;
     showMistakes?: unknown;
     fillModeEntry?: unknown;
     theme?: unknown;
@@ -1292,6 +1395,8 @@ async function loadSavedGame(): Promise<GameState | null> {
     livesLeft: candidate.livesLeft,
     annotationMode: candidate.annotationMode,
     notes: candidate.notes,
+    currentGamePoints: candidate.currentGamePoints,
+    scoredCells: candidate.scoredCells,
     showMistakes: candidate.showMistakes,
     fillModeEntry: candidate.fillModeEntry,
     theme: candidate.theme,
@@ -1350,6 +1455,8 @@ async function loadSavedGame(): Promise<GameState | null> {
     undoStack: [],
     redoStack: [],
     stats: normalizeStats(payload.stats),
+    currentGamePoints: isNonNegativeInteger(payload.currentGamePoints) ? payload.currentGamePoints : 0,
+    scoredCells: normalizeScoredCells(payload.scoredCells),
     winRecorded: won,
     currentGameStarted: payload.currentGameStarted === true || inferredStarted,
     hintsPerGame: payload.hintsPerGame,
@@ -1605,6 +1712,8 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
           undoStack: [],
           redoStack: [],
           stats,
+          currentGamePoints: 0,
+          scoredCells: new Set<ScoredCellKey>(),
           winRecorded: false,
           currentGameStarted: false,
           hintsLeft: current.configuredHintsPerGame,
@@ -1661,6 +1770,8 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
           notes: createEmptyNotesBoard(),
           undoStack: [],
           redoStack: [],
+          currentGamePoints: 0,
+          scoredCells: new Set<ScoredCellKey>(),
           winRecorded: false,
           currentGameStarted: false,
           hintsLeft: base.configuredHintsPerGame,
@@ -1826,6 +1937,8 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       lost: false,
       undoStack: [],
       redoStack: [],
+      currentGamePoints: 0,
+      scoredCells: new Set<ScoredCellKey>(),
       hintsLeft: current.hintsPerGame,
       livesLeft: current.livesPerGame,
     };
@@ -1875,6 +1988,37 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       }
 
       const wrongEntry = value !== 0 && value !== current.solution[row][col];
+      const scoreCellKey = cellKey(row, col);
+      const shouldScoreCorrectEntry = value !== 0 && !wrongEntry && !current.scoredCells.has(scoreCellKey);
+      const candidateCount = shouldScoreCorrectEntry
+        ? candidateCountFromCurrentState({
+          board: current.board,
+          solution: current.solution,
+          row,
+          col,
+        })
+        : 1;
+
+      let scoreDelta = 0;
+      let scoredCells = current.scoredCells;
+
+      if (value !== 0) {
+        if (wrongEntry) {
+          scoreDelta = scoreEntryAction({
+            action: "wrong",
+            difficulty: current.difficulty,
+            candidateCount,
+          });
+        } else if (shouldScoreCorrectEntry) {
+          scoreDelta = scoreEntryAction({
+            action: "correct",
+            difficulty: current.difficulty,
+            candidateCount,
+          });
+          scoredCells = cloneScoredCells(current.scoredCells);
+          scoredCells.add(scoreCellKey);
+        }
+      }
 
       const undoStack = pushBoundedHistory(current.undoStack, createSnapshot(current));
 
@@ -1897,6 +2041,8 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
         undoStack,
         redoStack: [],
         stats,
+        currentGamePoints: current.currentGamePoints + scoreDelta,
+        scoredCells,
         currentGameStarted,
       };
 
@@ -1905,7 +2051,11 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       const solved = boardComplete(next.board);
       next.won = solved;
       if (solved && !current.won && !next.winRecorded) {
-        next.stats = recordWin(next.stats, next.difficulty, next.mode, next.dailyDate);
+        const awardedPoints = resolveAwardedPuzzlePoints({
+          won: solved,
+          currentGamePoints: next.currentGamePoints,
+        });
+        next.stats = recordWin(next.stats, next.difficulty, next.mode, next.dailyDate, awardedPoints);
         next.winRecorded = true;
         setWinPromptOpen(true);
       }
@@ -2003,6 +2153,8 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       ...current,
       board: clone(snapshot.board),
       notes: cloneNotesBoard(snapshot.notes),
+      currentGamePoints: snapshot.currentGamePoints,
+      scoredCells: cloneScoredCells(snapshot.scoredCells),
       selected: snapshot.selected ? { ...snapshot.selected } : null,
       highlightValue: snapshot.highlightValue,
       won: snapshot.won,
@@ -2027,6 +2179,8 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       ...current,
       board: clone(snapshot.board),
       notes: cloneNotesBoard(snapshot.notes),
+      currentGamePoints: snapshot.currentGamePoints,
+      scoredCells: cloneScoredCells(snapshot.scoredCells),
       selected: snapshot.selected ? { ...snapshot.selected } : null,
       highlightValue: snapshot.highlightValue,
       won: snapshot.won,
@@ -2086,6 +2240,9 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       currentGameStarted = true;
     }
 
+    const scoredCells = cloneScoredCells(current.scoredCells);
+    scoredCells.add(cellKey(hintCell.row, hintCell.col));
+
     const undoStack = pushBoundedHistory(current.undoStack, createSnapshot(current));
 
     const board = clone(current.board);
@@ -2105,6 +2262,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       undoStack,
       redoStack: [],
       stats,
+      scoredCells,
       currentGameStarted,
     };
 
@@ -2113,7 +2271,11 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     const solved = boardComplete(next.board);
     next.won = solved;
     if (solved && !current.won && !next.winRecorded) {
-      next.stats = recordWin(next.stats, next.difficulty, next.mode, next.dailyDate);
+      const awardedPoints = resolveAwardedPuzzlePoints({
+        won: solved,
+        currentGamePoints: next.currentGamePoints,
+      });
+      next.stats = recordWin(next.stats, next.difficulty, next.mode, next.dailyDate, awardedPoints);
       next.winRecorded = true;
       setWinPromptOpen(true);
     }
@@ -2187,6 +2349,8 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       undoStack: [],
       redoStack: [],
       stats: recordGameStart(current.stats, current.difficulty, current.mode, current.dailyDate),
+      currentGamePoints: 0,
+      scoredCells: new Set<ScoredCellKey>(),
       currentGameStarted: true,
       hintsLeft: current.hintsPerGame,
       livesLeft: current.livesPerGame,
@@ -2362,6 +2526,8 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       livesLeft: state.livesLeft,
       annotationMode: state.annotationMode,
       notes: state.notes,
+      currentGamePoints: state.currentGamePoints,
+      scoredCells: serializeScoredCells(state.scoredCells),
       showMistakes: state.showMistakes,
       fillModeEntry: state.fillModeEntry,
       theme: state.theme,
