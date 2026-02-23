@@ -1,15 +1,22 @@
 import { createContext } from "react";
+import type { NostrAppDataEncryption, NostrRelayPublishSummary } from "./app-data";
 import type { NostrIdentity } from "./identity";
 
 export type NostrAccountStatus = "loading" | "ready";
 
-export type NostrProfileSyncStatus = "idle" | "syncing" | "synced" | "up_to_date" | "failed";
+export type NostrActionStatus = "idle" | "syncing" | "synced" | "up_to_date" | "failed";
+export type NostrProfileSyncStatus = NostrActionStatus;
 export type NostrLocalKeyProtection = "none" | "encrypted" | "unencrypted";
+export type NostrAccountActionReason = "success" | "no_backup" | "no_data" | "error" | "cancelled";
 
 export type NostrAccountActionResult = {
   ok: boolean;
+  reason?: NostrAccountActionReason;
   error?: string;
   message?: string;
+  encryption?: NostrAppDataEncryption | null;
+  relaySummary?: NostrRelayPublishSummary | null;
+  updatedAt?: string | null;
 };
 
 export type NostrAccountContextValue = {
@@ -19,15 +26,24 @@ export type NostrAccountContextValue = {
   error: string | null;
   isLocalKeyLocked: boolean;
   localKeyProtection: NostrLocalKeyProtection;
-  profileSyncStatus: NostrProfileSyncStatus;
-  profileSyncMessage: string | null;
+  profileStatus: NostrActionStatus;
+  profileMessage: string | null;
+  backupStatus: NostrActionStatus;
+  backupMessage: string | null;
+  restoreStatus: NostrActionStatus;
+  restoreMessage: string | null;
   lastBackupAt: string | null;
   lastRestoreAt: string | null;
+  lastBackupEncryption: NostrAppDataEncryption | null;
+  lastRestoreEncryption: NostrAppDataEncryption | null;
+  lastBackupRelaySummary: NostrRelayPublishSummary | null;
+  restoreRevision: number;
   hasNip07: boolean;
   connectNip07: () => Promise<NostrAccountActionResult>;
   importNsec: (nsec: string, passphrase?: string) => Promise<NostrAccountActionResult>;
   createLocalAccount: (name?: string, passphrase?: string) => Promise<NostrAccountActionResult>;
   unlockLocalAccount: (passphrase: string) => Promise<NostrAccountActionResult>;
+  protectLocalKeyWithPassphrase: (passphrase: string) => Promise<NostrAccountActionResult>;
   updateLocalAccountName: (name: string) => Promise<NostrAccountActionResult>;
   refreshProfileFromRelays: () => Promise<NostrAccountActionResult>;
   backupGameDataToRelays: () => Promise<NostrAccountActionResult>;

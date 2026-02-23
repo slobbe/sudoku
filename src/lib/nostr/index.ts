@@ -13,6 +13,7 @@ export {
   connectNip07Account,
   createSessionLocalAccount,
   importNsecAccount,
+  protectStoredLocalKeyWithPassphrase,
   readStoredLocalKeyProtection,
   restoreNostrAccountFromSession,
   unlockStoredLocalAccount,
@@ -21,6 +22,7 @@ export {
 export {
   NostrAccountContext,
   type NostrAccountActionResult,
+  type NostrActionStatus,
   type NostrAccountContextValue,
   type NostrLocalKeyProtection,
   type NostrProfileSyncStatus,
@@ -28,6 +30,12 @@ export {
 } from "./account-context";
 
 export { useNostrAccount } from "./use-nostr-account";
+
+export {
+  NOSTR_RESTORE_COMPLETED_EVENT,
+  emitNostrRestoreCompletedEvent,
+  type NostrRestoreCompletedEventDetail,
+} from "./restore-event";
 
 export {
   NostrRelayClient,
@@ -66,9 +74,11 @@ export {
   isNostrAppDataPayloadChanged,
   parseNostrAppDataEnvelope,
   publishNostrAppDataIfChanged,
+  summarizeRelayPublishResults,
   type NostrAppDataEncryption,
   type NostrAppDataEnvelope,
   type NostrAppDataPayload,
   type NostrAppDataPublishResult,
   type NostrAppDataReadResult,
+  type NostrRelayPublishSummary,
 } from "./app-data";

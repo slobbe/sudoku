@@ -968,6 +968,15 @@ button:not([data-sudoku-cell="true"]):disabled {
     font-size: 0.8rem;
 }
 
+.profile-restore-confirm {
+    border: 1px solid color-mix(in srgb, var(--line) 76%, transparent);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    background: var(--surface-3);
+    display: grid;
+    gap: 10px;
+}
+
 .profile-info-list {
     margin: 0;
     padding-left: 18px;

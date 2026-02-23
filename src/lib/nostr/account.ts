@@ -558,6 +558,46 @@ export async function unlockStoredLocalAccount(passphrase: string): Promise<Nost
   };
 }
 
+export async function protectStoredLocalKeyWithPassphrase(passphrase: string): Promise<NostrLocalAccountUnlockResult> {
+  const record = readCurrentAccountRecord();
+  if (!record || record.mode !== "local") {
+    throw new Error("No local key is available to protect.");
+  }
+
+  if (record.encryptedNsec) {
+    throw new Error("Local key is already protected by a passphrase.");
+  }
+
+  const nsec = record.nsec ?? readUnlockedLocalNsecFromSession();
+  if (!nsec) {
+    throw new Error("Local key could not be read for protection.");
+  }
+
+  const identity = createIdentityFromNsec(nsec);
+  if (!identity) {
+    throw new Error("Stored local key is invalid.");
+  }
+
+  const encryptedNsec = await encryptNsecWithPassphrase(nsec, passphrase);
+  const nextRecord: PersistedLocalAccountRecord = {
+    schema: 2,
+    mode: "local",
+    name: record.name,
+    encryptedNsec,
+  };
+
+  if (!writePersistedAccountRecord(nextRecord)) {
+    throw new Error(getStorageUnavailableError());
+  }
+
+  setRuntimeUnlockedLocalNsec(nsec);
+  return {
+    identity,
+    name: record.name,
+    localKeyProtection: "encrypted",
+  };
+}
+
 export async function connectNip07Account(): Promise<NostrIdentity> {
   const identity = await connectNip07Identity();
   const persisted = writePersistedAccountRecord({

@@ -9,26 +9,30 @@ import {
   getSessionAccountName,
   getSessionLocalNsec,
   importNsecAccount,
+  protectStoredLocalKeyWithPassphrase,
   restoreNostrAccountFromSession,
   unlockStoredLocalAccount,
   updateSessionAccountName,
 } from "@/lib/nostr/account";
 import {
+  NostrAccountContext,
+  type NostrAccountActionResult,
+  type NostrActionStatus,
+  type NostrLocalKeyProtection,
+} from "@/lib/nostr/account-context";
+import {
+  fetchLatestNostrAppData,
+  publishNostrAppDataIfChanged,
+  type NostrAppDataEncryption,
+  type NostrRelayPublishSummary,
+} from "@/lib/nostr/app-data";
+import { hasNip07Support, type NostrIdentity } from "@/lib/nostr/identity";
+import { emitNostrRestoreCompletedEvent } from "@/lib/nostr/restore-event";
+import {
   fetchLatestNostrProfile,
   normalizeNostrProfileName,
   publishNostrProfileNameIfChanged,
 } from "@/lib/nostr/profile";
-import {
-  fetchLatestNostrAppData,
-  publishNostrAppDataIfChanged,
-} from "@/lib/nostr/app-data";
-import {
-  NostrAccountContext,
-  type NostrAccountActionResult,
-  type NostrLocalKeyProtection,
-  type NostrProfileSyncStatus,
-} from "@/lib/nostr/account-context";
-import { hasNip07Support, type NostrIdentity } from "@/lib/nostr/identity";
 import {
   loadSavedGamePayloadFromBrowser,
   saveSavedGamePayloadToBrowser,
@@ -53,10 +57,21 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
   const [isLocalKeyLocked, setIsLocalKeyLocked] = useState(false);
   const [localKeyProtection, setLocalKeyProtection] = useState<NostrLocalKeyProtection>("none");
   const [hasNip07, setHasNip07] = useState(false);
-  const [profileSyncStatus, setProfileSyncStatus] = useState<NostrProfileSyncStatus>("idle");
-  const [profileSyncMessage, setProfileSyncMessage] = useState<string | null>(null);
+
+  const [profileStatus, setProfileStatus] = useState<NostrActionStatus>("idle");
+  const [profileMessage, setProfileMessage] = useState<string | null>(null);
+  const [backupStatus, setBackupStatus] = useState<NostrActionStatus>("idle");
+  const [backupMessage, setBackupMessage] = useState<string | null>(null);
+  const [restoreStatus, setRestoreStatus] = useState<NostrActionStatus>("idle");
+  const [restoreMessage, setRestoreMessage] = useState<string | null>(null);
+
   const [lastBackupAt, setLastBackupAt] = useState<string | null>(null);
   const [lastRestoreAt, setLastRestoreAt] = useState<string | null>(null);
+  const [lastBackupEncryption, setLastBackupEncryption] = useState<NostrAppDataEncryption | null>(null);
+  const [lastRestoreEncryption, setLastRestoreEncryption] = useState<NostrAppDataEncryption | null>(null);
+  const [lastBackupRelaySummary, setLastBackupRelaySummary] = useState<NostrRelayPublishSummary | null>(null);
+  const [restoreRevision, setRestoreRevision] = useState(0);
+
   const nameRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -67,6 +82,24 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     setHasNip07(hasNip07Support());
   }, []);
 
+  const resetActionChannels = useCallback(() => {
+    setProfileStatus("idle");
+    setProfileMessage(null);
+    setBackupStatus("idle");
+    setBackupMessage(null);
+    setRestoreStatus("idle");
+    setRestoreMessage(null);
+  }, []);
+
+  const resetBackupRestoreMetadata = useCallback(() => {
+    setLastBackupAt(null);
+    setLastRestoreAt(null);
+    setLastBackupEncryption(null);
+    setLastRestoreEncryption(null);
+    setLastBackupRelaySummary(null);
+    setRestoreRevision(0);
+  }, []);
+
   const syncProfileFromRelays = useCallback(async (
     targetIdentity: NostrIdentity,
     options?: ProfileSyncOptions,
@@ -74,18 +107,18 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     const isCancelled = options?.isCancelled;
     const showSyncingState = options?.showSyncingState !== false;
     if (isCancelled?.()) {
-      return { ok: false, error: CANCELLATION_ERROR };
+      return { ok: false, reason: "cancelled", error: CANCELLATION_ERROR };
     }
 
     if (showSyncingState) {
-      setProfileSyncStatus("syncing");
-      setProfileSyncMessage("Refreshing profile from Nostr relays...");
+      setProfileStatus("syncing");
+      setProfileMessage("Refreshing profile from Nostr relays...");
     }
 
     try {
       const profile = await fetchLatestNostrProfile(targetIdentity.pubkey);
       if (isCancelled?.()) {
-        return { ok: false, error: CANCELLATION_ERROR };
+        return { ok: false, reason: "cancelled", error: CANCELLATION_ERROR };
       }
 
       const relayName = profile.name;
@@ -103,7 +136,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       }
 
       let message = "Profile already up to date on relays.";
-      let nextStatus: NostrProfileSyncStatus = "up_to_date";
+      let nextStatus: NostrActionStatus = "up_to_date";
       if (!relayName) {
         message = "No profile name found on Nostr relays.";
       } else if (relayName !== previousName) {
@@ -111,21 +144,22 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
         nextStatus = "synced";
       }
 
-      setProfileSyncStatus(nextStatus);
-      setProfileSyncMessage(message);
+      setProfileStatus(nextStatus);
+      setProfileMessage(message);
       setError(null);
-      return { ok: true, message };
+      return { ok: true, reason: "success", message };
     } catch (caughtError) {
       if (isCancelled?.()) {
-        return { ok: false, error: CANCELLATION_ERROR };
+        return { ok: false, reason: "cancelled", error: CANCELLATION_ERROR };
       }
 
       const detail = caughtError instanceof Error ? caughtError.message : "Could not read kind 0 profile metadata.";
-      setProfileSyncStatus("failed");
-      setProfileSyncMessage("Could not refresh profile from Nostr relays.");
+      setProfileStatus("failed");
+      setProfileMessage("Could not refresh profile from Nostr relays.");
       setError(detail);
       return {
         ok: false,
+        reason: "error",
         error: detail,
         message: "Could not refresh profile from Nostr relays.",
       };
@@ -136,18 +170,18 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     targetIdentity: NostrIdentity,
     nextName: string | null,
   ): Promise<NostrAccountActionResult> => {
-    setProfileSyncStatus("syncing");
-    setProfileSyncMessage("Syncing profile name to Nostr relays...");
+    setProfileStatus("syncing");
+    setProfileMessage("Syncing profile name to Nostr relays...");
 
     try {
       const publishResult = await publishNostrProfileNameIfChanged(targetIdentity, nextName);
       const message = publishResult.published
         ? "Name synced to Nostr relays."
         : "Name already synced on Nostr relays.";
-      setProfileSyncStatus(publishResult.published ? "synced" : "up_to_date");
-      setProfileSyncMessage(message);
+      setProfileStatus(publishResult.published ? "synced" : "up_to_date");
+      setProfileMessage(message);
       setError(null);
-      return { ok: true, message };
+      return { ok: true, reason: "success", message };
     } catch (caughtError) {
       const detail = caughtError instanceof Error
         ? caughtError.message
@@ -155,10 +189,10 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       const message = targetIdentity.source === "local"
         ? "Name saved locally, but relay sync failed."
         : "Name updated, but relay sync failed.";
-      setProfileSyncStatus("failed");
-      setProfileSyncMessage(message);
+      setProfileStatus("failed");
+      setProfileMessage(message);
       setError(detail);
-      return { ok: true, message };
+      return { ok: true, reason: "error", message };
     }
   }, []);
 
@@ -176,10 +210,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
         setError(result.error);
         setIsLocalKeyLocked(result.requiresPassphrase);
         setLocalKeyProtection(result.localKeyProtection);
-        setProfileSyncStatus("idle");
-        setProfileSyncMessage(null);
-        setLastBackupAt(null);
-        setLastRestoreAt(null);
+        resetActionChannels();
+        resetBackupRestoreMetadata();
       })
       .finally(() => {
         if (cancelled) {
@@ -192,7 +224,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [resetActionChannels, resetBackupRestoreMetadata]);
 
   const connectNip07 = useCallback(async (): Promise<NostrAccountActionResult> => {
     try {
@@ -202,19 +234,17 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       setError(null);
       setIsLocalKeyLocked(false);
       setLocalKeyProtection("none");
-      setProfileSyncStatus("idle");
-      setProfileSyncMessage(null);
-      setLastBackupAt(null);
-      setLastRestoreAt(null);
-      return { ok: true };
+      resetActionChannels();
+      resetBackupRestoreMetadata();
+      return { ok: true, reason: "success" };
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Could not connect NIP-07 account.";
       setError(message);
-      setProfileSyncStatus("failed");
-      setProfileSyncMessage("Could not connect NIP-07 identity.");
-      return { ok: false, error: message };
+      setProfileStatus("failed");
+      setProfileMessage("Could not connect NIP-07 identity.");
+      return { ok: false, reason: "error", error: message };
     }
-  }, []);
+  }, [resetActionChannels, resetBackupRestoreMetadata]);
 
   const importNsec = useCallback(async (nsec: string, passphrase?: string): Promise<NostrAccountActionResult> => {
     try {
@@ -225,29 +255,34 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       setError(null);
       setIsLocalKeyLocked(false);
       setLocalKeyProtection(passphrase && passphrase.trim().length > 0 ? "encrypted" : "unencrypted");
-      setLastBackupAt(null);
-      setLastRestoreAt(null);
+      setBackupStatus("idle");
+      setBackupMessage(null);
+      setRestoreStatus("idle");
+      setRestoreMessage(null);
+      resetBackupRestoreMetadata();
 
       const syncResult = await syncProfileFromRelays(nextIdentity);
       if (!syncResult.ok) {
         return {
           ok: true,
+          reason: "error",
           message: "Imported local key, but could not refresh profile from relays.",
         };
       }
 
       return {
         ok: true,
+        reason: "success",
         message: syncResult.message ?? "Imported local key.",
       };
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Could not import nsec account.";
       setError(message);
-      setProfileSyncStatus("failed");
-      setProfileSyncMessage("Could not import local key.");
-      return { ok: false, error: message };
+      setProfileStatus("failed");
+      setProfileMessage("Could not import local key.");
+      return { ok: false, reason: "error", error: message };
     }
-  }, [syncProfileFromRelays]);
+  }, [resetBackupRestoreMetadata, syncProfileFromRelays]);
 
   const createLocalAccount = useCallback(async (
     accountName?: string,
@@ -262,24 +297,27 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       setError(null);
       setIsLocalKeyLocked(false);
       setLocalKeyProtection(passphrase && passphrase.trim().length > 0 ? "encrypted" : "unencrypted");
-      setLastBackupAt(null);
-      setLastRestoreAt(null);
+      setBackupStatus("idle");
+      setBackupMessage(null);
+      setRestoreStatus("idle");
+      setRestoreMessage(null);
+      resetBackupRestoreMetadata();
 
       if (!normalizeNostrProfileName(sessionName)) {
-        setProfileSyncStatus("idle");
-        setProfileSyncMessage(null);
-        return { ok: true };
+        setProfileStatus("idle");
+        setProfileMessage(null);
+        return { ok: true, reason: "success" };
       }
 
       return await publishProfileName(nextIdentity, sessionName);
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Could not create local account.";
       setError(message);
-      setProfileSyncStatus("failed");
-      setProfileSyncMessage("Could not create local key.");
-      return { ok: false, error: message };
+      setProfileStatus("failed");
+      setProfileMessage("Could not create local key.");
+      return { ok: false, reason: "error", error: message };
     }
-  }, [publishProfileName]);
+  }, [publishProfileName, resetBackupRestoreMetadata]);
 
   const unlockLocalAccount = useCallback(async (passphrase: string): Promise<NostrAccountActionResult> => {
     try {
@@ -289,29 +327,75 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       setError(null);
       setIsLocalKeyLocked(false);
       setLocalKeyProtection(result.localKeyProtection);
-      setProfileSyncStatus("idle");
-      setProfileSyncMessage("Local key unlocked.");
+      setProfileStatus("idle");
+      setProfileMessage("Local key unlocked.");
       return {
         ok: true,
+        reason: "success",
         message: "Local key unlocked.",
       };
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Could not unlock local key.";
       setError(message);
-      setProfileSyncStatus("failed");
-      setProfileSyncMessage("Could not unlock local key.");
+      setProfileStatus("failed");
+      setProfileMessage("Could not unlock local key.");
       return {
         ok: false,
+        reason: "error",
         error: message,
       };
     }
   }, []);
 
+  const protectLocalKeyWithPassphrase = useCallback(async (passphrase: string): Promise<NostrAccountActionResult> => {
+    if (!identity || identity.source !== "local") {
+      const message = "No local key is available to protect.";
+      setError(message);
+      return { ok: false, reason: "error", error: message };
+    }
+
+    if (localKeyProtection === "encrypted") {
+      return {
+        ok: true,
+        reason: "success",
+        message: "Local key is already protected.",
+      };
+    }
+
+    try {
+      const result = await protectStoredLocalKeyWithPassphrase(passphrase);
+      setIdentity(result.identity);
+      setName(result.name);
+      setError(null);
+      setIsLocalKeyLocked(false);
+      setLocalKeyProtection("encrypted");
+      setProfileStatus("idle");
+      setProfileMessage("Local key now requires a passphrase after browser restart.");
+      return {
+        ok: true,
+        reason: "success",
+        message: "Local key is now encrypted at rest.",
+      };
+    } catch (caughtError) {
+      const message = caughtError instanceof Error
+        ? caughtError.message
+        : "Could not protect local key with passphrase.";
+      setError(message);
+      setProfileStatus("failed");
+      setProfileMessage("Could not enable passphrase protection.");
+      return {
+        ok: false,
+        reason: "error",
+        error: message,
+      };
+    }
+  }, [identity, localKeyProtection]);
+
   const updateLocalAccountName = useCallback(async (nextName: string): Promise<NostrAccountActionResult> => {
     if (!identity) {
       const message = "No connected identity available.";
       setError(message);
-      return { ok: false, error: message };
+      return { ok: false, reason: "error", error: message };
     }
 
     try {
@@ -323,11 +407,12 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
         }
 
         setName(normalizedNextName);
-        setProfileSyncStatus("up_to_date");
-        setProfileSyncMessage("Name already synced on Nostr relays.");
+        setProfileStatus("up_to_date");
+        setProfileMessage("Name already synced on Nostr relays.");
         setError(null);
         return {
           ok: true,
+          reason: "success",
           message: "Name already synced on Nostr relays.",
         };
       }
@@ -340,9 +425,9 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Could not update account name.";
       setError(message);
-      setProfileSyncStatus("failed");
-      setProfileSyncMessage("Could not update profile name.");
-      return { ok: false, error: message };
+      setProfileStatus("failed");
+      setProfileMessage("Could not update profile name.");
+      return { ok: false, reason: "error", error: message };
     }
   }, [identity, publishProfileName]);
 
@@ -350,7 +435,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     if (!identity) {
       const message = "No connected identity available.";
       setError(message);
-      return { ok: false, error: message };
+      return { ok: false, reason: "error", error: message };
     }
 
     return syncProfileFromRelays(identity);
@@ -360,40 +445,54 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     if (!identity) {
       const message = "No connected identity available.";
       setError(message);
-      return { ok: false, error: message };
+      return { ok: false, reason: "error", error: message };
     }
 
     const payload = await loadSavedGamePayloadFromBrowser();
     if (!payload) {
       const message = "No local game data to back up yet.";
-      setProfileSyncStatus("up_to_date");
-      setProfileSyncMessage(message);
-      return { ok: false, error: message };
+      setBackupStatus("up_to_date");
+      setBackupMessage(message);
+      return { ok: false, reason: "no_data", error: message, message };
     }
 
-    setProfileSyncStatus("syncing");
-    setProfileSyncMessage("Backing up encrypted game data to Nostr relays...");
+    setBackupStatus("syncing");
+    setBackupMessage("Backing up encrypted game data to Nostr relays...");
 
     try {
       const result = await publishNostrAppDataIfChanged(identity, payload);
+      const relaySummaryText = result.relaySummary
+        ? `${result.relaySummary.successfulRelays}/${result.relaySummary.attemptedRelays} relays reached`
+        : null;
       const message = result.published
-        ? `Encrypted backup synced to relays (${result.encryption}).`
+        ? `Encrypted backup synced using ${result.encryption}${relaySummaryText ? ` (${relaySummaryText})` : ""}.`
         : "Encrypted backup already up to date on relays.";
+
       if (result.updatedAt) {
         setLastBackupAt(result.updatedAt);
       }
-      setProfileSyncStatus(result.published ? "synced" : "up_to_date");
-      setProfileSyncMessage(message);
+      setLastBackupEncryption(result.encryption);
+      setLastBackupRelaySummary(result.relaySummary);
+      setBackupStatus(result.published ? "synced" : "up_to_date");
+      setBackupMessage(message);
       setError(null);
-      return { ok: true, message };
+
+      return {
+        ok: true,
+        reason: "success",
+        message,
+        encryption: result.encryption,
+        relaySummary: result.relaySummary,
+        updatedAt: result.updatedAt,
+      };
     } catch (caughtError) {
       const message = caughtError instanceof Error
         ? caughtError.message
         : "Could not back up encrypted game data to relays.";
-      setProfileSyncStatus("failed");
-      setProfileSyncMessage("Encrypted game backup failed.");
+      setBackupStatus("failed");
+      setBackupMessage("Encrypted game backup failed.");
       setError(message);
-      return { ok: false, error: message };
+      return { ok: false, reason: "error", error: message };
     }
   }, [identity]);
 
@@ -401,44 +500,55 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     if (!identity) {
       const message = "No connected identity available.";
       setError(message);
-      return { ok: false, error: message };
+      return { ok: false, reason: "error", error: message };
     }
 
-    setProfileSyncStatus("syncing");
-    setProfileSyncMessage("Restoring encrypted game data from Nostr relays...");
+    setRestoreStatus("syncing");
+    setRestoreMessage("Restoring encrypted game data from Nostr relays...");
 
     try {
       const appData = await fetchLatestNostrAppData(identity);
       if (!appData.payload) {
         const message = "No encrypted backup found on relays.";
-        setProfileSyncStatus("up_to_date");
-        setProfileSyncMessage(message);
-        return { ok: false, error: message };
+        setRestoreStatus("up_to_date");
+        setRestoreMessage(message);
+        return { ok: false, reason: "no_backup", error: message, message };
       }
 
       if (!await saveSavedGamePayloadToBrowser(appData.payload)) {
         throw new Error("Could not restore backup into browser storage.");
       }
 
+      const restoredAt = new Date().toISOString();
       const message = appData.updatedAt
-        ? `Encrypted backup restored from ${new Date(appData.updatedAt).toLocaleString()}.`
+        ? `Encrypted backup (${appData.encryption ?? "unknown"}) restored from ${new Date(appData.updatedAt).toLocaleString()}.`
         : "Encrypted backup restored from relays.";
       if (appData.updatedAt) {
         setLastBackupAt(appData.updatedAt);
       }
-      setLastRestoreAt(new Date().toISOString());
-      setProfileSyncStatus("synced");
-      setProfileSyncMessage(message);
+      setLastRestoreAt(restoredAt);
+      setLastRestoreEncryption(appData.encryption);
+      setRestoreStatus("synced");
+      setRestoreMessage(message);
       setError(null);
-      return { ok: true, message };
+      setRestoreRevision((current) => current + 1);
+      emitNostrRestoreCompletedEvent(restoredAt);
+
+      return {
+        ok: true,
+        reason: "success",
+        message,
+        encryption: appData.encryption,
+        updatedAt: appData.updatedAt,
+      };
     } catch (caughtError) {
       const message = caughtError instanceof Error
         ? caughtError.message
         : "Could not restore encrypted game data from relays.";
-      setProfileSyncStatus("failed");
-      setProfileSyncMessage("Encrypted game restore failed.");
+      setRestoreStatus("failed");
+      setRestoreMessage("Encrypted game restore failed.");
       setError(message);
-      return { ok: false, error: message };
+      return { ok: false, reason: "error", error: message };
     }
   }, [identity]);
 
@@ -449,11 +559,9 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     setError(null);
     setIsLocalKeyLocked(false);
     setLocalKeyProtection("none");
-    setProfileSyncStatus("idle");
-    setProfileSyncMessage(null);
-    setLastBackupAt(null);
-    setLastRestoreAt(null);
-  }, []);
+    resetActionChannels();
+    resetBackupRestoreMetadata();
+  }, [resetActionChannels, resetBackupRestoreMetadata]);
 
   const getExportableNsec = useCallback(() => getSessionLocalNsec(), []);
 
@@ -465,15 +573,24 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       error,
       isLocalKeyLocked,
       localKeyProtection,
-      profileSyncStatus,
-      profileSyncMessage,
+      profileStatus,
+      profileMessage,
+      backupStatus,
+      backupMessage,
+      restoreStatus,
+      restoreMessage,
       lastBackupAt,
       lastRestoreAt,
+      lastBackupEncryption,
+      lastRestoreEncryption,
+      lastBackupRelaySummary,
+      restoreRevision,
       hasNip07,
       connectNip07,
       importNsec,
       createLocalAccount,
       unlockLocalAccount,
+      protectLocalKeyWithPassphrase,
       updateLocalAccountName,
       refreshProfileFromRelays,
       backupGameDataToRelays,
@@ -488,15 +605,24 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       error,
       isLocalKeyLocked,
       localKeyProtection,
-      profileSyncStatus,
-      profileSyncMessage,
+      profileStatus,
+      profileMessage,
+      backupStatus,
+      backupMessage,
+      restoreStatus,
+      restoreMessage,
       lastBackupAt,
       lastRestoreAt,
+      lastBackupEncryption,
+      lastRestoreEncryption,
+      lastBackupRelaySummary,
+      restoreRevision,
       hasNip07,
       connectNip07,
       importNsec,
       createLocalAccount,
       unlockLocalAccount,
+      protectLocalKeyWithPassphrase,
       updateLocalAccountName,
       refreshProfileFromRelays,
       backupGameDataToRelays,

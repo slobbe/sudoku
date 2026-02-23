@@ -5,6 +5,7 @@ import {
   createNostrAppDataEnvelope,
   isNostrAppDataPayloadChanged,
   parseNostrAppDataEnvelope,
+  summarizeRelayPublishResults,
 } from "../src/lib/nostr/app-data";
 
 describe("nostr app data helpers", () => {
@@ -85,5 +86,19 @@ describe("nostr app data helpers", () => {
     expect(isNostrAppDataPayloadChanged(current, sameDifferentOrder)).toBe(false);
     expect(isNostrAppDataPayloadChanged(current, changed)).toBe(true);
     expect(isNostrAppDataPayloadChanged(null, current)).toBe(true);
+  });
+
+  it("summarizes relay publish outcomes", () => {
+    const summary = summarizeRelayPublishResults([
+      { status: "fulfilled", value: undefined },
+      { status: "rejected", reason: new Error("offline") },
+      { status: "fulfilled", value: undefined },
+    ]);
+
+    expect(summary).toEqual({
+      attemptedRelays: 3,
+      successfulRelays: 2,
+      reachedAnyRelay: true,
+    });
   });
 });

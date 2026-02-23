@@ -84,7 +84,11 @@ import {
   generateGamePuzzle,
   warmPuzzleQueue,
 } from "@/lib/puzzle-generation/service";
-import { useNostrAccount } from "@/lib/nostr";
+import {
+  NOSTR_RESTORE_COMPLETED_EVENT,
+  type NostrRestoreCompletedEventDetail,
+  useNostrAccount,
+} from "@/lib/nostr";
 
 type Theme = AppTheme;
 type AppView = SudokuAppView;
@@ -2466,6 +2470,36 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
 
     return () => {
       isCancelled = true;
+    };
+  }, [applyState, refreshStorageDiagnostics]);
+
+  useEffect(() => {
+    const onNostrRestoreCompleted = (event: Event) => {
+      const restoreEvent = event as CustomEvent<NostrRestoreCompletedEventDetail>;
+      const restoredAt = restoreEvent.detail?.restoredAt;
+
+      void (async () => {
+        const restored = await loadSavedGame();
+        if (!restored) {
+          refreshStorageDiagnostics();
+          return;
+        }
+
+        applyState(restored);
+        refreshStorageDiagnostics();
+
+        if (restoredAt) {
+          setStatusMessage(`Restored game data from Nostr backup (${new Date(restoredAt).toLocaleTimeString()}).`);
+          return;
+        }
+
+        setStatusMessage("Restored game data from Nostr backup.");
+      })();
+    };
+
+    window.addEventListener(NOSTR_RESTORE_COMPLETED_EVENT, onNostrRestoreCompleted as EventListener);
+    return () => {
+      window.removeEventListener(NOSTR_RESTORE_COMPLETED_EVENT, onNostrRestoreCompleted as EventListener);
     };
   }, [applyState, refreshStorageDiagnostics]);
 

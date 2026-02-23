@@ -32,10 +32,17 @@ export type NostrAppDataReadResult = {
   encryption: NostrAppDataEncryption | null;
 };
 
+export type NostrRelayPublishSummary = {
+  attemptedRelays: number;
+  successfulRelays: number;
+  reachedAnyRelay: boolean;
+};
+
 export type NostrAppDataPublishResult = {
   published: boolean;
   encryption: NostrAppDataEncryption;
   updatedAt: string | null;
+  relaySummary: NostrRelayPublishSummary | null;
 };
 
 type EncryptionContext = {
@@ -235,6 +242,18 @@ export function createNostrAppDataEnvelope(payload: NostrAppDataPayload): NostrA
   };
 }
 
+export function summarizeRelayPublishResults(
+  results: PromiseSettledResult<unknown>[],
+): NostrRelayPublishSummary {
+  const attemptedRelays = results.length;
+  const successfulRelays = results.filter((result) => result.status === "fulfilled").length;
+  return {
+    attemptedRelays,
+    successfulRelays,
+    reachedAnyRelay: successfulRelays > 0,
+  };
+}
+
 export function parseNostrAppDataEnvelope(content: string): NostrAppDataEnvelope | null {
   try {
     const parsed: unknown = JSON.parse(content);
@@ -339,6 +358,7 @@ export async function publishNostrAppDataIfChanged(
       published: false,
       encryption: context.encryption,
       updatedAt: latestUpdatedAt,
+      relaySummary: null,
     };
   }
 
@@ -360,8 +380,8 @@ export async function publishNostrAppDataIfChanged(
   const pool = new SimplePool();
   try {
     const publishResults = await Promise.allSettled(pool.publish(resolvedRelays, signedEvent));
-    const hasSuccess = publishResults.some((result) => result.status === "fulfilled");
-    if (!hasSuccess) {
+    const relaySummary = summarizeRelayPublishResults(publishResults);
+    if (!relaySummary.reachedAnyRelay) {
       throw new Error("Could not publish encrypted app backup to any relay.");
     }
 
@@ -369,6 +389,7 @@ export async function publishNostrAppDataIfChanged(
       published: true,
       encryption: context.encryption,
       updatedAt: envelope.updatedAt,
+      relaySummary,
     };
   } finally {
     pool.destroy();
