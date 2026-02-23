@@ -6,13 +6,13 @@ import {
   clearNostrSession,
   connectNip07Account,
   createLocalAccount as createPersistedLocalAccount,
-  getSessionAccountName,
-  getSessionLocalNsec,
+  getLocalAccountName,
+  getLocalAccountNsec,
   importNsecAccount,
   protectStoredLocalKeyWithPassphrase,
-  restoreNostrAccountFromSession,
+  restoreNostrAccountFromStorage,
   unlockStoredLocalAccount,
-  updateSessionAccountName,
+  updateLocalAccountName as updateStoredAccountName,
 } from "@/lib/nostr/account";
 import {
   NostrAccountContext,
@@ -126,7 +126,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       const previousName = nameRef.current;
       if (relayName && targetIdentity.source === "local") {
         try {
-          updateSessionAccountName(relayName);
+          updateStoredAccountName(relayName);
         } catch {
           // Ignore persistence failures and still use the in-memory name.
         }
@@ -200,7 +200,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
   useEffect(() => {
     let cancelled = false;
 
-    void restoreNostrAccountFromSession()
+    void restoreNostrAccountFromStorage()
       .then((result) => {
         if (cancelled) {
           return;
@@ -250,7 +250,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
   const importNsec = useCallback(async (nsec: string, passphrase?: string): Promise<NostrAccountActionResult> => {
     try {
       const nextIdentity = await importNsecAccount(nsec, passphrase);
-      const importedName = getSessionAccountName();
+      const importedName = getLocalAccountName();
       setIdentity(nextIdentity);
       setName(importedName);
       setError(null);
@@ -291,10 +291,10 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
   ): Promise<NostrAccountActionResult> => {
     try {
       const nextIdentity = await createPersistedLocalAccount(accountName, passphrase);
-      const sessionName = getSessionAccountName();
+      const localAccountName = getLocalAccountName();
 
       setIdentity(nextIdentity);
-      setName(sessionName);
+      setName(localAccountName);
       setError(null);
       setIsLocalKeyLocked(false);
       setLocalKeyProtection(passphrase && passphrase.trim().length > 0 ? "encrypted" : "unencrypted");
@@ -304,13 +304,13 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       setRestoreMessage(null);
       resetBackupRestoreMetadata();
 
-      if (!normalizeNostrProfileName(sessionName)) {
+      if (!normalizeNostrProfileName(localAccountName)) {
         setProfileStatus("idle");
         setProfileMessage(null);
         return { ok: true, reason: "success" };
       }
 
-      return await publishProfileName(nextIdentity, sessionName);
+      return await publishProfileName(nextIdentity, localAccountName);
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Could not create local account.";
       setError(message);
@@ -404,7 +404,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       const currentName = normalizeNostrProfileName(nameRef.current);
       if (normalizedNextName === currentName) {
         if (identity.source === "local") {
-          updateSessionAccountName(nextName);
+          updateStoredAccountName(nextName);
         }
 
         setName(normalizedNextName);
@@ -419,7 +419,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       }
 
       const normalizedName = identity.source === "local"
-        ? updateSessionAccountName(nextName)
+        ? updateStoredAccountName(nextName)
         : normalizedNextName;
       setName(normalizedName);
       return await publishProfileName(identity, normalizedName);
@@ -564,7 +564,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     resetBackupRestoreMetadata();
   }, [resetActionChannels, resetBackupRestoreMetadata]);
 
-  const getExportableNsec = useCallback(() => getSessionLocalNsec(), []);
+  const getExportableNsec = useCallback(() => getLocalAccountNsec(), []);
 
   const contextValue = useMemo(
     () => ({

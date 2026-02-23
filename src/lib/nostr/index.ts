@@ -12,10 +12,13 @@ export {
   clearNostrSession,
   connectNip07Account,
   createLocalAccount,
+  getLocalAccountName,
+  getLocalAccountNsec,
   importNsecAccount,
   protectStoredLocalKeyWithPassphrase,
-  restoreNostrAccountFromSession,
+  restoreNostrAccountFromStorage,
   unlockStoredLocalAccount,
+  updateLocalAccountName,
 } from "./account";
 
 export {

@@ -369,7 +369,7 @@ export function clearNostrSession(): void {
   setRuntimeUnlockedLocalNsec(null);
 }
 
-export function getSessionLocalNsec(): string | null {
+export function getLocalAccountNsec(): string | null {
   const unlocked = readUnlockedLocalNsecFromSession();
   if (unlocked) {
     return unlocked;
@@ -384,7 +384,7 @@ export function getSessionLocalNsec(): string | null {
   return record.nsec;
 }
 
-export function getSessionAccountName(): string | null {
+export function getLocalAccountName(): string | null {
   const record = readCurrentAccountRecord();
   if (record?.mode === "local") {
     return record.name;
@@ -398,7 +398,7 @@ export function getSessionAccountName(): string | null {
   return normalizeNostrAccountName(sessionStorage.getItem(SESSION_ACCOUNT_NAME_KEY));
 }
 
-export function updateSessionAccountName(name: string): string | null {
+export function updateLocalAccountName(name: string): string | null {
   const normalizedName = normalizeNostrAccountName(name);
   const record = readCurrentAccountRecord();
   if (record?.mode === "local") {
@@ -415,7 +415,7 @@ export function updateSessionAccountName(name: string): string | null {
 
   const sessionStorage = getSessionStorage();
   if (!sessionStorage || readStoredMode(sessionStorage) !== "local") {
-    throw new Error("Only local session accounts can set a name here.");
+    throw new Error("Only local stored accounts can set a name here.");
   }
 
   if (normalizedName) {
@@ -427,7 +427,7 @@ export function updateSessionAccountName(name: string): string | null {
   return normalizedName;
 }
 
-export async function restoreNostrAccountFromSession(): Promise<NostrAccountRestoreResult> {
+export async function restoreNostrAccountFromStorage(): Promise<NostrAccountRestoreResult> {
   const record = readCurrentAccountRecord();
   if (!record) {
     const localStorage = getLocalStorage();
@@ -466,7 +466,7 @@ export async function restoreNostrAccountFromSession(): Promise<NostrAccountRest
       clearNostrSession();
       return {
         identity: null,
-        error: "NIP-07 session could not be restored.",
+        error: "NIP-07 account could not be restored.",
         name: null,
         requiresPassphrase: false,
         localKeyProtection: "none",

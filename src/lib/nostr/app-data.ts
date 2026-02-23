@@ -1,6 +1,6 @@
 import type { Event, Filter } from "nostr-tools";
 import { nip04, nip44, SimplePool, verifyEvent } from "nostr-tools";
-import { getSessionLocalNsec } from "./account";
+import { getLocalAccountNsec } from "./account";
 import type { NostrIdentity } from "./identity";
 import { parseNsecToSecretKey } from "./identity";
 import {
@@ -164,7 +164,7 @@ function createLocalEncryptionContext(
   identity: NostrIdentity,
   preferred?: NostrAppDataEncryption | null,
 ): EncryptionContext {
-  const nsec = getSessionLocalNsec();
+  const nsec = getLocalAccountNsec();
   if (!nsec) {
     throw new Error("Local nsec is unavailable for encrypted backup.");
   }

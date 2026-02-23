@@ -2,9 +2,9 @@ import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import {
   clearNostrSession,
   createLocalAccount,
-  getSessionLocalNsec,
+  getLocalAccountNsec,
   protectStoredLocalKeyWithPassphrase,
-  restoreNostrAccountFromSession,
+  restoreNostrAccountFromStorage,
 } from "../src/lib/nostr/account";
 
 class MemoryStorage implements Storage {
@@ -79,7 +79,7 @@ describe("nostr account storage", () => {
 
     setTestWindow(persistedLocalStorage, new MemoryStorage());
 
-    const restored = await restoreNostrAccountFromSession();
+    const restored = await restoreNostrAccountFromStorage();
 
     expect(restored.identity?.source).toBe("local");
     expect(restored.name).toBe("Alice");
@@ -89,7 +89,7 @@ describe("nostr account storage", () => {
 
   it("requires passphrase to restore encrypted local key", async () => {
     await createLocalAccount("Bob", "passphrase-123");
-    const unlockedNsec = getSessionLocalNsec();
+    const unlockedNsec = getLocalAccountNsec();
 
     const currentWindow = globalWithWindow.window as TestWindow;
     const persistedLocalStorage = currentWindow.localStorage;
@@ -98,7 +98,7 @@ describe("nostr account storage", () => {
 
     const restartedAccountModule = await import(`../src/lib/nostr/account.ts?restart=${Date.now()}`);
 
-    const restored = await restartedAccountModule.restoreNostrAccountFromSession();
+    const restored = await restartedAccountModule.restoreNostrAccountFromStorage();
     expect(restored.identity).toBeNull();
     expect(restored.name).toBe("Bob");
     expect(restored.requiresPassphrase).toBe(true);
@@ -111,18 +111,18 @@ describe("nostr account storage", () => {
     const unlocked = await restartedAccountModule.unlockStoredLocalAccount("passphrase-123");
     expect(unlocked.identity.source).toBe("local");
     expect(unlocked.name).toBe("Bob");
-    expect(restartedAccountModule.getSessionLocalNsec()).toBe(unlockedNsec);
+    expect(restartedAccountModule.getLocalAccountNsec()).toBe(unlockedNsec);
   });
 
   it("can add passphrase protection later for an unencrypted local key", async () => {
     await createLocalAccount("Casey");
-    const nsecBeforeProtection = getSessionLocalNsec();
+    const nsecBeforeProtection = getLocalAccountNsec();
 
     const protectionResult = await protectStoredLocalKeyWithPassphrase("later-passphrase");
     expect(protectionResult.identity.source).toBe("local");
     expect(protectionResult.name).toBe("Casey");
     expect(protectionResult.localKeyProtection).toBe("encrypted");
-    expect(getSessionLocalNsec()).toBe(nsecBeforeProtection);
+    expect(getLocalAccountNsec()).toBe(nsecBeforeProtection);
 
     const currentWindow = globalWithWindow.window as TestWindow;
     const persistedLocalStorage = currentWindow.localStorage;
@@ -130,7 +130,7 @@ describe("nostr account storage", () => {
     setTestWindow(persistedLocalStorage, new MemoryStorage());
     const restartedAccountModule = await import(`../src/lib/nostr/account.ts?restart-protected=${Date.now()}`);
 
-    const restored = await restartedAccountModule.restoreNostrAccountFromSession();
+    const restored = await restartedAccountModule.restoreNostrAccountFromStorage();
     expect(restored.identity).toBeNull();
     expect(restored.name).toBe("Casey");
     expect(restored.requiresPassphrase).toBe(true);
@@ -139,6 +139,6 @@ describe("nostr account storage", () => {
     const unlocked = await restartedAccountModule.unlockStoredLocalAccount("later-passphrase");
     expect(unlocked.identity.source).toBe("local");
     expect(unlocked.name).toBe("Casey");
-    expect(restartedAccountModule.getSessionLocalNsec()).toBe(nsecBeforeProtection);
+    expect(restartedAccountModule.getLocalAccountNsec()).toBe(nsecBeforeProtection);
   });
 });
