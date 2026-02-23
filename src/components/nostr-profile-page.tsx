@@ -62,6 +62,53 @@ function formatEncryptionLabel(encryption: "nip44" | "nip04" | null): string {
   return encryption.toUpperCase();
 }
 
+function formatActionLabel(status: NostrActionStatus): string {
+  if (status === "syncing") {
+    return "syncing";
+  }
+
+  if (status === "synced") {
+    return "synced";
+  }
+
+  if (status === "up_to_date") {
+    return "up to date";
+  }
+
+  if (status === "failed") {
+    return "failed";
+  }
+
+  return "idle";
+}
+
+function buildTroubleshootingHint(params: {
+  profileStatus: NostrActionStatus;
+  profileMessage: string | null;
+  backupStatus: NostrActionStatus;
+  backupMessage: string | null;
+  restoreStatus: NostrActionStatus;
+  restoreMessage: string | null;
+  lastBackupAt: string | null;
+  lastRestoreAt: string | null;
+  lastBackupEncryption: "nip44" | "nip04" | null;
+  lastRestoreEncryption: "nip44" | "nip04" | null;
+}) {
+  const lines = [
+    "Sudoku Nostr troubleshooting snapshot",
+    `- Profile status: ${formatActionLabel(params.profileStatus)}${params.profileMessage ? ` (${params.profileMessage})` : ""}`,
+    `- Backup status: ${formatActionLabel(params.backupStatus)}${params.backupMessage ? ` (${params.backupMessage})` : ""}`,
+    `- Restore status: ${formatActionLabel(params.restoreStatus)}${params.restoreMessage ? ` (${params.restoreMessage})` : ""}`,
+    `- Last backup: ${formatTimestamp(params.lastBackupAt)}`,
+    `- Last restore: ${formatTimestamp(params.lastRestoreAt)}`,
+    `- Backup encryption: ${formatEncryptionLabel(params.lastBackupEncryption)}`,
+    `- Restore encryption: ${formatEncryptionLabel(params.lastRestoreEncryption)}`,
+    "- Local browser data stays unchanged unless restore succeeds.",
+  ];
+
+  return lines.join("\n");
+}
+
 export function NostrProfilePage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -176,6 +223,35 @@ export function NostrProfilePage() {
     return "Managed by extension";
   }, [localKeyProtection]);
   const isBackupRestoreBusy = backupStatus === "syncing" || restoreStatus === "syncing";
+  const isProfileFailure = profileStatus === "failed";
+  const isBackupFailure = backupStatus === "failed";
+  const isRestoreFailure = restoreStatus === "failed";
+  const hasNoBackupOnRelays = restoreStatus === "up_to_date" && restoreMessage === "No encrypted backup found on relays.";
+  const shouldShowRecoveryOptions = Boolean(error) || isProfileFailure || isBackupFailure || isRestoreFailure || hasNoBackupOnRelays;
+  const shouldShowReconnectExtension = identity?.source === "nip07" && (isProfileFailure || isBackupFailure || isRestoreFailure);
+  const troubleshootingHint = useMemo(() => buildTroubleshootingHint({
+    profileStatus,
+    profileMessage,
+    backupStatus,
+    backupMessage,
+    restoreStatus,
+    restoreMessage,
+    lastBackupAt,
+    lastRestoreAt,
+    lastBackupEncryption,
+    lastRestoreEncryption,
+  }), [
+    profileStatus,
+    profileMessage,
+    backupStatus,
+    backupMessage,
+    restoreStatus,
+    restoreMessage,
+    lastBackupAt,
+    lastRestoreAt,
+    lastBackupEncryption,
+    lastRestoreEncryption,
+  ]);
 
   useEffect(() => {
     setShowSecretKey(false);
@@ -210,6 +286,21 @@ export function NostrProfilePage() {
       setActiveAuthAction("none");
     }
   }, [completeAuth, connectNip07]);
+
+  const handleReconnectExtension = useCallback(async () => {
+    setActiveAuthAction("connect");
+    try {
+      const result = await connectNip07();
+      if (!result.ok) {
+        setActionMessage(result.error ?? "Could not reconnect NIP-07 extension.");
+        return;
+      }
+
+      setActionMessage("Reconnected NIP-07 extension.");
+    } finally {
+      setActiveAuthAction("none");
+    }
+  }, [connectNip07]);
 
   const handleImportNsec = useCallback(async () => {
     setActiveAuthAction("import");
@@ -357,6 +448,15 @@ export function NostrProfilePage() {
       setActionMessage("Could not download secret key.");
     }
   }, [exportableNsec]);
+
+  const handleCopyTroubleshootingHint = useCallback(async () => {
+    try {
+      await navigator.clipboard.writeText(troubleshootingHint);
+      setActionMessage("Troubleshooting hint copied.");
+    } catch {
+      setActionMessage("Could not copy troubleshooting hint. Copy details manually from this page.");
+    }
+  }, [troubleshootingHint]);
 
   return (
     <main className="app app-panel" aria-label="Nostr profile settings">
@@ -735,6 +835,53 @@ export function NostrProfilePage() {
               : "Unknown"}
           </p>
         </section>
+
+        {shouldShowRecoveryOptions ? (
+          <section className="profile-card" aria-label="Nostr recovery options">
+            <h2>Recovery Options</h2>
+            <p className="profile-helper">
+              Local browser data stays unchanged unless restore completes successfully.
+            </p>
+            <div className="profile-actions">
+              {shouldShowReconnectExtension ? (
+                <button
+                  type="button"
+                  disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
+                  onClick={() => { void handleReconnectExtension(); }}
+                >
+                  Reconnect Extension
+                </button>
+              ) : null}
+              {isBackupFailure || hasNoBackupOnRelays ? (
+                <button
+                  type="button"
+                  disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
+                  onClick={() => { void handleBackupGameData(); }}
+                >
+                  Retry Backup
+                </button>
+              ) : null}
+              {isRestoreFailure ? (
+                <button
+                  type="button"
+                  disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
+                  onClick={() => {
+                    setIsRestoreConfirmOpen(true);
+                  }}
+                >
+                  Retry Restore
+                </button>
+              ) : null}
+              <button
+                type="button"
+                disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
+                onClick={() => { void handleCopyTroubleshootingHint(); }}
+              >
+                Copy Troubleshooting Hint
+              </button>
+            </div>
+          </section>
+        ) : null}
 
         <section className="profile-card" aria-label="About Nostr in this app">
           <h2>About Nostr</h2>
