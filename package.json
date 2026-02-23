@@ -1,6 +1,6 @@
 {
   "name": "sudoku-pwa",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Sudoku Progressive Web App built with Next.js, React, and TypeScript.",
   "author": "Sebastian Lobbe",
   "license": "MIT",
