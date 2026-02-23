@@ -636,7 +636,7 @@ export async function importNsecAccount(nsec: string, passphrase?: string): Prom
   return createLocalIdentity(secretKey);
 }
 
-export async function createSessionLocalAccount(name?: string, passphrase?: string): Promise<NostrIdentity> {
+export async function createLocalAccount(name?: string, passphrase?: string): Promise<NostrIdentity> {
   const { identity, nsec } = createRandomLocalIdentity();
   const normalizedName = normalizeNostrAccountName(name);
   let nextRecord: PersistedLocalAccountRecord;

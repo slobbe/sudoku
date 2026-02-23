@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "bun:test";
 import {
   clearNostrSession,
-  createSessionLocalAccount,
+  createLocalAccount,
   getSessionLocalNsec,
   protectStoredLocalKeyWithPassphrase,
   restoreNostrAccountFromSession,
@@ -72,7 +72,7 @@ describe("nostr account storage", () => {
   });
 
   it("restores an unencrypted local key from local storage", async () => {
-    await createSessionLocalAccount("Alice");
+    await createLocalAccount("Alice");
 
     const currentWindow = globalWithWindow.window as TestWindow;
     const persistedLocalStorage = currentWindow.localStorage;
@@ -88,7 +88,7 @@ describe("nostr account storage", () => {
   });
 
   it("requires passphrase to restore encrypted local key", async () => {
-    await createSessionLocalAccount("Bob", "passphrase-123");
+    await createLocalAccount("Bob", "passphrase-123");
     const unlockedNsec = getSessionLocalNsec();
 
     const currentWindow = globalWithWindow.window as TestWindow;
@@ -115,7 +115,7 @@ describe("nostr account storage", () => {
   });
 
   it("can add passphrase protection later for an unencrypted local key", async () => {
-    await createSessionLocalAccount("Casey");
+    await createLocalAccount("Casey");
     const nsecBeforeProtection = getSessionLocalNsec();
 
     const protectionResult = await protectStoredLocalKeyWithPassphrase("later-passphrase");

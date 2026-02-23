@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   clearNostrSession,
   connectNip07Account,
-  createSessionLocalAccount,
+  createLocalAccount as createPersistedLocalAccount,
   getSessionAccountName,
   getSessionLocalNsec,
   importNsecAccount,
@@ -290,7 +290,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     passphrase?: string,
   ): Promise<NostrAccountActionResult> => {
     try {
-      const nextIdentity = await createSessionLocalAccount(accountName, passphrase);
+      const nextIdentity = await createPersistedLocalAccount(accountName, passphrase);
       const sessionName = getSessionAccountName();
 
       setIdentity(nextIdentity);

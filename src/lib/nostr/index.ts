@@ -11,7 +11,7 @@ export {
 export {
   clearNostrSession,
   connectNip07Account,
-  createSessionLocalAccount,
+  createLocalAccount,
   importNsecAccount,
   protectStoredLocalKeyWithPassphrase,
   restoreNostrAccountFromSession,
