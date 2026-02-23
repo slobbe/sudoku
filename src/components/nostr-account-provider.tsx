@@ -10,6 +10,7 @@ import {
   getSessionLocalNsec,
   importNsecAccount,
   restoreNostrAccountFromSession,
+  unlockStoredLocalAccount,
   updateSessionAccountName,
 } from "@/lib/nostr/account";
 import {
@@ -24,6 +25,7 @@ import {
 import {
   NostrAccountContext,
   type NostrAccountActionResult,
+  type NostrLocalKeyProtection,
   type NostrProfileSyncStatus,
 } from "@/lib/nostr/account-context";
 import { hasNip07Support, type NostrIdentity } from "@/lib/nostr/identity";
@@ -48,6 +50,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
   const [identity, setIdentity] = useState<NostrIdentity | null>(null);
   const [name, setName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLocalKeyLocked, setIsLocalKeyLocked] = useState(false);
+  const [localKeyProtection, setLocalKeyProtection] = useState<NostrLocalKeyProtection>("none");
   const [hasNip07, setHasNip07] = useState(false);
   const [profileSyncStatus, setProfileSyncStatus] = useState<NostrProfileSyncStatus>("idle");
   const [profileSyncMessage, setProfileSyncMessage] = useState<string | null>(null);
@@ -170,6 +174,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
         setIdentity(result.identity);
         setName(result.name);
         setError(result.error);
+        setIsLocalKeyLocked(result.requiresPassphrase);
+        setLocalKeyProtection(result.localKeyProtection);
         setProfileSyncStatus("idle");
         setProfileSyncMessage(null);
         setLastBackupAt(null);
@@ -194,6 +200,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       setIdentity(nextIdentity);
       setName(null);
       setError(null);
+      setIsLocalKeyLocked(false);
+      setLocalKeyProtection("none");
       setProfileSyncStatus("idle");
       setProfileSyncMessage(null);
       setLastBackupAt(null);
@@ -208,13 +216,15 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     }
   }, []);
 
-  const importNsec = useCallback(async (nsec: string): Promise<NostrAccountActionResult> => {
+  const importNsec = useCallback(async (nsec: string, passphrase?: string): Promise<NostrAccountActionResult> => {
     try {
-      const nextIdentity = importNsecAccount(nsec);
+      const nextIdentity = await importNsecAccount(nsec, passphrase);
       const importedName = getSessionAccountName();
       setIdentity(nextIdentity);
       setName(importedName);
       setError(null);
+      setIsLocalKeyLocked(false);
+      setLocalKeyProtection(passphrase && passphrase.trim().length > 0 ? "encrypted" : "unencrypted");
       setLastBackupAt(null);
       setLastRestoreAt(null);
 
@@ -222,31 +232,36 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       if (!syncResult.ok) {
         return {
           ok: true,
-          message: "Imported key, but could not refresh profile from relays.",
+          message: "Imported local key, but could not refresh profile from relays.",
         };
       }
 
       return {
         ok: true,
-        message: syncResult.message ?? "Imported session key.",
+        message: syncResult.message ?? "Imported local key.",
       };
     } catch (caughtError) {
       const message = caughtError instanceof Error ? caughtError.message : "Could not import nsec account.";
       setError(message);
       setProfileSyncStatus("failed");
-      setProfileSyncMessage("Could not import session key.");
+      setProfileSyncMessage("Could not import local key.");
       return { ok: false, error: message };
     }
   }, [syncProfileFromRelays]);
 
-  const createLocalAccount = useCallback(async (accountName?: string): Promise<NostrAccountActionResult> => {
+  const createLocalAccount = useCallback(async (
+    accountName?: string,
+    passphrase?: string,
+  ): Promise<NostrAccountActionResult> => {
     try {
-      const nextIdentity = createSessionLocalAccount(accountName);
+      const nextIdentity = await createSessionLocalAccount(accountName, passphrase);
       const sessionName = getSessionAccountName();
 
       setIdentity(nextIdentity);
       setName(sessionName);
       setError(null);
+      setIsLocalKeyLocked(false);
+      setLocalKeyProtection(passphrase && passphrase.trim().length > 0 ? "encrypted" : "unencrypted");
       setLastBackupAt(null);
       setLastRestoreAt(null);
 
@@ -261,10 +276,36 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       const message = caughtError instanceof Error ? caughtError.message : "Could not create local account.";
       setError(message);
       setProfileSyncStatus("failed");
-      setProfileSyncMessage("Could not create local session key.");
+      setProfileSyncMessage("Could not create local key.");
       return { ok: false, error: message };
     }
   }, [publishProfileName]);
+
+  const unlockLocalAccount = useCallback(async (passphrase: string): Promise<NostrAccountActionResult> => {
+    try {
+      const result = await unlockStoredLocalAccount(passphrase);
+      setIdentity(result.identity);
+      setName(result.name);
+      setError(null);
+      setIsLocalKeyLocked(false);
+      setLocalKeyProtection(result.localKeyProtection);
+      setProfileSyncStatus("idle");
+      setProfileSyncMessage("Local key unlocked.");
+      return {
+        ok: true,
+        message: "Local key unlocked.",
+      };
+    } catch (caughtError) {
+      const message = caughtError instanceof Error ? caughtError.message : "Could not unlock local key.";
+      setError(message);
+      setProfileSyncStatus("failed");
+      setProfileSyncMessage("Could not unlock local key.");
+      return {
+        ok: false,
+        error: message,
+      };
+    }
+  }, []);
 
   const updateLocalAccountName = useCallback(async (nextName: string): Promise<NostrAccountActionResult> => {
     if (!identity) {
@@ -406,6 +447,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
     setIdentity(null);
     setName(null);
     setError(null);
+    setIsLocalKeyLocked(false);
+    setLocalKeyProtection("none");
     setProfileSyncStatus("idle");
     setProfileSyncMessage(null);
     setLastBackupAt(null);
@@ -420,6 +463,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       identity,
       name,
       error,
+      isLocalKeyLocked,
+      localKeyProtection,
       profileSyncStatus,
       profileSyncMessage,
       lastBackupAt,
@@ -428,6 +473,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       connectNip07,
       importNsec,
       createLocalAccount,
+      unlockLocalAccount,
       updateLocalAccountName,
       refreshProfileFromRelays,
       backupGameDataToRelays,
@@ -440,6 +486,8 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       identity,
       name,
       error,
+      isLocalKeyLocked,
+      localKeyProtection,
       profileSyncStatus,
       profileSyncMessage,
       lastBackupAt,
@@ -448,6 +496,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       connectNip07,
       importNsec,
       createLocalAccount,
+      unlockLocalAccount,
       updateLocalAccountName,
       refreshProfileFromRelays,
       backupGameDataToRelays,

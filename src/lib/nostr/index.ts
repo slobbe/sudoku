@@ -13,13 +13,16 @@ export {
   connectNip07Account,
   createSessionLocalAccount,
   importNsecAccount,
+  readStoredLocalKeyProtection,
   restoreNostrAccountFromSession,
+  unlockStoredLocalAccount,
 } from "./account";
 
 export {
   NostrAccountContext,
   type NostrAccountActionResult,
   type NostrAccountContextValue,
+  type NostrLocalKeyProtection,
   type NostrProfileSyncStatus,
   type NostrAccountStatus,
 } from "./account-context";

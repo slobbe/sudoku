@@ -4,6 +4,7 @@ import type { NostrIdentity } from "./identity";
 export type NostrAccountStatus = "loading" | "ready";
 
 export type NostrProfileSyncStatus = "idle" | "syncing" | "synced" | "up_to_date" | "failed";
+export type NostrLocalKeyProtection = "none" | "encrypted" | "unencrypted";
 
 export type NostrAccountActionResult = {
   ok: boolean;
@@ -16,14 +17,17 @@ export type NostrAccountContextValue = {
   identity: NostrIdentity | null;
   name: string | null;
   error: string | null;
+  isLocalKeyLocked: boolean;
+  localKeyProtection: NostrLocalKeyProtection;
   profileSyncStatus: NostrProfileSyncStatus;
   profileSyncMessage: string | null;
   lastBackupAt: string | null;
   lastRestoreAt: string | null;
   hasNip07: boolean;
   connectNip07: () => Promise<NostrAccountActionResult>;
-  importNsec: (nsec: string) => Promise<NostrAccountActionResult>;
-  createLocalAccount: (name?: string) => Promise<NostrAccountActionResult>;
+  importNsec: (nsec: string, passphrase?: string) => Promise<NostrAccountActionResult>;
+  createLocalAccount: (name?: string, passphrase?: string) => Promise<NostrAccountActionResult>;
+  unlockLocalAccount: (passphrase: string) => Promise<NostrAccountActionResult>;
   updateLocalAccountName: (name: string) => Promise<NostrAccountActionResult>;
   refreshProfileFromRelays: () => Promise<NostrAccountActionResult>;
   backupGameDataToRelays: () => Promise<NostrAccountActionResult>;

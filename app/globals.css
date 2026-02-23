@@ -911,6 +911,10 @@ button:not([data-sudoku-cell="true"]):disabled {
     font-size: 0.84rem;
 }
 
+.profile-warning {
+    color: color-mix(in srgb, var(--error) 82%, var(--ink));
+}
+
 .profile-card input {
     border: 1px solid color-mix(in srgb, var(--line) 82%, transparent);
     border-radius: var(--radius-sm);

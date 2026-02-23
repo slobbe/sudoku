@@ -34,6 +34,8 @@ export function NostrProfilePage() {
     identity,
     name,
     error,
+    isLocalKeyLocked,
+    localKeyProtection,
     profileSyncStatus,
     profileSyncMessage,
     lastBackupAt,
@@ -42,6 +44,7 @@ export function NostrProfilePage() {
     connectNip07,
     importNsec,
     createLocalAccount,
+    unlockLocalAccount,
     updateLocalAccountName,
     refreshProfileFromRelays,
     backupGameDataToRelays,
@@ -51,10 +54,14 @@ export function NostrProfilePage() {
   } = useNostrAccount();
 
   const [nsecInput, setNsecInput] = useState("");
+  const [importPassphrase, setImportPassphrase] = useState("");
   const [newAccountName, setNewAccountName] = useState("");
+  const [newAccountPassphrase, setNewAccountPassphrase] = useState("");
+  const [unlockPassphrase, setUnlockPassphrase] = useState("");
   const [editableAccountName, setEditableAccountName] = useState("");
   const [actionMessage, setActionMessage] = useState<string | null>(null);
   const [showSecretKey, setShowSecretKey] = useState(false);
+  const [activeAuthAction, setActiveAuthAction] = useState<"none" | "connect" | "import" | "create" | "unlock">("none");
   const [isBackupActionRunning, setIsBackupActionRunning] = useState(false);
 
   useEffect(() => {
@@ -97,6 +104,17 @@ export function NostrProfilePage() {
 
     return profileSyncMessage ?? "Profile sync failed.";
   }, [profileSyncMessage, profileSyncStatus]);
+  const localKeyProtectionText = useMemo(() => {
+    if (localKeyProtection === "encrypted") {
+      return "Encrypted in local storage";
+    }
+
+    if (localKeyProtection === "unencrypted") {
+      return "Unencrypted in local storage";
+    }
+
+    return "Managed by extension";
+  }, [localKeyProtection]);
 
   useEffect(() => {
     setShowSecretKey(false);
@@ -112,36 +130,69 @@ export function NostrProfilePage() {
   }, [nextPath, router]);
 
   const handleNip07Connect = useCallback(async () => {
-    const result = await connectNip07();
-    if (!result.ok) {
-      setActionMessage(result.error ?? "Could not connect NIP-07 account.");
-      return;
-    }
+    setActiveAuthAction("connect");
+    try {
+      const result = await connectNip07();
+      if (!result.ok) {
+        setActionMessage(result.error ?? "Could not connect NIP-07 account.");
+        return;
+      }
 
-    completeAuth("Connected with NIP-07 extension.");
+      completeAuth("Connected with NIP-07 extension.");
+    } finally {
+      setActiveAuthAction("none");
+    }
   }, [completeAuth, connectNip07]);
 
   const handleImportNsec = useCallback(async () => {
-    const result = await importNsec(nsecInput);
-    if (!result.ok) {
-      setActionMessage(result.error ?? "Could not import nsec.");
-      return;
-    }
+    setActiveAuthAction("import");
+    try {
+      const result = await importNsec(nsecInput, importPassphrase);
+      if (!result.ok) {
+        setActionMessage(result.error ?? "Could not import nsec.");
+        return;
+      }
 
-    setNsecInput("");
-    completeAuth("Imported session key.");
-  }, [completeAuth, importNsec, nsecInput]);
+      setNsecInput("");
+      setImportPassphrase("");
+      completeAuth("Imported local key.");
+    } finally {
+      setActiveAuthAction("none");
+    }
+  }, [completeAuth, importNsec, importPassphrase, nsecInput]);
 
   const handleCreateAccount = useCallback(async () => {
-    const result = await createLocalAccount(newAccountName);
-    if (!result.ok) {
-      setActionMessage(result.error ?? "Could not create local session account.");
-      return;
-    }
+    setActiveAuthAction("create");
+    try {
+      const result = await createLocalAccount(newAccountName, newAccountPassphrase);
+      if (!result.ok) {
+        setActionMessage(result.error ?? "Could not create local account.");
+        return;
+      }
 
-    setNewAccountName("");
-    completeAuth("Created local session key.");
-  }, [completeAuth, createLocalAccount, newAccountName]);
+      setNewAccountName("");
+      setNewAccountPassphrase("");
+      completeAuth("Created local key.");
+    } finally {
+      setActiveAuthAction("none");
+    }
+  }, [completeAuth, createLocalAccount, newAccountName, newAccountPassphrase]);
+
+  const handleUnlockLocalAccount = useCallback(async () => {
+    setActiveAuthAction("unlock");
+    try {
+      const result = await unlockLocalAccount(unlockPassphrase);
+      if (!result.ok) {
+        setActionMessage(result.error ?? "Could not unlock local key.");
+        return;
+      }
+
+      setUnlockPassphrase("");
+      setActionMessage(result.message ?? "Local key unlocked.");
+    } finally {
+      setActiveAuthAction("none");
+    }
+  }, [unlockLocalAccount, unlockPassphrase]);
 
   const handleRefreshProfile = useCallback(async () => {
     const result = await refreshProfileFromRelays();
@@ -244,7 +295,7 @@ export function NostrProfilePage() {
 
         <section className="profile-card" aria-label="Nostr profile basics">
           <h2>Nostr Profile</h2>
-          <p className="profile-helper">Use an extension, import an nsec, or create a local session key.</p>
+          <p className="profile-helper">Use an extension, import an nsec, or create a local key.</p>
         </section>
 
         {status === "loading" ? (
@@ -257,8 +308,14 @@ export function NostrProfilePage() {
             <div className="profile-meta">
               <p className="profile-meta-row">
                 <span className="profile-meta-label">Source</span>
-                <strong>{identity.source === "nip07" ? "NIP-07 extension" : "Session local key"}</strong>
+                <strong>{identity.source === "nip07" ? "NIP-07 extension" : "Local key"}</strong>
               </p>
+              {identity.source === "local" ? (
+                <p className="profile-meta-row">
+                  <span className="profile-meta-label">Stored key</span>
+                  <strong>{localKeyProtectionText}</strong>
+                </p>
+              ) : null}
               <p className="profile-meta-row">
                 <span className="profile-meta-label">Name</span>
                 <strong>{name ?? "Not set"}</strong>
@@ -286,14 +343,14 @@ export function NostrProfilePage() {
             <div className="profile-actions">
               <button
                 type="button"
-                disabled={profileSyncStatus === "syncing"}
+                disabled={profileSyncStatus === "syncing" || activeAuthAction !== "none"}
                 onClick={() => { void handleSaveAccountName(); }}
               >
                 {profileSyncStatus === "syncing" ? "Saving..." : "Save Name"}
               </button>
               <button
                 type="button"
-                disabled={profileSyncStatus === "syncing"}
+                disabled={profileSyncStatus === "syncing" || activeAuthAction !== "none"}
                 onClick={() => {
                   setEditableAccountName(name ?? "");
                 }}
@@ -305,7 +362,7 @@ export function NostrProfilePage() {
             <div className="profile-actions">
               <button
                 type="button"
-                disabled={profileSyncStatus === "syncing"}
+                disabled={profileSyncStatus === "syncing" || activeAuthAction !== "none"}
                 onClick={() => { void handleRefreshProfile(); }}
               >
                 {profileSyncStatus === "syncing" ? "Refreshing..." : "Refresh from Relays"}
@@ -321,6 +378,15 @@ export function NostrProfilePage() {
 
             {identity.source === "local" ? (
               <>
+                {localKeyProtection === "encrypted" ? (
+                  <p className="profile-secret-warning">
+                    Your local key is encrypted at rest. Keep your passphrase safe.
+                  </p>
+                ) : (
+                  <p className="profile-secret-warning profile-warning">
+                    Your local key is stored unencrypted in local storage on this device.
+                  </p>
+                )}
                 <p className="profile-secret-warning">
                   Back up your nsec now. Anyone with this key can control your profile.
                 </p>
@@ -330,16 +396,17 @@ export function NostrProfilePage() {
                 <div className="profile-actions">
                   <button
                     type="button"
+                    disabled={activeAuthAction !== "none"}
                     onClick={() => {
                       setShowSecretKey((current) => !current);
                     }}
                   >
                     {showSecretKey ? "Hide Secret Key" : "Reveal Secret Key"}
                   </button>
-                  <button type="button" onClick={() => { void handleCopyNsec(); }}>
+                  <button type="button" disabled={activeAuthAction !== "none"} onClick={() => { void handleCopyNsec(); }}>
                     Copy Secret Key
                   </button>
-                  <button type="button" onClick={handleDownloadNsec}>
+                  <button type="button" disabled={activeAuthAction !== "none"} onClick={handleDownloadNsec}>
                     Download Secret Key
                   </button>
                 </div>
@@ -350,17 +417,61 @@ export function NostrProfilePage() {
           </section>
         ) : (
           <>
+            {isLocalKeyLocked ? (
+              <section className="profile-card" aria-label="Unlock encrypted local key">
+                <h2>Unlock Local Key</h2>
+                <p className="profile-helper">
+                  Enter your passphrase to unlock the encrypted local key stored on this device.
+                </p>
+                <label htmlFor="profile-unlock-passphrase-input">Passphrase</label>
+                <input
+                  id="profile-unlock-passphrase-input"
+                  type="password"
+                  value={unlockPassphrase}
+                  onChange={(event) => {
+                    setUnlockPassphrase(event.target.value);
+                  }}
+                  placeholder="Passphrase"
+                  autoComplete="current-password"
+                  spellCheck={false}
+                />
+                <div className="profile-actions">
+                  <button
+                    type="button"
+                    disabled={status === "loading" || activeAuthAction !== "none" || unlockPassphrase.trim().length === 0}
+                    onClick={() => { void handleUnlockLocalAccount(); }}
+                  >
+                    {activeAuthAction === "unlock" ? "Unlocking..." : "Unlock Key"}
+                  </button>
+                  <button type="button" disabled={activeAuthAction !== "none"} onClick={logout}>
+                    Clear Saved Key
+                  </button>
+                </div>
+                <p className="profile-helper">
+                  Forgot your passphrase? Clear the saved key and import or create a new one.
+                </p>
+              </section>
+            ) : null}
+
             <section className="profile-card" aria-label="Connect with NIP-07">
               <h2>Connect with Extension</h2>
               <p className="profile-helper">Use your browser Nostr extension account.</p>
-              <button type="button" disabled={!hasNip07 || status === "loading"} onClick={() => { void handleNip07Connect(); }}>
-                {hasNip07 ? "Connect with Extension" : "Extension Not Detected"}
+              <button
+                type="button"
+                disabled={!hasNip07 || status === "loading" || activeAuthAction !== "none"}
+                onClick={() => { void handleNip07Connect(); }}
+              >
+                {activeAuthAction === "connect"
+                  ? "Connecting..."
+                  : hasNip07
+                    ? "Connect with Extension"
+                    : "Extension Not Detected"}
               </button>
             </section>
 
             <section className="profile-card" aria-label="Import nsec">
               <h2>Import nsec</h2>
-              <p className="profile-helper">Import a private key for this browser session only.</p>
+              <p className="profile-helper">Import a private key and save it in local storage on this device.</p>
               <label htmlFor="profile-nsec-input">Nsec key</label>
               <input
                 id="profile-nsec-input"
@@ -373,14 +484,33 @@ export function NostrProfilePage() {
                 autoComplete="off"
                 spellCheck={false}
               />
-              <button type="button" disabled={status === "loading" || nsecInput.trim().length === 0} onClick={() => { void handleImportNsec(); }}>
-                Import Session Key
+              <label htmlFor="profile-import-passphrase-input">Optional passphrase</label>
+              <input
+                id="profile-import-passphrase-input"
+                type="password"
+                value={importPassphrase}
+                onChange={(event) => {
+                  setImportPassphrase(event.target.value);
+                }}
+                placeholder="Passphrase (optional)"
+                autoComplete="new-password"
+                spellCheck={false}
+              />
+              <p className="profile-helper profile-warning">
+                Leave passphrase empty to store your key unencrypted in local storage.
+              </p>
+              <button
+                type="button"
+                disabled={status === "loading" || activeAuthAction !== "none" || nsecInput.trim().length === 0}
+                onClick={() => { void handleImportNsec(); }}
+              >
+                {activeAuthAction === "import" ? "Importing..." : "Import Local Key"}
               </button>
             </section>
 
-            <section className="profile-card" aria-label="Generate local session key">
+            <section className="profile-card" aria-label="Generate local key">
               <h2>Create Local Key</h2>
-              <p className="profile-helper">Create a new key pair stored in session only.</p>
+              <p className="profile-helper">Create a new key pair and store it in local storage on this device.</p>
               <label htmlFor="profile-name-input">Name</label>
               <input
                 id="profile-name-input"
@@ -394,8 +524,27 @@ export function NostrProfilePage() {
                 spellCheck={false}
                 maxLength={64}
               />
-              <button type="button" disabled={status === "loading"} onClick={() => { void handleCreateAccount(); }}>
-                Generate Session Key
+              <label htmlFor="profile-create-passphrase-input">Optional passphrase</label>
+              <input
+                id="profile-create-passphrase-input"
+                type="password"
+                value={newAccountPassphrase}
+                onChange={(event) => {
+                  setNewAccountPassphrase(event.target.value);
+                }}
+                placeholder="Passphrase (optional)"
+                autoComplete="new-password"
+                spellCheck={false}
+              />
+              <p className="profile-helper profile-warning">
+                Leave passphrase empty to store your key unencrypted in local storage.
+              </p>
+              <button
+                type="button"
+                disabled={status === "loading" || activeAuthAction !== "none"}
+                onClick={() => { void handleCreateAccount(); }}
+              >
+                {activeAuthAction === "create" ? "Creating..." : "Generate Local Key"}
               </button>
             </section>
           </>
@@ -431,7 +580,7 @@ export function NostrProfilePage() {
           <ul className="profile-info-list">
             <li><strong>npub</strong> is your public profile key and can be shared.</li>
             <li><strong>nsec</strong> is your private key and must stay secret.</li>
-            <li>This app is local/session-first and only contacts relays on explicit profile actions.</li>
+            <li>This app is local-first and only contacts relays on explicit profile actions.</li>
             <li>Relay actions include importing an nsec, saving a name, backup, restore, and manual refresh.</li>
           </ul>
         </section>
