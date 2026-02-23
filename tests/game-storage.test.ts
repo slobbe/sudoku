@@ -9,6 +9,7 @@ import {
   SAVED_GAME_STORAGE_VERSION_KEY,
   loadSavedGamePayloadFromStorage,
   mergeSavedGamePayloadParts,
+  readSavedGamePayloadV2FromStorage,
   saveSavedGamePayloadToStorage,
   splitSavedGamePayload,
 } from "../src/lib/storage/game-storage";
@@ -54,10 +55,18 @@ const samplePayload: Record<string, unknown> = {
   livesLeft: 3,
   annotationMode: false,
   notes: [[0]],
+  currentGamePoints: 14,
+  scoredCells: ["0-0", "1-2"],
   showMistakes: true,
   fillModeEntry: "double-tap",
   theme: "mist",
-  stats: { gamesStarted: 1 },
+  stats: {
+    gamesStarted: 1,
+    gamesWon: 1,
+    totalPoints: 84,
+    pointsByDifficulty: { easy: 4, medium: 18, hard: 22, expert: 40 },
+    daily: { gamesStarted: 0, gamesWon: 0, dailyPoints: 0 },
+  },
   won: false,
   lost: false,
   currentGameStarted: true,
@@ -88,12 +97,21 @@ describe("game storage split payload", () => {
       fillModeEntry: "double-tap",
       theme: "mist",
     });
+    expect(parts.progress).toEqual(expect.objectContaining({
+      currentGamePoints: 14,
+      scoredCells: ["0-0", "1-2"],
+    }));
 
     const merged = mergeSavedGamePayloadParts(parts);
     expect(merged.extraField).toBeUndefined();
     expect(merged.difficulty).toBe("medium");
     expect(merged.hintsLeft).toBe(2);
-    expect(merged.stats).toEqual({ gamesStarted: 1 });
+    expect(merged.currentGamePoints).toBe(14);
+    expect(merged.scoredCells).toEqual(["0-0", "1-2"]);
+    expect(merged.stats).toEqual(expect.objectContaining({
+      gamesStarted: 1,
+      totalPoints: 84,
+    }));
     expect(merged.standardSession).toBeNull();
   });
 });
@@ -145,6 +163,26 @@ describe("game storage migration", () => {
     }));
     expect(storage.getItem(LEGACY_SAVED_GAME_KEY)).toBeNull();
   });
+
+  it("keeps compatibility with legacy payloads that do not include points fields", () => {
+    const storage = new MemoryStorage();
+    const legacyWithoutPoints = {
+      ...samplePayload,
+      currentGamePoints: undefined,
+      scoredCells: undefined,
+      stats: { gamesStarted: 1 },
+    };
+    storage.setItem(LEGACY_SAVED_GAME_KEY, JSON.stringify(legacyWithoutPoints));
+
+    const loaded = loadSavedGamePayloadFromStorage(storage);
+
+    expect(loaded).toEqual(expect.objectContaining({
+      difficulty: "medium",
+      stats: { gamesStarted: 1 },
+    }));
+    expect(loaded?.currentGamePoints).toBeUndefined();
+    expect(loaded?.scoredCells).toBeUndefined();
+  });
 });
 
 describe("game storage save", () => {
@@ -158,5 +196,22 @@ describe("game storage save", () => {
     expect(storage.getItem(LEGACY_SAVED_GAME_KEY)).toBeNull();
     expect(storage.getItem(SAVED_GAME_STORAGE_VERSION_KEY)).toBe("2");
     expect(storage.getItem(SAVED_GAME_CONFIG_KEY)).not.toBeNull();
+  });
+
+  it("preserves points fields in v2 roundtrip", () => {
+    const storage = new MemoryStorage();
+
+    const saved = saveSavedGamePayloadToStorage(storage, samplePayload);
+    const loaded = readSavedGamePayloadV2FromStorage(storage);
+
+    expect(saved).toBe(true);
+    expect(loaded).toEqual(expect.objectContaining({
+      currentGamePoints: 14,
+      scoredCells: ["0-0", "1-2"],
+      stats: expect.objectContaining({
+        totalPoints: 84,
+        pointsByDifficulty: { easy: 4, medium: 18, hard: 22, expert: 40 },
+      }),
+    }));
   });
 });

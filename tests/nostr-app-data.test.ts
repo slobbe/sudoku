@@ -17,7 +17,14 @@ describe("nostr app data helpers", () => {
     const envelope = createNostrAppDataEnvelope({
       difficulty: "medium",
       hintsLeft: 2,
-      stats: { gamesStarted: 1 },
+      currentGamePoints: 12,
+      scoredCells: ["0-0", "0-1"],
+      stats: {
+        gamesStarted: 1,
+        totalPoints: 42,
+        pointsByDifficulty: { easy: 0, medium: 42, hard: 0, expert: 0 },
+        daily: { dailyPoints: 7 },
+      },
     });
 
     const parsed = parseNostrAppDataEnvelope(JSON.stringify(envelope));
@@ -27,7 +34,14 @@ describe("nostr app data helpers", () => {
     expect(parsed?.payload).toEqual({
       difficulty: "medium",
       hintsLeft: 2,
-      stats: { gamesStarted: 1 },
+      currentGamePoints: 12,
+      scoredCells: ["0-0", "0-1"],
+      stats: {
+        gamesStarted: 1,
+        totalPoints: 42,
+        pointsByDifficulty: { easy: 0, medium: 42, hard: 0, expert: 0 },
+        daily: { dailyPoints: 7 },
+      },
     });
     expect(typeof parsed?.updatedAt).toBe("string");
   });
@@ -42,15 +56,30 @@ describe("nostr app data helpers", () => {
   it("detects changed payloads with stable object ordering", () => {
     const current = {
       config: { difficulty: "medium", showMistakes: true },
-      stats: { started: 1, won: 1 },
+      currentGamePoints: 6,
+      stats: {
+        started: 1,
+        won: 1,
+        pointsByDifficulty: { medium: 6, easy: 0, hard: 0, expert: 0 },
+      },
     };
     const sameDifferentOrder = {
-      stats: { won: 1, started: 1 },
       config: { showMistakes: true, difficulty: "medium" },
+      stats: {
+        pointsByDifficulty: { hard: 0, expert: 0, easy: 0, medium: 6 },
+        won: 1,
+        started: 1,
+      },
+      currentGamePoints: 6,
     };
     const changed = {
       config: { difficulty: "hard", showMistakes: true },
-      stats: { started: 1, won: 1 },
+      currentGamePoints: 8,
+      stats: {
+        started: 1,
+        won: 1,
+        pointsByDifficulty: { medium: 8, easy: 0, hard: 0, expert: 0 },
+      },
     };
 
     expect(isNostrAppDataPayloadChanged(current, sameDifferentOrder)).toBe(false);

@@ -68,6 +68,14 @@ export function resolveAwardedPuzzlePoints(input: { won: boolean; currentGamePoi
   return clampWonPuzzlePoints(input.currentGamePoints);
 }
 
+export function shouldAwardWinPointsOnTransition(input: {
+  solved: boolean;
+  currentWon: boolean;
+  winRecorded: boolean;
+}): boolean {
+  return input.solved && !input.currentWon && !input.winRecorded;
+}
+
 export function sanitizeBoardForScoring(board: Board, solution: Board): Board {
   return board.map((row, rowIndex) =>
     row.map((value, colIndex) => {

@@ -8,6 +8,7 @@ import {
   resolveAwardedPuzzlePoints,
   sanitizeBoardForScoring,
   scoreEntryAction,
+  shouldAwardWinPointsOnTransition,
 } from "../src/lib/scoring/points";
 import type { Board } from "@slobbe/sudoku-engine";
 
@@ -116,5 +117,39 @@ describe("points candidate counting", () => {
     });
 
     expect(candidateCount).toBe(3);
+  });
+});
+
+describe("points win-award regressions", () => {
+  it("awards points once on first solved transition", () => {
+    expect(shouldAwardWinPointsOnTransition({
+      solved: true,
+      currentWon: false,
+      winRecorded: false,
+    })).toBe(true);
+  });
+
+  it("does not award again after reload when win is already recorded", () => {
+    expect(shouldAwardWinPointsOnTransition({
+      solved: true,
+      currentWon: true,
+      winRecorded: true,
+    })).toBe(false);
+  });
+
+  it("does not award again when redo revisits solved board", () => {
+    expect(shouldAwardWinPointsOnTransition({
+      solved: true,
+      currentWon: false,
+      winRecorded: true,
+    })).toBe(false);
+  });
+
+  it("does not award while puzzle is unsolved", () => {
+    expect(shouldAwardWinPointsOnTransition({
+      solved: false,
+      currentWon: false,
+      winRecorded: false,
+    })).toBe(false);
   });
 });

@@ -68,6 +68,7 @@ import {
   candidateCountFromCurrentState,
   resolveAwardedPuzzlePoints,
   scoreEntryAction,
+  shouldAwardWinPointsOnTransition,
 } from "@/lib/scoring/points";
 import {
   loadSavedGamePayloadFromBrowser,
@@ -2050,7 +2051,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
 
       const solved = boardComplete(next.board);
       next.won = solved;
-      if (solved && !current.won && !next.winRecorded) {
+      if (shouldAwardWinPointsOnTransition({ solved, currentWon: current.won, winRecorded: next.winRecorded })) {
         const awardedPoints = resolveAwardedPuzzlePoints({
           won: solved,
           currentGamePoints: next.currentGamePoints,
@@ -2270,7 +2271,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
 
     const solved = boardComplete(next.board);
     next.won = solved;
-    if (solved && !current.won && !next.winRecorded) {
+    if (shouldAwardWinPointsOnTransition({ solved, currentWon: current.won, winRecorded: next.winRecorded })) {
       const awardedPoints = resolveAwardedPuzzlePoints({
         won: solved,
         currentGamePoints: next.currentGamePoints,
@@ -2756,6 +2757,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   };
 
   const statsOverall = formatLine(overallWon, overallStarted);
+  const statsTotalPoints = state.stats.totalPoints;
   const statsEasy = formatLine(overallByDifficulty.easy.won, overallByDifficulty.easy.started);
   const statsMedium = formatLine(overallByDifficulty.medium.won, overallByDifficulty.medium.started);
   const statsHard = formatLine(overallByDifficulty.hard.won, overallByDifficulty.hard.started);
@@ -2816,6 +2818,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     key: Difficulty;
     label: string;
     line: string;
+    points: number;
     rate: number;
     rateText: string;
   }> = [
@@ -2823,6 +2826,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       key: "easy",
       label: "Easy",
       line: statsEasy,
+      points: state.stats.pointsByDifficulty.easy,
       rate: calculateRatePercent(overallByDifficulty.easy.won, overallByDifficulty.easy.started),
       rateText: formatRate(overallByDifficulty.easy.won, overallByDifficulty.easy.started),
     },
@@ -2830,6 +2834,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       key: "medium",
       label: "Medium",
       line: statsMedium,
+      points: state.stats.pointsByDifficulty.medium,
       rate: calculateRatePercent(overallByDifficulty.medium.won, overallByDifficulty.medium.started),
       rateText: formatRate(overallByDifficulty.medium.won, overallByDifficulty.medium.started),
     },
@@ -2837,6 +2842,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       key: "hard",
       label: "Hard",
       line: statsHard,
+      points: state.stats.pointsByDifficulty.hard,
       rate: calculateRatePercent(overallByDifficulty.hard.won, overallByDifficulty.hard.started),
       rateText: formatRate(overallByDifficulty.hard.won, overallByDifficulty.hard.started),
     },
@@ -2844,10 +2850,15 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       key: "expert",
       label: "Expert",
       line: statsExpert,
+      points: state.stats.pointsByDifficulty.expert,
       rate: calculateRatePercent(overallByDifficulty.expert.won, overallByDifficulty.expert.started),
       rateText: formatRate(overallByDifficulty.expert.won, overallByDifficulty.expert.started),
     },
   ];
+  const awardedWinPoints = resolveAwardedPuzzlePoints({
+    won: state.won,
+    currentGamePoints: state.currentGamePoints,
+  });
 
   const livesDisplay = useMemo(() => {
     const symbols = [] as Array<{ key: string; isAlive: boolean; className: string }>;
@@ -3248,6 +3259,11 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
                           <span id="stats-overall">{statsOverall}</span>
                         </span>
                         <span>
+                          Total Points:
+                          {" "}
+                          <span id="stats-total-points">{statsTotalPoints}</span>
+                        </span>
+                        <span>
                           <span className="stats-flame" aria-hidden="true">
                             🔥
                           </span>
@@ -3294,6 +3310,8 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
                         </div>
                         <p className="stats-bar-line">
                           <span id={`stats-${entry.key}`}>{entry.line}</span>
+                          {" "}
+                          <span id={`stats-points-${entry.key}`}>{`${entry.points} pts`}</span>
                         </p>
                       </div>
                     ))}
@@ -3316,6 +3334,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
                     <span>{`Played: ${state.stats.daily.gamesStarted}`}</span>
                     <span>{`Won: ${state.stats.daily.gamesWon}`}</span>
                     <span>{`Lost: ${Math.max(0, state.stats.daily.gamesStarted - state.stats.daily.gamesWon)}`}</span>
+                    <span>{`Points: ${state.stats.daily.dailyPoints}`}</span>
                   </div>
                   <div className="daily-summary-line">
                     <span>
@@ -3422,6 +3441,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       >
         <div className="win-card">
           <h2>Great Solve</h2>
+          <p>{`+${awardedWinPoints} points`}</p>
           <p>What next?</p>
           <div className="win-actions">
             <button id="win-new-game" type="button" onClick={onWinNewGame}>

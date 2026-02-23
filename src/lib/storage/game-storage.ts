@@ -25,6 +25,8 @@ const PROGRESS_FIELDS = [
   "livesLeft",
   "annotationMode",
   "notes",
+  "currentGamePoints",
+  "scoredCells",
   "won",
   "lost",
   "currentGameStarted",
