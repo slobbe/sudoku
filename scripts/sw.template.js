@@ -1,4 +1,4 @@
-const APP_VERSION = "0.6.2";
+const APP_VERSION = "__APP_VERSION__";
 const CACHE_NAME = `sudoku-pwa-${APP_VERSION}`;
 const FALLBACK_URL = "./";
 const PRECACHE_URLS = [

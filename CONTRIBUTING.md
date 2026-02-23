@@ -70,12 +70,14 @@ The workflow computes `NEXT_PUBLIC_BASE_PATH` automatically for user-site vs pro
 
 ### App Release Checklist
 
-Before shipping an app update, keep these values aligned:
+Before shipping an app update:
 
-- `package.json` `version`
-- `bun.lock`
-- `src/components/sudoku-app.tsx` `APP_VERSION`
-- `public/sw.js` `APP_VERSION`
+1. Bump `package.json` `version`.
+2. Run `bun run sync:version`.
+3. Verify generated version artifacts were updated:
+   - `src/lib/app-version.ts`
+   - `public/sw.js`
+4. Update `bun.lock` if dependency changes require it.
 
 Then create and push an app release tag to trigger the Pages deploy workflow.
 
