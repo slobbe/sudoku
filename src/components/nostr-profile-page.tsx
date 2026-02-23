@@ -58,8 +58,19 @@ export function NostrProfilePage() {
   const [isBackupActionRunning, setIsBackupActionRunning] = useState(false);
 
   useEffect(() => {
-    const savedTheme = readThemeFromSavedGame();
-    applyThemeToDocument(savedTheme);
+    let isCancelled = false;
+
+    void readThemeFromSavedGame().then((savedTheme) => {
+      if (isCancelled) {
+        return;
+      }
+
+      applyThemeToDocument(savedTheme);
+    });
+
+    return () => {
+      isCancelled = true;
+    };
   }, []);
 
   const nextPath = useMemo(() => sanitizeNextPath(searchParams.get("next")), [searchParams]);

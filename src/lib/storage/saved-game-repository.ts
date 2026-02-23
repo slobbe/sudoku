@@ -11,10 +11,13 @@ import {
 
 export type SavedGameStorageRepository = {
   backend: StorageBackend;
+  resolvedBackend: StorageBackend;
+  requestedBackend: StorageBackend | "auto";
   loadSavedGamePayloadFromBrowser(): Promise<SavedGamePayload | null>;
   saveSavedGamePayloadToBrowser(payload: SavedGamePayload): Promise<boolean>;
   readSavedGameConfigPayloadFromBrowser(): Promise<SavedGamePayload | null>;
   readLegacySavedGamePayloadFromBrowser(): Promise<SavedGamePayload | null>;
+  readDiagnostics(): SavedGameStorageDiagnostics;
 };
 
 export type SavedGameStorageRepositoryOptions = {
@@ -22,6 +25,18 @@ export type SavedGameStorageRepositoryOptions = {
   localAdapter?: SavedGameStorageAdapter;
   indexedDbAdapter?: SavedGameStorageAdapter | null;
   supportsIndexedDb?: boolean;
+};
+
+export type SavedGameStorageMigrationStatus = "not_started" | "migrated" | "fallback";
+export type SavedGameStorageLastSaveResult = "idle" | "saved" | "fallback_saved" | "failed";
+
+export type SavedGameStorageDiagnostics = {
+  requestedBackend: StorageBackend | "auto";
+  resolvedBackend: StorageBackend;
+  activeBackend: StorageBackend;
+  migrationStatus: SavedGameStorageMigrationStatus;
+  lastSaveResult: SavedGameStorageLastSaveResult;
+  lastSaveBackend: StorageBackend | null;
 };
 
 const defaultLocalStorageAdapter = createLocalStorageSavedGameAdapter();
@@ -39,10 +54,35 @@ function supportsIndexedDbByDefault(): boolean {
   return typeof indexedDB !== "undefined";
 }
 
+function resolveRequestedBackend(backend: unknown): StorageBackend | "auto" {
+  if (backend === undefined || backend === null || backend === "") {
+    return "auto";
+  }
+
+  return normalizeSavedGameStorageBackend(backend);
+}
+
+function resolveInitialMigrationStatus(
+  requestedBackend: StorageBackend | "auto",
+  activeBackend: StorageBackend,
+): SavedGameStorageMigrationStatus {
+  if (activeBackend === SAVED_GAME_STORAGE_BACKEND_INDEXEDDB) {
+    return "not_started";
+  }
+
+  return requestedBackend === SAVED_GAME_STORAGE_BACKEND_LOCAL ? "not_started" : "fallback";
+}
+
 export function resolveSavedGameStorageBackend(
   backend: unknown,
   supportsIndexedDb: boolean,
 ): StorageBackend {
+  if (backend === undefined || backend === null || backend === "") {
+    return supportsIndexedDb
+      ? SAVED_GAME_STORAGE_BACKEND_INDEXEDDB
+      : SAVED_GAME_STORAGE_BACKEND_LOCAL;
+  }
+
   const normalized = normalizeSavedGameStorageBackend(backend);
   if (normalized === SAVED_GAME_STORAGE_BACKEND_INDEXEDDB && supportsIndexedDb) {
     return SAVED_GAME_STORAGE_BACKEND_INDEXEDDB;
@@ -59,8 +99,9 @@ export function createSavedGameStorageRepository(
     ? defaultIndexedDbAdapter
     : options.indexedDbAdapter;
   const supportsIndexedDb = options.supportsIndexedDb ?? supportsIndexedDbByDefault();
-  const requestedBackend = options.backend ?? readConfiguredBackendFromEnv();
-  const resolvedBackend = resolveSavedGameStorageBackend(requestedBackend, supportsIndexedDb);
+  const requestedBackendValue = options.backend ?? readConfiguredBackendFromEnv();
+  const requestedBackend = resolveRequestedBackend(requestedBackendValue);
+  const resolvedBackend = resolveSavedGameStorageBackend(requestedBackendValue, supportsIndexedDb);
 
   const useIndexedDb = resolvedBackend === SAVED_GAME_STORAGE_BACKEND_INDEXEDDB && Boolean(indexedDbAdapter);
 
@@ -74,47 +115,108 @@ export function createSavedGameStorageRepository(
 
   const secondaryAdapter = useIndexedDb ? localAdapter : null;
 
+  let migrationStatus = resolveInitialMigrationStatus(requestedBackend, backend);
+  let lastSaveResult: SavedGameStorageLastSaveResult = "idle";
+  let lastSaveBackend: StorageBackend | null = null;
+
+  function readDiagnostics(): SavedGameStorageDiagnostics {
+    return {
+      requestedBackend,
+      resolvedBackend,
+      activeBackend: backend,
+      migrationStatus,
+      lastSaveResult,
+      lastSaveBackend,
+    };
+  }
+
   async function loadPayloadWithFallback(): Promise<SavedGamePayload | null> {
+    if (!secondaryAdapter) {
+      try {
+        return await primaryAdapter.loadPayload();
+      } catch {
+        return null;
+      }
+    }
+
+    let primaryLoadFailed = false;
+
     try {
       const primaryPayload = await primaryAdapter.loadPayload();
       if (primaryPayload) {
+        migrationStatus = "migrated";
         return primaryPayload;
       }
     } catch {
-      // Continue with fallback adapter.
+      primaryLoadFailed = true;
+      migrationStatus = "fallback";
     }
 
-    if (!secondaryAdapter) {
+    let fallbackPayload: SavedGamePayload | null = null;
+    try {
+      fallbackPayload = await secondaryAdapter.loadPayload();
+    } catch {
+      migrationStatus = "fallback";
       return null;
     }
 
-    const fallbackPayload = await secondaryAdapter.loadPayload();
     if (!fallbackPayload) {
+      if (migrationStatus !== "fallback") {
+        migrationStatus = "not_started";
+      }
       return null;
     }
 
     try {
-      await primaryAdapter.savePayload(fallbackPayload);
+      const backfillSaved = await primaryAdapter.savePayload(fallbackPayload);
+      migrationStatus = backfillSaved && !primaryLoadFailed ? "migrated" : "fallback";
     } catch {
-      // Ignore backfill failures and continue returning fallback payload.
+      migrationStatus = "fallback";
     }
 
     return fallbackPayload;
   }
 
-  async function savePayloadWithDualWrite(payload: SavedGamePayload): Promise<boolean> {
-    if (!secondaryAdapter) {
-      return primaryAdapter.savePayload(payload);
+  async function savePayloadWithPrimaryWrite(payload: SavedGamePayload): Promise<boolean> {
+    try {
+      const primarySaved = await primaryAdapter.savePayload(payload);
+      if (primarySaved) {
+        lastSaveResult = "saved";
+        lastSaveBackend = primaryAdapter.backend;
+        if (backend === SAVED_GAME_STORAGE_BACKEND_INDEXEDDB) {
+          migrationStatus = "migrated";
+        }
+        return true;
+      }
+    } catch {
+      // Continue with fallback adapter when available.
     }
 
-    const [primaryResult, fallbackResult] = await Promise.allSettled([
-      primaryAdapter.savePayload(payload),
-      secondaryAdapter.savePayload(payload),
-    ]);
+    if (!secondaryAdapter) {
+      lastSaveResult = "failed";
+      lastSaveBackend = primaryAdapter.backend;
+      if (backend === SAVED_GAME_STORAGE_BACKEND_INDEXEDDB) {
+        migrationStatus = "fallback";
+      }
+      return false;
+    }
 
-    const primarySaved = primaryResult.status === "fulfilled" && primaryResult.value;
-    const fallbackSaved = fallbackResult.status === "fulfilled" && fallbackResult.value;
-    return primarySaved || fallbackSaved;
+    try {
+      const fallbackSaved = await secondaryAdapter.savePayload(payload);
+      if (fallbackSaved) {
+        lastSaveResult = "fallback_saved";
+        lastSaveBackend = secondaryAdapter.backend;
+        migrationStatus = "fallback";
+        return true;
+      }
+    } catch {
+      // Treat as failed below.
+    }
+
+    lastSaveResult = "failed";
+    lastSaveBackend = secondaryAdapter.backend;
+    migrationStatus = "fallback";
+    return false;
   }
 
   async function readConfigWithFallback(): Promise<SavedGamePayload | null> {
@@ -124,14 +226,19 @@ export function createSavedGameStorageRepository(
         return primaryConfig;
       }
     } catch {
-      // Continue with fallback adapter.
+      migrationStatus = "fallback";
     }
 
     if (!secondaryAdapter) {
       return null;
     }
 
-    return secondaryAdapter.readConfigPayload();
+    try {
+      return await secondaryAdapter.readConfigPayload();
+    } catch {
+      migrationStatus = "fallback";
+      return null;
+    }
   }
 
   async function readLegacyWithFallback(): Promise<SavedGamePayload | null> {
@@ -144,11 +251,13 @@ export function createSavedGameStorageRepository(
 
   return {
     backend,
+    resolvedBackend,
+    requestedBackend,
     loadSavedGamePayloadFromBrowser() {
       return loadPayloadWithFallback();
     },
     saveSavedGamePayloadToBrowser(payload: SavedGamePayload) {
-      return savePayloadWithDualWrite(payload);
+      return savePayloadWithPrimaryWrite(payload);
     },
     readSavedGameConfigPayloadFromBrowser() {
       return readConfigWithFallback();
@@ -156,21 +265,36 @@ export function createSavedGameStorageRepository(
     readLegacySavedGamePayloadFromBrowser() {
       return readLegacyWithFallback();
     },
+    readDiagnostics,
   };
 }
 
+let browserSavedGameStorageRepository: SavedGameStorageRepository | null = null;
+
+function getBrowserSavedGameStorageRepository(): SavedGameStorageRepository {
+  if (!browserSavedGameStorageRepository) {
+    browserSavedGameStorageRepository = createSavedGameStorageRepository();
+  }
+
+  return browserSavedGameStorageRepository;
+}
+
 export async function loadSavedGamePayloadFromBrowser(): Promise<SavedGamePayload | null> {
-  return createSavedGameStorageRepository().loadSavedGamePayloadFromBrowser();
+  return getBrowserSavedGameStorageRepository().loadSavedGamePayloadFromBrowser();
 }
 
 export async function saveSavedGamePayloadToBrowser(payload: SavedGamePayload): Promise<boolean> {
-  return createSavedGameStorageRepository().saveSavedGamePayloadToBrowser(payload);
+  return getBrowserSavedGameStorageRepository().saveSavedGamePayloadToBrowser(payload);
 }
 
 export async function readSavedGameConfigPayloadFromBrowser(): Promise<SavedGamePayload | null> {
-  return createSavedGameStorageRepository().readSavedGameConfigPayloadFromBrowser();
+  return getBrowserSavedGameStorageRepository().readSavedGameConfigPayloadFromBrowser();
 }
 
 export async function readLegacySavedGamePayloadFromBrowser(): Promise<SavedGamePayload | null> {
-  return createSavedGameStorageRepository().readLegacySavedGamePayloadFromBrowser();
+  return getBrowserSavedGameStorageRepository().readLegacySavedGamePayloadFromBrowser();
+}
+
+export function readSavedGameStorageDiagnosticsFromBrowser(): SavedGameStorageDiagnostics {
+  return getBrowserSavedGameStorageRepository().readDiagnostics();
 }

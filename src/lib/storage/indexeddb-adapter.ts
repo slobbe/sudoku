@@ -67,6 +67,7 @@ function openDatabase(factory: IDBFactory): Promise<IDBDatabase> {
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () => reject(request.error ?? new Error("Could not open IndexedDB."));
+    request.onblocked = () => reject(new Error("IndexedDB open request was blocked."));
   });
 }
 

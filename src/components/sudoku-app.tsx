@@ -66,7 +66,13 @@ import {
 } from "@/lib/routing/entry";
 import {
   loadSavedGamePayloadFromBrowser,
+  readSavedGameStorageDiagnosticsFromBrowser,
   saveSavedGamePayloadToBrowser,
+} from "@/lib/storage/saved-game-repository";
+import type {
+  SavedGameStorageDiagnostics,
+  SavedGameStorageLastSaveResult,
+  SavedGameStorageMigrationStatus,
 } from "@/lib/storage/saved-game-repository";
 import {
   generateGamePuzzle,
@@ -1140,6 +1146,34 @@ function formatLine(won: number, started: number): string {
   return `${won}/${started} (${formatRate(won, started)})`;
 }
 
+function formatStorageMigrationStatus(status: SavedGameStorageMigrationStatus): string {
+  if (status === "migrated") {
+    return "Migrated";
+  }
+
+  if (status === "fallback") {
+    return "Fallback";
+  }
+
+  return "Not started";
+}
+
+function formatStorageLastSaveResult(result: SavedGameStorageLastSaveResult): string {
+  if (result === "saved") {
+    return "Saved";
+  }
+
+  if (result === "fallback_saved") {
+    return "Saved via local fallback";
+  }
+
+  if (result === "failed") {
+    return "Failed";
+  }
+
+  return "No recent save";
+}
+
 async function loadSavedGame(): Promise<GameState | null> {
   const parsed = await loadSavedGamePayloadFromBrowser();
   if (!parsed || typeof parsed !== "object") {
@@ -1392,6 +1426,9 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const [, setStatusMessage] = useState<string>(() => HOME_STATUS_MESSAGES[0] ?? "");
   const [winPromptOpen, setWinPromptOpen] = useState(false);
   const [losePromptOpen, setLosePromptOpen] = useState(false);
+  const [storageDiagnostics, setStorageDiagnostics] = useState<SavedGameStorageDiagnostics>(
+    () => readSavedGameStorageDiagnosticsFromBrowser(),
+  );
 
   const [updateStatus, setUpdateStatus] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
@@ -1415,6 +1452,10 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const setPuzzleGenerationBusy = useCallback((isBusy: boolean) => {
     generationInProgressRef.current = isBusy;
     setIsGeneratingPuzzle(isBusy);
+  }, []);
+
+  const refreshStorageDiagnostics = useCallback(() => {
+    setStorageDiagnostics(readSavedGameStorageDiagnosticsFromBrowser());
   }, []);
 
   const requestExactPuzzle = useCallback(
@@ -2253,6 +2294,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       if (restored) {
         applyState(restored);
       }
+      refreshStorageDiagnostics();
       setStatusMessage((currentMessage) => pickHomeStatusMessage(currentMessage));
       setIsHydrated(true);
     })();
@@ -2260,7 +2302,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     return () => {
       isCancelled = true;
     };
-  }, [applyState]);
+  }, [applyState, refreshStorageDiagnostics]);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -2337,6 +2379,9 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
 
     void (async () => {
       const saved = await saveSavedGamePayloadToBrowser(payload as Record<string, unknown>);
+      if (!isCancelled) {
+        refreshStorageDiagnostics();
+      }
       if (!saved && !isCancelled) {
         setStatusMessage("Autosave is unavailable in this browser.");
       }
@@ -2345,7 +2390,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     return () => {
       isCancelled = true;
     };
-  }, [isHydrated, state]);
+  }, [isHydrated, refreshStorageDiagnostics, state]);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) {
@@ -2985,6 +3030,21 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
                   under the
                   {" "}
                   <a href={APP_LICENSE_URL} target="_blank" rel="noreferrer">MIT License</a>.
+                </p>
+                <p className="app-storage-status">
+                  Storage backend:
+                  {" "}
+                  {storageDiagnostics.activeBackend === "indexeddb" ? "IndexedDB" : "Local storage"}
+                </p>
+                <p className="app-storage-status">
+                  Migration:
+                  {" "}
+                  {formatStorageMigrationStatus(storageDiagnostics.migrationStatus)}
+                </p>
+                <p className="app-storage-status">
+                  Last save:
+                  {" "}
+                  {formatStorageLastSaveResult(storageDiagnostics.lastSaveResult)}
                 </p>
                 <p className="app-update-status">{updateStatus || "Up-to-date"}</p>
               </div>

@@ -1456,6 +1456,12 @@ button:not([data-sudoku-cell="true"]):disabled {
     font-size: 0.8rem;
 }
 
+.app-storage-status {
+    margin: 0;
+    color: var(--muted);
+    font-size: 0.8rem;
+}
+
 .app-open-source {
     margin: 0;
     color: var(--muted);

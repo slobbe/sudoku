@@ -78,6 +78,14 @@ describe("saved game storage backend selection", () => {
     expect(normalizeSavedGameStorageBackend(SAVED_GAME_STORAGE_BACKEND_INDEXEDDB)).toBe(SAVED_GAME_STORAGE_BACKEND_INDEXEDDB);
   });
 
+  it("defaults to indexeddb when backend is not configured and supported", () => {
+    expect(resolveSavedGameStorageBackend(undefined, true)).toBe(SAVED_GAME_STORAGE_BACKEND_INDEXEDDB);
+  });
+
+  it("defaults to local-storage when backend is not configured and indexeddb is unsupported", () => {
+    expect(resolveSavedGameStorageBackend(undefined, false)).toBe(SAVED_GAME_STORAGE_BACKEND_LOCAL);
+  });
+
   it("falls back to local-storage when indexeddb is not supported", () => {
     expect(resolveSavedGameStorageBackend(SAVED_GAME_STORAGE_BACKEND_INDEXEDDB, false)).toBe(SAVED_GAME_STORAGE_BACKEND_LOCAL);
   });
@@ -88,14 +96,34 @@ describe("saved game storage backend selection", () => {
 });
 
 describe("saved game storage repository", () => {
-  it("uses local adapter by default", async () => {
+  it("uses indexeddb by default when supported", async () => {
     const { adapter: localAdapter } = createAdapter(SAVED_GAME_STORAGE_BACKEND_LOCAL, { payload: { source: "local" } });
+    const { adapter: indexedDbAdapter } = createAdapter(SAVED_GAME_STORAGE_BACKEND_INDEXEDDB, { payload: { source: "idb" } });
+    const repository = createSavedGameStorageRepository({
+      localAdapter,
+      indexedDbAdapter,
+      supportsIndexedDb: true,
+    });
+
+    expect(repository.requestedBackend).toBe("auto");
+    expect(repository.resolvedBackend).toBe(SAVED_GAME_STORAGE_BACKEND_INDEXEDDB);
+    expect(repository.backend).toBe(SAVED_GAME_STORAGE_BACKEND_INDEXEDDB);
+    await expect(repository.loadSavedGamePayloadFromBrowser()).resolves.toEqual({ source: "idb" });
+    expect(repository.readDiagnostics().migrationStatus).toBe("migrated");
+  });
+
+  it("keeps explicit local-storage override for rollback", async () => {
+    const { adapter: localAdapter } = createAdapter(SAVED_GAME_STORAGE_BACKEND_LOCAL, { payload: { source: "local" } });
+    const { adapter: indexedDbAdapter } = createAdapter(SAVED_GAME_STORAGE_BACKEND_INDEXEDDB, { payload: { source: "idb" } });
     const repository = createSavedGameStorageRepository({
       backend: SAVED_GAME_STORAGE_BACKEND_LOCAL,
       localAdapter,
-      supportsIndexedDb: false,
+      indexedDbAdapter,
+      supportsIndexedDb: true,
     });
 
+    expect(repository.requestedBackend).toBe(SAVED_GAME_STORAGE_BACKEND_LOCAL);
+    expect(repository.resolvedBackend).toBe(SAVED_GAME_STORAGE_BACKEND_LOCAL);
     expect(repository.backend).toBe(SAVED_GAME_STORAGE_BACKEND_LOCAL);
     await expect(repository.loadSavedGamePayloadFromBrowser()).resolves.toEqual({ source: "local" });
   });
@@ -117,22 +145,44 @@ describe("saved game storage repository", () => {
   it("falls back to local adapter when indexeddb adapter is missing", async () => {
     const { adapter: localAdapter } = createAdapter(SAVED_GAME_STORAGE_BACKEND_LOCAL, { payload: { source: "local" } });
     const repository = createSavedGameStorageRepository({
-      backend: SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
+      backend: undefined,
       localAdapter,
       indexedDbAdapter: null,
       supportsIndexedDb: true,
     });
 
+    expect(repository.requestedBackend).toBe("auto");
+    expect(repository.resolvedBackend).toBe(SAVED_GAME_STORAGE_BACKEND_INDEXEDDB);
     expect(repository.backend).toBe(SAVED_GAME_STORAGE_BACKEND_LOCAL);
+    expect(repository.readDiagnostics().migrationStatus).toBe("fallback");
     await expect(repository.loadSavedGamePayloadFromBrowser()).resolves.toEqual({ source: "local" });
   });
 
-  it("backfills indexeddb from local when indexeddb payload is missing", async () => {
+  it("backfills indexeddb from local once and keeps later loads idempotent", async () => {
     const { adapter: localAdapter, calls: localCalls } = createAdapter(SAVED_GAME_STORAGE_BACKEND_LOCAL, { payload: { source: "local" } });
-    const { adapter: indexedDbAdapter, calls: indexedDbCalls } = createAdapter(
-      SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
-      { payload: null },
-    );
+    let indexedDbPayload: SavedGamePayload | null = null;
+    const indexedDbCalls = { load: 0, save: 0, readConfig: 0, readLegacy: 0 };
+    const indexedDbAdapter: SavedGameStorageAdapter = {
+      backend: SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
+      async loadPayload() {
+        indexedDbCalls.load += 1;
+        return indexedDbPayload;
+      },
+      async savePayload(payload) {
+        indexedDbCalls.save += 1;
+        indexedDbPayload = payload;
+        return true;
+      },
+      async readConfigPayload() {
+        indexedDbCalls.readConfig += 1;
+        return null;
+      },
+      async readLegacyPayload() {
+        indexedDbCalls.readLegacy += 1;
+        return null;
+      },
+    };
+
     const repository = createSavedGameStorageRepository({
       backend: SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
       localAdapter,
@@ -141,9 +191,11 @@ describe("saved game storage repository", () => {
     });
 
     await expect(repository.loadSavedGamePayloadFromBrowser()).resolves.toEqual({ source: "local" });
-    expect(indexedDbCalls.load).toBe(1);
+    await expect(repository.loadSavedGamePayloadFromBrowser()).resolves.toEqual({ source: "local" });
+    expect(indexedDbCalls.load).toBe(2);
     expect(localCalls.load).toBe(1);
     expect(indexedDbCalls.save).toBe(1);
+    expect(repository.readDiagnostics().migrationStatus).toBe("migrated");
   });
 
   it("falls back to local when indexeddb load throws", async () => {
@@ -160,9 +212,29 @@ describe("saved game storage repository", () => {
     });
 
     await expect(repository.loadSavedGamePayloadFromBrowser()).resolves.toEqual({ source: "local" });
+    expect(repository.readDiagnostics().migrationStatus).toBe("fallback");
   });
 
-  it("uses dual-write success when local save works and indexeddb save fails", async () => {
+  it("does not dual-write when indexeddb save succeeds", async () => {
+    const { adapter: localAdapter, calls: localCalls } = createAdapter(SAVED_GAME_STORAGE_BACKEND_LOCAL, { saveResult: true });
+    const { adapter: indexedDbAdapter, calls: indexedDbCalls } = createAdapter(
+      SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
+      { saveResult: true },
+    );
+    const repository = createSavedGameStorageRepository({
+      backend: SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
+      localAdapter,
+      indexedDbAdapter,
+      supportsIndexedDb: true,
+    });
+
+    await expect(repository.saveSavedGamePayloadToBrowser({ value: 1 })).resolves.toBe(true);
+    expect(indexedDbCalls.save).toBe(1);
+    expect(localCalls.save).toBe(0);
+    expect(repository.readDiagnostics().lastSaveResult).toBe("saved");
+  });
+
+  it("uses temporary local fallback when indexeddb save fails", async () => {
     const { adapter: localAdapter, calls: localCalls } = createAdapter(SAVED_GAME_STORAGE_BACKEND_LOCAL, { saveResult: true });
     const { adapter: indexedDbAdapter, calls: indexedDbCalls } = createAdapter(
       SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
@@ -178,13 +250,15 @@ describe("saved game storage repository", () => {
     await expect(repository.saveSavedGamePayloadToBrowser({ value: 1 })).resolves.toBe(true);
     expect(indexedDbCalls.save).toBe(1);
     expect(localCalls.save).toBe(1);
+    expect(repository.readDiagnostics().lastSaveResult).toBe("fallback_saved");
+    expect(repository.readDiagnostics().migrationStatus).toBe("fallback");
   });
 
-  it("uses dual-write success when indexeddb save works and local save fails", async () => {
+  it("fails save only when both indexeddb and local fallback writes fail", async () => {
     const { adapter: localAdapter, calls: localCalls } = createAdapter(SAVED_GAME_STORAGE_BACKEND_LOCAL, { saveResult: false });
     const { adapter: indexedDbAdapter, calls: indexedDbCalls } = createAdapter(
       SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
-      { saveResult: true },
+      { saveResult: false },
     );
     const repository = createSavedGameStorageRepository({
       backend: SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
@@ -193,21 +267,9 @@ describe("saved game storage repository", () => {
       supportsIndexedDb: true,
     });
 
-    await expect(repository.saveSavedGamePayloadToBrowser({ value: 1 })).resolves.toBe(true);
+    await expect(repository.saveSavedGamePayloadToBrowser({ value: 1 })).resolves.toBe(false);
     expect(indexedDbCalls.save).toBe(1);
     expect(localCalls.save).toBe(1);
-  });
-
-  it("fails save only when both indexeddb and local writes fail", async () => {
-    const { adapter: localAdapter } = createAdapter(SAVED_GAME_STORAGE_BACKEND_LOCAL, { saveResult: false });
-    const { adapter: indexedDbAdapter } = createAdapter(SAVED_GAME_STORAGE_BACKEND_INDEXEDDB, { saveResult: false });
-    const repository = createSavedGameStorageRepository({
-      backend: SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
-      localAdapter,
-      indexedDbAdapter,
-      supportsIndexedDb: true,
-    });
-
-    await expect(repository.saveSavedGamePayloadToBrowser({ value: 1 })).resolves.toBe(false);
+    expect(repository.readDiagnostics().lastSaveResult).toBe("failed");
   });
 });

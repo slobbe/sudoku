@@ -1,7 +1,7 @@
 import {
   readLegacySavedGamePayloadFromBrowser,
   readSavedGameConfigPayloadFromBrowser,
-} from "./storage/game-storage";
+} from "./storage/saved-game-repository";
 
 export type AppTheme = "slate" | "dusk" | "mist" | "amber" | "light";
 
@@ -39,13 +39,13 @@ export function applyThemeToDocument(theme: AppTheme): void {
   }
 }
 
-export function readThemeFromSavedGame(): AppTheme {
-  const configPayload = readSavedGameConfigPayloadFromBrowser();
+export async function readThemeFromSavedGame(): Promise<AppTheme> {
+  const configPayload = await readSavedGameConfigPayloadFromBrowser();
   if (configPayload) {
     return normalizeAppTheme(configPayload.theme);
   }
 
-  const legacyPayload = readLegacySavedGamePayloadFromBrowser();
+  const legacyPayload = await readLegacySavedGamePayloadFromBrowser();
   if (legacyPayload) {
     return normalizeAppTheme(legacyPayload.theme);
   }

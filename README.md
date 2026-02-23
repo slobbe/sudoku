@@ -29,14 +29,16 @@ The hosted PWA is available at [slobbe.github.io/sudoku](https://slobbe.github.i
 
 ## Data & Privacy
 
-- Puzzle progress and stats are stored locally in your browser (`localStorage`)
-- Existing save compatibility is preserved with key `sudoku-pwa-current-game-v1`
+- Puzzle progress and stats are stored locally in your browser (IndexedDB-first)
+- Existing `localStorage` saves are migrated safely into IndexedDB when available
+- If IndexedDB is unavailable or fails, saves temporarily fall back to local storage
 - No account or server backend is required
 
 Developer storage backend flag:
 
-- `NEXT_PUBLIC_SAVED_GAME_BACKEND=local-storage` (default)
-- `NEXT_PUBLIC_SAVED_GAME_BACKEND=indexeddb` (experimental): IndexedDB primary with dual-write safety to local storage
+- `NEXT_PUBLIC_SAVED_GAME_BACKEND` unset (default): auto-select IndexedDB when supported, otherwise local storage
+- `NEXT_PUBLIC_SAVED_GAME_BACKEND=local-storage`: force local storage (emergency rollback override)
+- `NEXT_PUBLIC_SAVED_GAME_BACKEND=indexeddb`: force IndexedDB when supported
 
 ## Packages
 

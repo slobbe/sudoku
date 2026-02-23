@@ -376,7 +376,7 @@ export function NostrAccountProvider({ children }: NostrAccountProviderProps) {
       }
 
       if (!await saveSavedGamePayloadToBrowser(appData.payload)) {
-        throw new Error("Could not restore backup into local storage.");
+        throw new Error("Could not restore backup into browser storage.");
       }
 
       const message = appData.updatedAt
