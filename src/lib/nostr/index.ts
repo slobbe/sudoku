@@ -14,7 +14,6 @@ export {
   createSessionLocalAccount,
   importNsecAccount,
   protectStoredLocalKeyWithPassphrase,
-  readStoredLocalKeyProtection,
   restoreNostrAccountFromSession,
   unlockStoredLocalAccount,
 } from "./account";
@@ -25,7 +24,6 @@ export {
   type NostrActionStatus,
   type NostrAccountContextValue,
   type NostrLocalKeyProtection,
-  type NostrProfileSyncStatus,
   type NostrAccountStatus,
 } from "./account-context";
 

@@ -5,7 +5,6 @@ import type { NostrIdentity } from "./identity";
 export type NostrAccountStatus = "loading" | "ready";
 
 export type NostrActionStatus = "idle" | "syncing" | "synced" | "up_to_date" | "failed";
-export type NostrProfileSyncStatus = NostrActionStatus;
 export type NostrLocalKeyProtection = "none" | "encrypted" | "unencrypted";
 export type NostrAccountActionReason = "success" | "no_backup" | "no_data" | "error" | "cancelled";
 

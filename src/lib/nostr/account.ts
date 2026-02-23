@@ -297,14 +297,6 @@ function hasProvidedPassphrase(passphrase?: string): boolean {
   return passphrase.trim().length > 0;
 }
 
-function mapRecordProtection(record: PersistedAccountRecord | null): NostrLocalKeyProtection {
-  if (!record || record.mode !== "local") {
-    return "none";
-  }
-
-  return record.encryptedNsec ? "encrypted" : "unencrypted";
-}
-
 function createIdentityFromNsec(nsec: string): NostrIdentity | null {
   const secretKey = parseNsecToSecretKey(nsec);
   if (!secretKey) {
@@ -404,10 +396,6 @@ export function getSessionAccountName(): string | null {
   }
 
   return normalizeNostrAccountName(sessionStorage.getItem(SESSION_ACCOUNT_NAME_KEY));
-}
-
-export function readStoredLocalKeyProtection(): NostrLocalKeyProtection {
-  return mapRecordProtection(readCurrentAccountRecord());
 }
 
 export function updateSessionAccountName(name: string): string | null {
