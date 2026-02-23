@@ -1,6 +1,6 @@
 # Sudoku PWA
 
-A Sudoku app built with Next.js (App Router), React, and TypeScript.
+A local-first Sudoku progressive web app built with Next.js (App Router), React, and TypeScript.
 
 ## Features
 
@@ -11,8 +11,11 @@ A Sudoku app built with Next.js (App Router), React, and TypeScript.
 - Configurable hints and lives
 - Undo/redo and annotation (notes) mode
 - Mistake highlighting against the solution
-- Stats tracking (overall, by difficulty, puzzle streak, daily streak)
+- Deterministic points scoring with per-difficulty and daily totals
+- Stats tracking (overall, by difficulty, puzzle streak, daily streak, points)
 - Auto-save and restore of your current game
+- Optional Nostr profile and encrypted backup/restore flows
+- Optional passphrase protection for locally stored Nostr keys
 - Installable PWA
 
 ## Play Online
@@ -34,11 +37,13 @@ The hosted PWA is available at [slobbe.github.io/sudoku](https://slobbe.github.i
 - If IndexedDB is unavailable or fails, saves temporarily fall back to local storage
 - No account or server backend is required
 
-Developer storage backend flag:
+## Nostr Backup and Profile (Optional)
 
-- `NEXT_PUBLIC_SAVED_GAME_BACKEND` unset (default): auto-select IndexedDB when supported, otherwise local storage
-- `NEXT_PUBLIC_SAVED_GAME_BACKEND=local-storage`: force local storage (emergency rollback override)
-- `NEXT_PUBLIC_SAVED_GAME_BACKEND=indexeddb`: force IndexedDB when supported
+- Nostr relay traffic only occurs on explicit user actions (no passive startup sync)
+- Backup payloads are encrypted (`nip44` preferred, `nip04` fallback)
+- Restore uses a confirmation step before local browser data is overwritten
+- Successful restore rehydrates the in-memory app state immediately
+- Local Nostr keys can be stored encrypted with an optional passphrase
 
 ## Packages
 
