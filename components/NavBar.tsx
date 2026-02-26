@@ -23,7 +23,11 @@ const navLinks = [
   { href: "/about", label: "About" },
 ] as const;
 
-function NavItems({ compact = false }: { compact?: boolean }) {
+function isLinkActive(pathname: string, href: string) {
+  return pathname === href || pathname.startsWith(`${href}/`);
+}
+
+function NavItems({ pathname, compact = false }: { pathname: string; compact?: boolean }) {
   return (
     <>
       {navLinks.map((link) => (
@@ -31,9 +35,13 @@ function NavItems({ compact = false }: { compact?: boolean }) {
           key={link.href}
           href={link.href}
           className={cn(
-            "inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground",
+            "inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium transition-colors",
+            isLinkActive(pathname, link.href)
+              ? "bg-accent/70 text-foreground"
+              : "text-muted-foreground hover:bg-accent/40 hover:text-foreground",
             compact && "px-2",
           )}
+          aria-current={isLinkActive(pathname, link.href) ? "page" : undefined}
         >
           {link.label}
         </Link>
@@ -53,7 +61,7 @@ export function NavBar() {
         paddingTop: "env(safe-area-inset-top)",
       }}
     >
-      <div className={cn("mx-auto flex w-full max-w-5xl items-center justify-between px-4", isPlayRoute ? "min-h-14" : "min-h-16") }>
+      <div className={cn("mx-auto flex w-full max-w-7xl items-center justify-between px-4 lg:px-8", isPlayRoute ? "min-h-14" : "min-h-16") }>
         <Link href="/" className="inline-flex min-h-11 items-center text-base font-semibold tracking-tight">
           Sudoku
         </Link>
@@ -71,14 +79,14 @@ export function NavBar() {
                 <SheetDescription>Navigate Sudoku sections.</SheetDescription>
               </SheetHeader>
               <nav className="mt-6 grid gap-2">
-                <NavItems compact />
+                <NavItems pathname={pathname} compact />
               </nav>
             </SheetContent>
           </Sheet>
         ) : (
           <>
-            <nav className="hidden items-center gap-1 md:flex" aria-label="Primary navigation">
-              <NavItems />
+            <nav className="hidden items-center gap-2 md:flex" aria-label="Primary navigation">
+              <NavItems pathname={pathname} />
             </nav>
             <div className="md:hidden">
               <Sheet>
@@ -93,7 +101,7 @@ export function NavBar() {
                     <SheetDescription>Browse Sudoku pages and tools.</SheetDescription>
                   </SheetHeader>
                   <nav className="mt-6 grid gap-2">
-                    <NavItems />
+                    <NavItems pathname={pathname} />
                   </nav>
                 </SheetContent>
               </Sheet>

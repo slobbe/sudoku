@@ -43,10 +43,10 @@ type RootLayoutProps = {
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en" data-theme="slate" data-scroll-lock="off" suppressHydrationWarning>
-      <body className="min-h-svh bg-background text-foreground antialiased">
+      <body className="flex min-h-svh flex-col bg-background text-foreground antialiased">
         <NostrAccountProvider>
           <NavBar />
-          <div className="mx-auto w-full max-w-5xl">{children}</div>
+          <div className="mx-auto w-full max-w-7xl flex-1">{children}</div>
           <Footer />
         </NostrAccountProvider>
       </body>
