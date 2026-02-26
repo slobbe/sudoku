@@ -30,6 +30,38 @@ The hosted PWA is available at [slobbe.github.io/sudoku](https://slobbe.github.i
 - `bun run lint` - Run lint checks
 - `bun run test` - Run unit tests
 
+## Pages / Sitemap
+
+- `/`
+- `/play`
+- `/daily`
+- `/daily/:date` (example: `/daily/2026-02-26`)
+- `/daily/archive`
+- `/easy-sudoku`
+- `/medium-sudoku`
+- `/hard-sudoku`
+- `/evil-sudoku`
+- `/solver`
+- `/analyzer`
+- `/how-to-play`
+- `/settings`
+- `/statistics`
+- `/profile`
+- `/techniques`
+- `/techniques/naked-single`
+- `/techniques/hidden-single`
+- `/techniques/naked-pairs`
+- `/techniques/hidden-pairs`
+- `/techniques/pointing-pairs`
+- `/techniques/box-line-reduction`
+- `/techniques/x-wing`
+- `/techniques/swordfish`
+- `/techniques/uniqueness`
+- `/leaderboard`
+- `/about`
+- `/privacy`
+- `/contact`
+
 ## Data & Privacy
 
 - Puzzle progress and stats are stored locally in your browser (IndexedDB-first)

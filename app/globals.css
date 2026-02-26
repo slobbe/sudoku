@@ -1,5 +1,29 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 :root {
     color-scheme: dark;
+    --ui-background: 214 39% 10%;
+    --ui-foreground: 212 100% 96%;
+    --ui-card: 213 37% 14%;
+    --ui-card-foreground: 212 100% 96%;
+    --ui-popover: 213 37% 14%;
+    --ui-popover-foreground: 212 100% 96%;
+    --ui-primary: 204 46% 64%;
+    --ui-primary-foreground: 210 100% 11%;
+    --ui-secondary: 214 26% 22%;
+    --ui-secondary-foreground: 212 100% 96%;
+    --ui-muted: 214 24% 18%;
+    --ui-muted-foreground: 214 24% 74%;
+    --ui-accent: 213 29% 28%;
+    --ui-accent-foreground: 212 100% 96%;
+    --ui-destructive: 5 73% 71%;
+    --ui-destructive-foreground: 0 0% 100%;
+    --ui-border: 213 27% 34%;
+    --ui-input: 213 27% 34%;
+    --ui-ring: 204 46% 64%;
+    --ui-radius: 0.75rem;
     --bg: #101923;
     --bg-glow: #1e3043;
     --bg-deep: #0a1018;
@@ -233,12 +257,12 @@ body {
         radial-gradient(circle at 8% 8%, color-mix(in srgb, var(--accent) 20%, transparent), transparent 36%),
         radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--bg-glow) 70%, transparent), transparent 42%),
         linear-gradient(165deg, var(--bg-glow) 0%, var(--bg) 56%, var(--bg-deep) 100%);
-    display: grid;
-    place-items: center;
-    padding: 18px;
+    display: block;
+    padding: 0;
     line-height: 1.4;
     position: relative;
     isolation: isolate;
+    overflow-x: hidden;
 }
 
 body::before {
@@ -562,8 +586,8 @@ body::before {
     color: var(--error);
 }
 
-button:not([data-sudoku-cell="true"]),
-select {
+.sudoku-app-root button:not([data-sudoku-cell="true"]),
+.sudoku-app-root select {
     border: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
     border-radius: var(--radius-sm);
     font: inherit;
@@ -577,7 +601,7 @@ select {
         0 1px 2px #0000002e;
 }
 
-button:not([data-sudoku-cell="true"]) {
+.sudoku-app-root button:not([data-sudoku-cell="true"]) {
     cursor: pointer;
     transition:
         background-color 120ms ease,
@@ -590,20 +614,20 @@ button:not([data-sudoku-cell="true"]) {
     touch-action: manipulation;
 }
 
-button:not([data-sudoku-cell="true"]):hover {
+.sudoku-app-root button:not([data-sudoku-cell="true"]):hover {
     background: var(--control-hover);
     border-color: var(--line-bold);
 }
 
-button:not([data-sudoku-cell="true"]):active {
+.sudoku-app-root button:not([data-sudoku-cell="true"]):active {
     background: var(--control-active);
     transform: translateY(1px);
     box-shadow: inset 0 1px 2px #00000045;
 }
 
-button:not([data-sudoku-cell="true"]):focus-visible,
-select:focus-visible,
-input:focus-visible {
+.sudoku-app-root button:not([data-sudoku-cell="true"]):focus-visible,
+.sudoku-app-root select:focus-visible,
+.sudoku-app-root input:focus-visible {
     outline: 2px solid var(--focus-outline);
     outline-offset: 1px;
 }
@@ -652,7 +676,7 @@ input:focus-visible {
     background: color-mix(in srgb, var(--control-bg) 72%, var(--control-hover));
 }
 
-button:not([data-sudoku-cell="true"]):disabled {
+.sudoku-app-root button:not([data-sudoku-cell="true"]):disabled {
     opacity: 0.52;
     cursor: not-allowed;
     transform: none;

@@ -4,6 +4,10 @@ export type SudokuAppView = "home" | "game" | "settings" | "stats";
 
 export type PuzzleEntryMode = "new" | "continue";
 
+type PuzzleDifficultyQuery = "easy" | "medium" | "hard" | "evil";
+
+export type PuzzleEntryDifficulty = "easy" | "medium" | "hard" | "expert";
+
 type DailyEntryStartArgs = {
   entryPoint: SudokuEntryPoint;
   isHydrated: boolean;
@@ -51,6 +55,21 @@ export function shouldStartPuzzleEntry(args: PuzzleEntryStartArgs): boolean {
 export function parsePuzzleEntryMode(search: string): PuzzleEntryMode {
   const params = new URLSearchParams(search);
   return params.get("mode") === "new" ? "new" : "continue";
+}
+
+export function parsePuzzleEntryDifficulty(search: string): PuzzleEntryDifficulty | undefined {
+  const params = new URLSearchParams(search);
+  const rawDifficulty = params.get("difficulty") as PuzzleDifficultyQuery | null;
+
+  if (rawDifficulty === "evil") {
+    return "expert";
+  }
+
+  if (rawDifficulty === "easy" || rawDifficulty === "medium" || rawDifficulty === "hard") {
+    return rawDifficulty;
+  }
+
+  return undefined;
 }
 
 export function isRouteGameLoading(args: RouteGameLoadingArgs): boolean {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "bun:test";
 import {
   getInitialViewForEntryPoint,
   isRouteGameLoading,
+  parsePuzzleEntryDifficulty,
   parsePuzzleEntryMode,
   shouldStartDailyEntry,
   shouldStartPuzzleEntry,
@@ -19,6 +20,19 @@ describe("route entry helpers", () => {
   it("parses puzzle mode from query string", () => {
     expect(parsePuzzleEntryMode("?mode=new")).toBe("new");
     expect(parsePuzzleEntryMode("mode=new")).toBe("new");
+  });
+
+  it("parses puzzle difficulty from query string", () => {
+    expect(parsePuzzleEntryDifficulty("?difficulty=easy")).toBe("easy");
+    expect(parsePuzzleEntryDifficulty("?difficulty=medium")).toBe("medium");
+    expect(parsePuzzleEntryDifficulty("?difficulty=hard")).toBe("hard");
+    expect(parsePuzzleEntryDifficulty("?difficulty=evil")).toBe("expert");
+  });
+
+  it("returns undefined for unknown puzzle difficulty", () => {
+    expect(parsePuzzleEntryDifficulty("?difficulty=expert")).toBeUndefined();
+    expect(parsePuzzleEntryDifficulty("?difficulty=unknown")).toBeUndefined();
+    expect(parsePuzzleEntryDifficulty("")).toBeUndefined();
   });
 
   it("defaults puzzle entry mode to continue", () => {

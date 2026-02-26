@@ -58,6 +58,7 @@ import {
 import {
   getInitialViewForEntryPoint,
   isRouteGameLoading,
+  parsePuzzleEntryDifficulty,
   parsePuzzleEntryMode,
   shouldStartDailyEntry,
   shouldStartPuzzleEntry,
@@ -734,6 +735,21 @@ function parseDateKey(value: string): number {
   const month = Number(parts[2]);
   const day = Number(parts[3]);
   return Date.UTC(year, month - 1, day);
+}
+
+function normalizeDateKey(value: string | undefined): string | null {
+  if (!value || !/^(\d{4})-(\d{2})-(\d{2})$/.test(value)) {
+    return null;
+  }
+
+  const parsed = parseDateKey(value);
+  if (!Number.isFinite(parsed)) {
+    return null;
+  }
+
+  const date = new Date(parsed);
+  const normalized = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
+  return normalized === value ? value : null;
 }
 
 function isPreviousDateKey(previous: string | null, current: string): boolean {
@@ -1526,9 +1542,10 @@ function syncDialogState(dialog: HTMLDialogElement | null, open: boolean): void 
 
 type SudokuAppProps = {
   entryPoint?: SudokuEntryPoint;
+  dailyDateKey?: string;
 };
 
-export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
+export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps) {
   const router = useRouter();
   const [state, setState] = useState<GameState>(createInitialState);
   const stateRef = useRef<GameState>(state);
@@ -1549,6 +1566,10 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const [isGeneratingPuzzle, setIsGeneratingPuzzle] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [dailyCalendarMonthKey, setDailyCalendarMonthKey] = useState(() => getMonthKeyFromDate(new Date()));
+  const requestedDailyKey = useMemo(
+    () => normalizeDateKey(dailyDateKey) ?? getCurrentLocalDayKey(nowTick),
+    [dailyDateKey, nowTick],
+  );
 
   const winDialogRef = useRef<HTMLDialogElement>(null);
   const loseDialogRef = useRef<HTMLDialogElement>(null);
@@ -1560,6 +1581,21 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   const generationRequestIdRef = useRef(0);
   const generationAbortControllerRef = useRef<AbortController | null>(null);
   const generationInProgressRef = useRef(false);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const previous = root.getAttribute("data-scroll-lock");
+    root.setAttribute("data-scroll-lock", "on");
+
+    return () => {
+      if (previous === null) {
+        root.removeAttribute("data-scroll-lock");
+        return;
+      }
+
+      root.setAttribute("data-scroll-lock", previous);
+    };
+  }, []);
 
   const setPuzzleGenerationBusy = useCallback((isBusy: boolean) => {
     generationInProgressRef.current = isBusy;
@@ -1739,7 +1775,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
 
   const startDailyPuzzleAndOpen = useCallback(() => {
     const current = stashActiveSession(stateRef.current);
-    const dayKey = getCurrentLocalDayKey();
+    const dayKey = requestedDailyKey;
     const difficulty = deriveDailyDifficulty(dayKey);
     const seed = getDailyPuzzleSeed(dayKey, difficulty);
 
@@ -1836,7 +1872,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     }
 
     applyFreshDailyState(current, "ready");
-  }, [applyState, requestExactPuzzle]);
+  }, [applyState, requestExactPuzzle, requestedDailyKey]);
 
   const startNewGameAndOpen = useCallback(
     (difficultyOverride?: Difficulty) => {
@@ -1848,19 +1884,16 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
 
   const continueStandardPuzzle = useCallback(() => {
     const current = stateRef.current;
+    const activeStandardSession = current.mode === "standard" ? captureSessionFromState(current) : null;
 
-    if (current.mode === "standard") {
+    if (isSessionContinuable(activeStandardSession)) {
       setActiveView("game");
       return;
     }
 
-    if (!current.standardSession) {
-      startNewGameAndOpen();
-      return;
-    }
-
     const stashed = stashActiveSession(current);
-    const standardSession = stashed.standardSession;
+    const standardSession = isSessionContinuable(stashed.standardSession) ? stashed.standardSession : null;
+
     if (!standardSession) {
       startNewGameAndOpen();
       return;
@@ -1877,11 +1910,11 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
 
   const openPuzzlePage = useCallback((mode: "continue" | "new") => {
     if (mode === "new") {
-      router.push("/puzzle/?mode=new");
+      router.push("/play/?mode=new");
       return;
     }
 
-    router.push("/puzzle/");
+    router.push("/play/");
   }, [router]);
 
   const openDailyPage = useCallback(() => {
@@ -2527,13 +2560,14 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
 
     setHasPuzzleEntryStarted(true);
     const mode = parsePuzzleEntryMode(window.location.search);
-    if (mode === "new") {
+    const difficulty = parsePuzzleEntryDifficulty(window.location.search);
+    if (mode === "new" || difficulty) {
       try {
         window.history.replaceState(null, "", window.location.pathname);
       } catch {
         // Ignore history update failures.
       }
-      startNewGameAndOpen();
+      startNewGameAndOpen(difficulty);
       return;
     }
 
@@ -2754,9 +2788,6 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
       : canContinueDailyPuzzle
         ? "Continue Daily Puzzle"
         : "Daily Puzzle";
-  const dailyDateLabel = formatDateKeyForDisplay(state.dailyDate ?? todayDailyKey);
-  const gameTitle = state.mode === "daily" ? dailyDateLabel : "Sudoku";
-  const gameSubtitle = null;
   const isRouteEntryGameLoading = isRouteGameLoading({
     entryPoint,
     hasDailyEntryStarted,
@@ -2764,7 +2795,6 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
     hasBoard: Boolean(state.board),
     mode: state.mode,
   });
-  const routeLoadingTitle = entryPoint === "daily" ? dailyDateLabel : "Sudoku";
   const routeLoadingMessage = entryPoint === "daily" ? "Loading daily puzzle..." : "Loading puzzle...";
 
   const overallStarted = state.stats.gamesStarted + state.stats.daily.gamesStarted;
@@ -2923,7 +2953,7 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
   }, [nostrIdentity, nostrName, nostrStatus]);
 
   return (
-    <>
+    <div className="sudoku-app-root">
       <main className={`app ${activeView === "home" ? "app-home" : activeView === "game" ? "app-game" : "app-panel"}`}>
         {activeView === "home" ? (
           <section className="home-view" aria-label="Home menu">
@@ -2962,23 +2992,6 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
           </section>
         ) : activeView === "game" ? (
           <>
-            <div className="game-header" aria-label="Puzzle header">
-              <button id="reset-game" type="button" disabled={isRouteEntryGameLoading || state.lost} onClick={resetCurrentGame}>
-                Reset
-              </button>
-              <div className="game-title-stack">
-                <h2 className="game-title">{isRouteEntryGameLoading ? routeLoadingTitle : gameTitle}</h2>
-                {isRouteEntryGameLoading ? (
-                  <p className="game-subtitle">Please wait...</p>
-                ) : gameSubtitle ? (
-                  <p className="game-subtitle">{gameSubtitle}</p>
-                ) : null}
-              </div>
-              <button id="home-button" type="button" onClick={goHome}>
-                Home
-              </button>
-            </div>
-
             <section className="board-wrap" aria-label="Sudoku board">
               {isRouteEntryGameLoading ? (
                 <div className="game-loading-card" role="status" aria-live="polite">
@@ -3010,6 +3023,14 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
                           onClick={redoMove}
                         >
                           <Redo2 aria-hidden="true" />
+                        </button>
+                        <button
+                          id="reset-game"
+                          type="button"
+                          disabled={isRouteEntryGameLoading || state.lost}
+                          onClick={resetCurrentGame}
+                        >
+                          Reset
                         </button>
                       </div>
                       <p
@@ -3525,7 +3546,6 @@ export function SudokuApp({ entryPoint = "home" }: SudokuAppProps) {
           </div>
         </div>
       </dialog>
-
-    </>
+    </div>
   );
 }

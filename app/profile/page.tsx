@@ -5,6 +5,9 @@ import { Suspense } from "react";
 export const metadata: Metadata = {
   title: "Profile",
   description: "Manage your Nostr profile for shared Sudoku features.",
+  alternates: {
+    canonical: "/profile",
+  },
 };
 
 export default function ProfilePage() {

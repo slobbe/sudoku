@@ -1,9 +1,12 @@
+import { PageShell } from "@/components/PageShell";
+
 export default function NotFound() {
   return (
-    <main className="app app-panel">
-      <section className="panel-view" aria-label="Page not found">
-        <h1 className="view-title">Page not found</h1>
+    <PageShell>
+      <section className="grid gap-3" aria-label="Page not found">
+        <h1 className="text-3xl font-semibold">Page not found</h1>
+        <p className="text-base text-muted-foreground">The route does not exist in this Sudoku sitemap.</p>
       </section>
-    </main>
+    </PageShell>
   );
 }
