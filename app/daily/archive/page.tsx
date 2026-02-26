@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { ContentPage } from "@/components/ContentPage";
+import { DailyArchiveCalendar } from "@/components/DailyArchiveCalendar";
 
 export const metadata: Metadata = {
   title: "Daily Archive",
@@ -13,7 +14,9 @@ export default function DailyArchivePage() {
   return (
     <ContentPage
       title="Daily Puzzle Archive"
-      description="Archive browsing is available as a lightweight placeholder in this phase. Use direct dates under /daily/YYYY-MM-DD to replay specific daily puzzles."
-    />
+      description="Browse previous daily Sudoku puzzles by date. Select any day to jump directly into that archive challenge."
+    >
+      <DailyArchiveCalendar />
+    </ContentPage>
   );
 }
