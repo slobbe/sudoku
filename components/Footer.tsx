@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Moon, Sun } from "lucide-react";
+import { Laptop, Moon, Sun } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Toggle } from "@/components/ui/toggle";
 import { APP_VERSION } from "@/lib/app-version";
 import {
   applyThemeToDocument,
+  applyThemePreferenceToDocument,
   normalizeAppTheme,
   persistThemeToSavedGame,
-  readThemeFromSavedGame,
+  readThemePreferenceFromSavedGame,
   type AppTheme,
+  type AppThemePreference,
 } from "@/lib/theme";
 
 const GITHUB_PROFILE_URL = "https://github.com/slobbe";
@@ -24,17 +26,19 @@ const footerLinks = [
 
 export function Footer() {
   const pathname = usePathname();
-  const [theme, setTheme] = useState<AppTheme>("light");
+  const [themePreference, setThemePreference] = useState<AppThemePreference>("system");
+  const [resolvedTheme, setResolvedTheme] = useState<AppTheme>("light");
 
   useEffect(() => {
     let cancelled = false;
-    void readThemeFromSavedGame().then((savedTheme) => {
+    void readThemePreferenceFromSavedGame().then((savedPreference) => {
       if (cancelled) {
         return;
       }
 
-      setTheme(savedTheme);
-      applyThemeToDocument(savedTheme);
+      setThemePreference(savedPreference);
+      const nextResolvedTheme = applyThemePreferenceToDocument(savedPreference);
+      setResolvedTheme(nextResolvedTheme);
     });
 
     return () => {
@@ -46,7 +50,7 @@ export function Footer() {
     const root = document.documentElement;
     const observer = new MutationObserver(() => {
       const nextTheme = normalizeAppTheme(root.dataset.theme);
-      setTheme(nextTheme);
+      setResolvedTheme(nextTheme);
     });
 
     observer.observe(root, {
@@ -59,14 +63,44 @@ export function Footer() {
     };
   }, []);
 
-  const isDark = theme === "dark";
+  useEffect(() => {
+    if (typeof window === "undefined" || themePreference !== "system" || typeof window.matchMedia !== "function") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const syncSystemTheme = () => {
+      const nextTheme: AppTheme = mediaQuery.matches ? "dark" : "light";
+      setResolvedTheme(nextTheme);
+      applyThemeToDocument(nextTheme);
+    };
+
+    syncSystemTheme();
+
+    mediaQuery.addEventListener("change", syncSystemTheme);
+    return () => {
+      mediaQuery.removeEventListener("change", syncSystemTheme);
+    };
+  }, [themePreference]);
 
   const toggleTheme = () => {
-    const nextTheme: AppTheme = isDark ? "light" : "dark";
-    setTheme(nextTheme);
-    applyThemeToDocument(nextTheme);
-    void persistThemeToSavedGame(nextTheme);
+    const nextPreference: AppThemePreference = themePreference === "system"
+      ? "light"
+      : themePreference === "light"
+        ? "dark"
+        : "system";
+
+    setThemePreference(nextPreference);
+    const nextResolvedTheme = applyThemePreferenceToDocument(nextPreference);
+    setResolvedTheme(nextResolvedTheme);
+    void persistThemeToSavedGame(nextPreference);
   };
+
+  const themeToggleLabel = themePreference === "system"
+    ? "Theme: system"
+    : themePreference === "dark"
+      ? "Theme: dark"
+      : "Theme: light";
 
   return (
     <footer className="border-t border-border/80" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
@@ -108,12 +142,19 @@ export function Footer() {
           <Toggle
             variant="default"
             size="sm"
-            aria-label="Toggle theme"
-            pressed={isDark}
+            aria-label={themeToggleLabel}
+            title={themeToggleLabel}
+            pressed={resolvedTheme === "dark"}
             onPressedChange={toggleTheme}
             className="h-8 w-8 border-0 bg-transparent p-0 hover:bg-transparent data-[state=on]:bg-transparent"
           >
-            {isDark ? <Sun className="h-3.5 w-3.5" aria-hidden="true" /> : <Moon className="h-3.5 w-3.5" aria-hidden="true" />}
+            {themePreference === "system" ? (
+              <Laptop className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : themePreference === "dark" ? (
+              <Sun className="h-3.5 w-3.5" aria-hidden="true" />
+            ) : (
+              <Moon className="h-3.5 w-3.5" aria-hidden="true" />
+            )}
           </Toggle>
         </div>
       </div>

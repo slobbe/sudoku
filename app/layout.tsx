@@ -10,16 +10,24 @@ const themeBootScript = `(() => {
   try {
     const key = "sudoku-theme-preference";
     const raw = window.localStorage.getItem(key);
-    const theme = raw === "dark" || raw === "dusk" || raw === "slate" || raw === "mist" || raw === "amber" || raw === "purple"
-      ? "dark"
-      : "light";
-    document.documentElement.dataset.theme = theme;
+    const preference = raw === "dark" || raw === "light" || raw === "system"
+      ? raw
+      : raw === "dusk" || raw === "slate" || raw === "mist" || raw === "amber" || raw === "purple"
+        ? "dark"
+        : "system";
+    const resolved = preference === "system"
+      ? (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light")
+      : preference;
+    document.documentElement.dataset.theme = resolved;
     const meta = document.querySelector('meta[name="theme-color"]');
     if (meta) {
-      meta.setAttribute("content", theme === "dark" ? "#141311" : "#f5f1e8");
+      meta.setAttribute("content", resolved === "dark" ? "#141311" : "#f5f1e8");
     }
   } catch {
-    document.documentElement.dataset.theme = "light";
+    const fallback = typeof window !== "undefined" && window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+    document.documentElement.dataset.theme = fallback;
   }
 })();`;
 
