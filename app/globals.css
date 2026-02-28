@@ -1059,6 +1059,84 @@ textarea {
   gap: 0.6rem;
 }
 
+.profile-hero-card {
+  gap: 0.7rem;
+}
+
+.profile-hero {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: center;
+}
+
+.profile-avatar {
+  width: 2.5rem;
+  height: 2.5rem;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: var(--ink);
+  border: 1px solid color-mix(in srgb, var(--line) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 62%, transparent);
+}
+
+.profile-identity {
+  display: grid;
+  gap: 0.2rem;
+}
+
+.profile-display-name {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.16rem;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.profile-name-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.profile-name-edit-button {
+  width: 1.65rem;
+  height: 1.65rem;
+  border: 1px solid color-mix(in srgb, var(--line) 74%, transparent);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--soft-ink);
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease, background-color 150ms ease;
+}
+
+.profile-name-edit-button:hover {
+  color: var(--ink);
+  border-color: color-mix(in srgb, var(--line-strong) 72%, transparent);
+  background: color-mix(in srgb, var(--surface-2) 50%, transparent);
+}
+
+.profile-name-edit-button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.profile-npub-row {
+  margin: 0;
+  display: grid;
+  gap: 0.15rem;
+}
+
+.profile-empty-state {
+  padding: 0.65rem 0;
+}
+
 .profile-card + .profile-card {
   border-top: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
   padding-top: 0.8rem;
@@ -1123,6 +1201,55 @@ textarea {
   min-height: 2.3rem;
 }
 
+.profile-auth-dialog {
+  max-height: min(85vh, 42rem);
+  overflow-y: auto;
+}
+
+.profile-auth-section {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.profile-auth-section + .profile-auth-section {
+  border-top: 1px solid color-mix(in srgb, var(--line) 70%, transparent);
+  padding-top: 0.75rem;
+}
+
+.profile-auth-section h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+.profile-disclosure {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.profile-disclosure summary {
+  cursor: pointer;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.profile-disclosure-content {
+  margin-top: 0.55rem;
+  display: grid;
+  gap: 0.55rem;
+}
+
+.profile-disclosure-content h3 {
+  margin: 0;
+  font-size: 0.82rem;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--soft-ink);
+}
+
 .profile-info-list {
   margin: 0;
   padding-left: 1rem;
@@ -1141,7 +1268,18 @@ textarea {
   padding: 0.35rem 0;
 }
 
+.profile-auth-dialog input {
+  width: 100%;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 0.35rem 0;
+}
+
 .profile-card button:not([class]),
+.profile-auth-dialog button:not([class]),
 .settings-header button:not([class]),
 .daily-calendar-header button:not([class]),
 .home-view button:not([class]),
@@ -1156,6 +1294,7 @@ textarea {
 }
 
 .profile-card button:not([class]):hover,
+.profile-auth-dialog button:not([class]):hover,
 .settings-header button:not([class]):hover,
 .daily-calendar-header button:not([class]):hover,
 .home-view button:not([class]):hover,
@@ -1166,6 +1305,7 @@ textarea {
 }
 
 .profile-card button:not([class]):disabled,
+.profile-auth-dialog button:not([class]):disabled,
 .settings-header button:not([class]):disabled,
 .daily-calendar-header button:not([class]):disabled,
 .home-view button:not([class]):disabled,
