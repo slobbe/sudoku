@@ -2908,6 +2908,19 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
     }
     return history;
   }, [state.stats.daily.historyByDate, todayCalendarFallbackEntry, todayDailyKey]);
+  const todayDailyTimestamp = useMemo(() => parseDateKey(todayDailyKey), [todayDailyKey]);
+  const todayHistoryEntry = effectiveDailyHistory[todayDailyKey] ?? null;
+  const todayDailyProgressLabel = useMemo(() => {
+    if (todayHistoryEntry) {
+      return todayHistoryEntry.result === "won" ? "Solved today" : "Lost today";
+    }
+
+    if (dailySessionForToday && !dailySessionForToday.won && !dailySessionForToday.lost) {
+      return "In progress";
+    }
+
+    return "Not started";
+  }, [dailySessionForToday, todayHistoryEntry]);
 
   const dailyCalendarCells = useMemo(
     () => buildDailyCalendarCells(dailyCalendarMonthKey, todayDailyKey, effectiveDailyHistory),
@@ -3012,6 +3025,19 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
     next.setHours(23, 59, 59, 999);
     return next;
   }, []);
+  const isViewingTodayDaily = activeDailyDateKey === todayDailyKey;
+  const activeDailyProgressLabel = useMemo(() => {
+    if (state.mode !== "daily") {
+      return null;
+    }
+    if (state.won) {
+      return "Solved";
+    }
+    if (state.lost) {
+      return "Lost";
+    }
+    return state.currentGameStarted ? "In progress" : "Not started";
+  }, [state.currentGameStarted, state.lost, state.mode, state.won]);
 
   const isCurrentBoardUnplayed = Boolean(state.puzzle && !state.currentGameStarted && !state.won && !state.lost);
   const statusTone = getStatusTone(statusMessage);
@@ -3178,38 +3204,56 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
                           <span>Reset</span>
                         </Button>
                         {state.mode === "daily" ? (
-                          <DropdownMenu open={dailyDatePickerOpen} onOpenChange={setDailyDatePickerOpen}>
-                            <DropdownMenuTrigger asChild>
+                          <>
+                            <DropdownMenu open={dailyDatePickerOpen} onOpenChange={setDailyDatePickerOpen}>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  className="icon-button with-label daily-date-trigger"
+                                  aria-label="Select daily puzzle date"
+                                >
+                                  <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                                  <span className="daily-date-label">{activeDailyDateLabel}</span>
+                                  <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="daily-date-content w-auto p-2">
+                                <Calendar
+                                  mode="single"
+                                  selected={activeDailyDate ?? undefined}
+                                  onSelect={(date) => {
+                                    if (!date) {
+                                      return;
+                                    }
+
+                                    const dateKey = dateKeyFromLocalDate(date);
+                                    setDailyDatePickerOpen(false);
+                                    router.push(`/daily/${dateKey}`);
+                                  }}
+                                  disabled={(date) => date > maxDailyPickerDate}
+                                  initialFocus
+                                />
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                            <div className="daily-quick-actions" aria-label="Daily quick actions">
                               <Button
                                 type="button"
                                 size="sm"
                                 variant="outline"
-                                className="icon-button with-label daily-date-trigger"
-                                aria-label="Select daily puzzle date"
-                              >
-                                <CalendarDays className="h-4 w-4" aria-hidden="true" />
-                                <span className="daily-date-label">{activeDailyDateLabel}</span>
-                                <ChevronDown className="h-4 w-4" aria-hidden="true" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="daily-date-content w-auto p-2">
-                              <Calendar
-                                mode="single"
-                                selected={activeDailyDate ?? undefined}
-                                onSelect={(date) => {
-                                  if (!date) {
-                                    return;
-                                  }
-
-                                  const dateKey = dateKeyFromLocalDate(date);
-                                  setDailyDatePickerOpen(false);
-                                  router.push(`/daily/${dateKey}`);
+                                disabled={isViewingTodayDaily}
+                                onClick={() => {
+                                  router.push(`/daily/${todayDailyKey}`);
                                 }}
-                                disabled={(date) => date > maxDailyPickerDate}
-                                initialFocus
-                              />
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                              >
+                                Today
+                              </Button>
+                              <Button asChild size="sm" variant="outline">
+                                <Link href="/statistics/daily">Stats</Link>
+                              </Button>
+                            </div>
+                          </>
                         ) : (
                           <Button
                             id="new-game-open"
@@ -3250,6 +3294,12 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
                           <span>{formatDifficultyLabel(state.difficulty)}</span>
                         </p>
                       )}
+                      {state.mode === "daily" && activeDailyProgressLabel ? (
+                        <p className="daily-progress" aria-label={`Daily puzzle status ${activeDailyProgressLabel}`}>
+                          <span>Status:</span>
+                          <strong>{activeDailyProgressLabel}</strong>
+                        </p>
+                      ) : null}
                     </aside>
                   </div>
                   <p className={`game-status app-status app-status-${statusTone}`} role="status" aria-live="polite">
@@ -3509,7 +3559,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
                     <p className="stats-kpi-card">
                       <span className="stats-kpi-label">Today</span>
                       <strong id="stats-daily-today" className="stats-kpi-value">{todayDailyLabel}</strong>
-                      <span className="stats-kpi-meta">{dailyDifficultyLabel}</span>
+                      <span className="stats-kpi-meta">{`${dailyDifficultyLabel} - ${todayDailyProgressLabel}`}</span>
                     </p>
                     <p className="stats-kpi-card">
                       <span className="stats-kpi-label">Daily record</span>
@@ -3587,6 +3637,10 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
                       if (cell.isToday) {
                         classNames.push("today");
                       }
+                      const cellTimestamp = parseDateKey(cell.key);
+                      const canJumpToDate = Number.isFinite(cellTimestamp)
+                        && Number.isFinite(todayDailyTimestamp)
+                        && cellTimestamp <= todayDailyTimestamp;
 
                       const difficultyBadge = cell.entry
                         ? cell.entry.difficulty === "expert"
@@ -3594,12 +3648,32 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
                           : cell.entry.difficulty[0].toUpperCase()
                         : null;
 
+                      const cellLabel = formatDailyEntryLabel(cell.key, cell.entry, cell.isToday);
+
+                      if (canJumpToDate) {
+                        return (
+                          <button
+                            key={cell.key}
+                            type="button"
+                            className={`${classNames.join(" ")} is-actionable`}
+                            role="gridcell"
+                            aria-label={`${cellLabel}. Open puzzle.`}
+                            onClick={() => {
+                              router.push(`/daily/${cell.key}`);
+                            }}
+                          >
+                            <span className="daily-calendar-day-number">{cell.dateNumber}</span>
+                            {difficultyBadge ? <span className="daily-calendar-day-difficulty">{difficultyBadge}</span> : null}
+                          </button>
+                        );
+                      }
+
                       return (
                         <div
                           key={cell.key}
                           className={classNames.join(" ")}
                           role="gridcell"
-                          aria-label={formatDailyEntryLabel(cell.key, cell.entry, cell.isToday)}
+                          aria-label={cellLabel}
                         >
                           <span className="daily-calendar-day-number">{cell.dateNumber}</span>
                           {difficultyBadge ? <span className="daily-calendar-day-difficulty">{difficultyBadge}</span> : null}
