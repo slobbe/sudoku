@@ -74,7 +74,7 @@ export function Footer() {
   return (
     <footer className="border-t border-border/80" style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
       <div className="mx-auto flex w-full max-w-7xl flex-col gap-3 px-4 py-3 text-xs text-muted-foreground md:flex-row md:items-center md:justify-between lg:px-8">
-        <div className="grid gap-0.5">
+        <div className="order-2 grid gap-0.5 md:order-1">
           <p className="tracking-wide">
             Sudoku
             {" "}
@@ -99,7 +99,7 @@ export function Footer() {
             </a>
           </p>
         </div>
-        <div className="flex items-center gap-3 self-start md:self-auto">
+        <div className="order-1 flex items-center gap-3 self-start md:order-2 md:self-auto">
           {footerLinks.map((link, index) => (
             <div key={link.href} className="flex items-center gap-3">
               {index > 0 ? <span aria-hidden="true">/</span> : null}

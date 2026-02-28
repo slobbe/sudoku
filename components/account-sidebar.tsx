@@ -13,8 +13,7 @@ export function AccountSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="account-sidebar" aria-label="Identity sections">
-      <p className="account-sidebar-title">Identity</p>
+    <aside className="account-sidebar" aria-label="Account sections">
       <nav className="account-sidebar-nav">
         {accountSections.map((section) => {
           const isActive = pathname === section.href || pathname.startsWith(`${section.href}/`);

@@ -11,6 +11,7 @@ import {
 import {
   CalendarDays,
   ChevronDown,
+  Gauge,
   Heart,
   HeartCrack,
   Lightbulb,
@@ -2945,7 +2946,48 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
               ) : (
                 <div className="board-area">
                   <div className="game-layout">
-                    <aside className="game-rail game-rail-left" aria-label="Puzzle actions">
+                    <aside className="game-rail game-rail-left" aria-label="Primary puzzle controls">
+                      <Toggle
+                        id="annotation-mode"
+                        variant="outline"
+                        size="sm"
+                        disabled={isInputLocked(state)}
+                        className={`icon-button${state.annotationMode ? " annotation-enabled" : ""}`}
+                        title="Notes"
+                        aria-label="Notes"
+                        pressed={state.annotationMode}
+                        onClick={toggleAnnotationMode}
+                      >
+                        <PencilLine aria-hidden="true" />
+                      </Toggle>
+                      <Button
+                        id="hint"
+                        type="button"
+                        variant="outline"
+                        className="icon-button has-count"
+                        title="Hint"
+                        aria-label={`Hint (${state.hintsLeft} left)`}
+                        disabled={state.hintsLeft <= 0 || isInputLocked(state)}
+                        onClick={handleHint}
+                      >
+                        <Lightbulb aria-hidden="true" />
+                        <span id="hints-left" className="hint-count">{state.hintsLeft}</span>
+                      </Button>
+                      <p
+                        id="lives"
+                        className={`lives${state.livesLeft === 0 ? " empty" : ""}`}
+                        aria-label={`Lives ${state.livesLeft} of ${state.livesPerGame}`}
+                      >
+                        <span id="lives-display">
+                          {livesDisplay.map((entry) => (
+                            entry.isAlive ? (
+                              <Heart key={entry.key} className={entry.className} aria-hidden="true" strokeWidth={2.2} />
+                            ) : (
+                              <HeartCrack key={entry.key} className={entry.className} aria-hidden="true" strokeWidth={2.2} />
+                            )
+                          ))}
+                        </span>
+                      </p>
                       <Button
                         id="undo"
                         type="button"
@@ -2971,32 +3013,6 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
                         onClick={redoMove}
                       >
                         <Redo2 aria-hidden="true" />
-                      </Button>
-                      <Button
-                        id="reset-game"
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        className="icon-button"
-                        title="Clear"
-                        aria-label="Clear"
-                        disabled={isRouteEntryGameLoading || state.lost}
-                        onClick={resetCurrentGame}
-                      >
-                        <RotateCcw aria-hidden="true" />
-                      </Button>
-                      <Button
-                        id="new-game-open"
-                        type="button"
-                        size="icon"
-                        variant="outline"
-                        className="icon-button"
-                        title="New puzzle"
-                        aria-label="New puzzle"
-                        disabled={isCurrentBoardUnplayed}
-                        onClick={() => startNewGameAndOpen()}
-                      >
-                        <Plus aria-hidden="true" />
                       </Button>
                     </aside>
 
@@ -3047,84 +3063,72 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
                       </section>
                     </div>
 
-                    <aside className="game-rail game-rail-right" aria-label="Puzzle tools">
-                      {state.mode === "daily" ? (
-                        <DropdownMenu open={dailyDatePickerOpen} onOpenChange={setDailyDatePickerOpen}>
-                          <DropdownMenuTrigger asChild>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              className="daily-date-trigger"
-                              aria-label="Select daily puzzle date"
-                            >
-                              <CalendarDays className="h-4 w-4" aria-hidden="true" />
-                              <span className="daily-date-label">{activeDailyDateLabel}</span>
-                              <ChevronDown className="h-4 w-4" aria-hidden="true" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="daily-date-content w-auto p-2">
-                            <Calendar
-                              mode="single"
-                              selected={activeDailyDate ?? undefined}
-                              onSelect={(date) => {
-                                if (!date) {
-                                  return;
-                                }
+                    <aside className="game-rail game-rail-right" aria-label="Secondary puzzle controls">
+                      <div className="game-secondary-actions" aria-label="Board reset and new puzzle actions">
+                        <Button
+                          id="reset-game"
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          className="icon-button with-label"
+                          title="Reset"
+                          aria-label="Reset"
+                          disabled={isRouteEntryGameLoading || state.lost}
+                          onClick={resetCurrentGame}
+                        >
+                          <RotateCcw aria-hidden="true" />
+                          <span>Reset</span>
+                        </Button>
+                        {state.mode === "daily" ? (
+                          <DropdownMenu open={dailyDatePickerOpen} onOpenChange={setDailyDatePickerOpen}>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="outline"
+                                className="icon-button with-label daily-date-trigger"
+                                aria-label="Select daily puzzle date"
+                              >
+                                <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                                <span className="daily-date-label">{activeDailyDateLabel}</span>
+                                <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="daily-date-content w-auto p-2">
+                              <Calendar
+                                mode="single"
+                                selected={activeDailyDate ?? undefined}
+                                onSelect={(date) => {
+                                  if (!date) {
+                                    return;
+                                  }
 
-                                const dateKey = dateKeyFromLocalDate(date);
-                                setDailyDatePickerOpen(false);
-                                router.push(`/daily/${dateKey}`);
-                              }}
-                              disabled={(date) => date > maxDailyPickerDate}
-                              initialFocus
-                            />
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      ) : null}
-
-                      <p className="game-rail-label">Lives</p>
-                      <p
-                        id="lives"
-                        className={`lives${state.livesLeft === 0 ? " empty" : ""}`}
-                        aria-label={`Lives ${state.livesLeft} of ${state.livesPerGame}`}
-                      >
-                        <span id="lives-display">
-                          {livesDisplay.map((entry) => (
-                            entry.isAlive ? (
-                              <Heart key={entry.key} className={entry.className} aria-hidden="true" strokeWidth={2.2} />
-                            ) : (
-                              <HeartCrack key={entry.key} className={entry.className} aria-hidden="true" strokeWidth={2.2} />
-                            )
-                          ))}
-                        </span>
-                      </p>
-
-                      <Toggle
-                        id="annotation-mode"
-                        variant="outline"
-                        size="sm"
-                        disabled={isInputLocked(state)}
-                        className={`icon-button${state.annotationMode ? " annotation-enabled" : ""}`}
-                        title="Notes"
-                        aria-label="Notes"
-                        pressed={state.annotationMode}
-                        onClick={toggleAnnotationMode}
-                      >
-                        <PencilLine aria-hidden="true" />
-                      </Toggle>
-                      <Button
-                        id="hint"
-                        type="button"
-                        variant="outline"
-                        className="icon-button has-count"
-                        title="Hint"
-                        aria-label={`Hint (${state.hintsLeft} left)`}
-                        disabled={state.hintsLeft <= 0 || isInputLocked(state)}
-                        onClick={handleHint}
-                      >
-                        <Lightbulb aria-hidden="true" />
-                        <span id="hints-left" className="hint-count">{state.hintsLeft}</span>
-                      </Button>
+                                  const dateKey = dateKeyFromLocalDate(date);
+                                  setDailyDatePickerOpen(false);
+                                  router.push(`/daily/${dateKey}`);
+                                }}
+                                disabled={(date) => date > maxDailyPickerDate}
+                                initialFocus
+                              />
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        ) : (
+                          <Button
+                            id="new-game-open"
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="icon-button with-label"
+                            title="New puzzle"
+                            aria-label="New puzzle"
+                            disabled={isCurrentBoardUnplayed}
+                            onClick={() => startNewGameAndOpen()}
+                          >
+                            <Plus aria-hidden="true" />
+                            <span>New</span>
+                          </Button>
+                        )}
+                      </div>
 
                       {state.mode === "standard" && !state.currentGameStarted && !state.won && !state.lost ? (
                         <section className="difficulty-segment" aria-label="Select puzzle difficulty">
@@ -3144,8 +3148,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
                         </section>
                       ) : (
                         <p className="difficulty-current" aria-label="Current puzzle difficulty">
-                          Difficulty:
-                          {" "}
+                          <Gauge className="h-3.5 w-3.5" aria-hidden="true" />
                           <span>{formatDifficultyLabel(state.difficulty)}</span>
                         </p>
                       )}
