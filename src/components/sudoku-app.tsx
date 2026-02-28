@@ -762,6 +762,32 @@ function normalizeDateKey(value: string | undefined): string | null {
   return normalized === value ? value : null;
 }
 
+function formatDateKeyForDisplay(dateKey: string | null): string {
+  if (!dateKey) {
+    return "Never";
+  }
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  if (!match) {
+    return dateKey;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const date = new Date(year, month, day);
+
+  if (Number.isNaN(date.getTime())) {
+    return dateKey;
+  }
+
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  }).format(date);
+}
+
 function dateFromDateKeyLocal(value: string | null): Date | null {
   if (!value) {
     return null;
@@ -2821,6 +2847,13 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
   const statsOverallRate = calculateRatePercent(overallWon, overallStarted);
   const statsOverallAngle = (statsOverallRate / 100) * 360;
   const dailyStatsOverall = formatLine(state.stats.daily.gamesWon, state.stats.daily.gamesStarted);
+  const dailyLost = Math.max(0, state.stats.daily.gamesStarted - state.stats.daily.gamesWon);
+  const hasOverallStats = overallStarted > 0;
+  const hasDailyStats = state.stats.daily.gamesStarted > 0;
+  const todayDailyLabel = formatDateKeyForDisplay(todayDailyKey);
+  const dailyLastPlayedLabel = formatDateKeyForDisplay(state.stats.daily.lastStartedDate);
+  const dailyLastWonLabel = formatDateKeyForDisplay(state.stats.daily.lastWonDate);
+  const dailyDifficultyLabel = formatDifficultyLabel(todayDailyDifficulty);
   const todayCalendarFallbackEntry = useMemo<DailyHistoryEntry | null>(() => {
     if (!dailySessionForToday) {
       return null;
@@ -2870,6 +2903,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
 
     return { won, lost };
   }, [dailyCalendarCells]);
+  const hasDailyMonthEntries = dailyMonthSummary.won + dailyMonthSummary.lost > 0;
   const difficultyRateRows: Array<{
     key: Difficulty;
     label: string;
@@ -3341,83 +3375,94 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
                   <>
                 <section className="stats-panel stats-panel-overall" aria-label="Overall finished puzzles">
                   <h3>Overall Finished</h3>
-                  <div className="stats-overview-grid">
-                    <div
-                      className="stats-pie-chart"
-                      role="img"
-                      aria-label={`Overall finished ${formatRate(overallWon, overallStarted)}`}
-                      style={{
-                        background:
-                          `conic-gradient(var(--stats-finished) 0deg ${statsOverallAngle}deg, var(--stats-unfinished) ${statsOverallAngle}deg 360deg)`,
-                      }}
-                    >
-                      <span className="stats-pie-center">{formatRate(overallWon, overallStarted)}</span>
+                  {hasOverallStats ? (
+                    <>
+                      <div className="stats-kpi-grid" aria-label="Overall summary">
+                        <p className="stats-kpi-card">
+                          <span className="stats-kpi-label">Win rate</span>
+                          <strong className="stats-kpi-value">{formatRate(overallWon, overallStarted)}</strong>
+                          <span id="stats-overall" className="stats-kpi-meta">{statsOverall}</span>
+                        </p>
+                        <p className="stats-kpi-card">
+                          <span className="stats-kpi-label">Total points</span>
+                          <strong id="stats-total-points" className="stats-kpi-value">{statsTotalPoints}</strong>
+                          <span className="stats-kpi-meta">Across all finished puzzles</span>
+                        </p>
+                        <p className="stats-kpi-card">
+                          <span className="stats-kpi-label">Active streak</span>
+                          <strong id="stats-streak" className="stats-kpi-value">{state.stats.currentStreak}</strong>
+                          <span className="stats-kpi-meta">Consecutive solved puzzles</span>
+                        </p>
+                        <p className="stats-kpi-card">
+                          <span className="stats-kpi-label">Best streak</span>
+                          <strong id="stats-best-streak" className="stats-kpi-value">{state.stats.bestStreak}</strong>
+                          <span className="stats-kpi-meta">Your personal best run</span>
+                        </p>
+                      </div>
+                      <div className="stats-overview-grid">
+                        <div
+                          className="stats-pie-chart"
+                          role="img"
+                          aria-label={`Overall finished ${formatRate(overallWon, overallStarted)}`}
+                          style={{
+                            background:
+                              `conic-gradient(var(--stats-finished) 0deg ${statsOverallAngle}deg, var(--stats-unfinished) ${statsOverallAngle}deg 360deg)`,
+                          }}
+                        >
+                          <span className="stats-pie-center">{formatRate(overallWon, overallStarted)}</span>
+                        </div>
+                        <div className="stats-overview-lines">
+                          <ul className="stats-pie-legend" aria-label="Overall puzzle legend">
+                            <li>
+                              <span className="stats-legend-swatch solved" aria-hidden="true" />
+                              Won:
+                              {" "}
+                              {overallWon}
+                            </li>
+                            <li>
+                              <span className="stats-legend-swatch unfinished" aria-hidden="true" />
+                              Lost:
+                              {" "}
+                              {overallLost}
+                            </li>
+                          </ul>
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="stats-empty" role="status" aria-live="polite">
+                      <p>No finished puzzles yet. Start one to build your stats.</p>
+                      <Button asChild size="sm">
+                        <Link href="/new">Play a puzzle</Link>
+                      </Button>
                     </div>
-                    <div className="stats-overview-lines">
-                      <p className="stats-overview-combo">
-                        <span>
-                          Overall:
-                          {" "}
-                          <span id="stats-overall">{statsOverall}</span>
-                        </span>
-                        <span>
-                          Total Points:
-                          {" "}
-                          <span id="stats-total-points">{statsTotalPoints}</span>
-                        </span>
-                        <span>
-                          <span className="stats-flame" aria-hidden="true">
-                            🔥
-                          </span>
-                          {" "}
-                          Puzzle Streak:
-                          {" "}
-                          <span id="stats-streak">{state.stats.currentStreak}</span>
-                          {" "}
-                          (best
-                          {" "}
-                          <span id="stats-best-streak">{state.stats.bestStreak}</span>
-                          )
-                        </span>
-                      </p>
-                      <ul className="stats-pie-legend" aria-label="Overall puzzle legend">
-                        <li>
-                          <span className="stats-legend-swatch solved" aria-hidden="true" />
-                          Won:
-                          {" "}
-                          {overallWon}
-                        </li>
-                        <li>
-                          <span className="stats-legend-swatch unfinished" aria-hidden="true" />
-                          Lost:
-                          {" "}
-                          {overallLost}
-                        </li>
-                      </ul>
-                    </div>
-                  </div>
+                  )}
                 </section>
 
                 <section className="stats-panel stats-panel-difficulty" aria-label="Win rate by difficulty">
                   <h3>Difficulty Win Rate</h3>
-                  <div className="stats-bars" role="img" aria-label="Difficulty win rate bar chart">
-                    {difficultyRateRows.map((entry) => (
-                      <div key={entry.key} className="stats-bar-row">
-                        <div className="stats-bar-head">
-                          <span className="stats-bar-title">{entry.label}</span>
-                          <span className="stats-bar-rate">{entry.rateText}</span>
+                  {hasOverallStats ? (
+                    <div className="stats-bars" role="img" aria-label="Difficulty win rate bar chart">
+                      {difficultyRateRows.map((entry) => (
+                        <div key={entry.key} className="stats-bar-row">
+                          <div className="stats-bar-head">
+                            <span className="stats-bar-title">{entry.label}</span>
+                            <span className="stats-bar-rate">{entry.rateText}</span>
+                          </div>
+                          <div className="stats-bar-track">
+                            <div className={`stats-bar-fill stats-bar-fill-${entry.key}`} style={{ width: `${entry.rate}%` }} />
+                          </div>
+                          <p className="stats-bar-line">
+                            <span id={`stats-${entry.key}`}>{entry.line}</span>
+                            {" "}
+                            <span id={`stats-points-${entry.key}`}>{`${entry.points} pts`}</span>
+                          </p>
                         </div>
-                        <div className="stats-bar-track">
-                          <div className={`stats-bar-fill stats-bar-fill-${entry.key}`} style={{ width: `${entry.rate}%` }} />
-                        </div>
-                        <p className="stats-bar-line">
-                          <span id={`stats-${entry.key}`}>{entry.line}</span>
-                          {" "}
-                          <span id={`stats-points-${entry.key}`}>{`${entry.points} pts`}</span>
-                        </p>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="stats-empty-copy">Complete a puzzle to reveal your difficulty breakdown.</p>
+                  )}
                 </section>
                   </>
                 ) : null}
@@ -3425,35 +3470,43 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
                 {statisticsSection === "daily" ? (
                   <section className="stats-panel" aria-label="Daily puzzle stats">
                   <h3>Daily Challenge</h3>
-                  <div className="daily-summary-line">
-                    <span>
-                      Today:
-                      {" "}
-                      <span id="stats-daily-today">{todayDailyKey}</span>
-                      {" "}
-                      ({todayDailyDifficulty})
-                    </span>
-                    <span id="stats-daily-overall">{dailyStatsOverall}</span>
+                  <div className="stats-kpi-grid" aria-label="Daily summary">
+                    <p className="stats-kpi-card">
+                      <span className="stats-kpi-label">Today</span>
+                      <strong id="stats-daily-today" className="stats-kpi-value">{todayDailyLabel}</strong>
+                      <span className="stats-kpi-meta">{dailyDifficultyLabel}</span>
+                    </p>
+                    <p className="stats-kpi-card">
+                      <span className="stats-kpi-label">Daily record</span>
+                      <strong id="stats-daily-overall" className="stats-kpi-value">{dailyStatsOverall}</strong>
+                      <span className="stats-kpi-meta">{`Won ${state.stats.daily.gamesWon}, lost ${dailyLost}`}</span>
+                    </p>
+                    <p className="stats-kpi-card">
+                      <span className="stats-kpi-label">Current streak</span>
+                      <strong id="stats-daily-streak" className="stats-kpi-value">{state.stats.daily.currentStreak}</strong>
+                      <span className="stats-kpi-meta">{`Best ${state.stats.daily.bestStreak}`}</span>
+                    </p>
+                    <p className="stats-kpi-card">
+                      <span className="stats-kpi-label">Daily points</span>
+                      <strong className="stats-kpi-value">{state.stats.daily.dailyPoints}</strong>
+                      <span className="stats-kpi-meta">All-time daily total</span>
+                    </p>
                   </div>
-                  <div className="daily-summary-line">
-                    <span>{`Played: ${state.stats.daily.gamesStarted}`}</span>
-                    <span>{`Won: ${state.stats.daily.gamesWon}`}</span>
-                    <span>{`Lost: ${Math.max(0, state.stats.daily.gamesStarted - state.stats.daily.gamesWon)}`}</span>
-                    <span>{`Points: ${state.stats.daily.dailyPoints}`}</span>
-                  </div>
-                  <div className="daily-summary-line">
-                    <span>
-                      Daily Solve Streak:
-                      {" "}
-                      <span id="stats-daily-streak">{state.stats.daily.currentStreak}</span>
-                      {" "}
-                      (best
-                      {" "}
-                      <span id="stats-daily-best-streak">{state.stats.daily.bestStreak}</span>
-                      )
-                    </span>
-                    <span>{`Month W/L: ${dailyMonthSummary.won}/${dailyMonthSummary.lost}`}</span>
-                  </div>
+
+                  {hasDailyStats ? (
+                    <div className="daily-summary-line">
+                      <span>{`Last played: ${dailyLastPlayedLabel}`}</span>
+                      <span>{`Last solved: ${dailyLastWonLabel}`}</span>
+                      <span>{`Month W/L: ${dailyMonthSummary.won}/${dailyMonthSummary.lost}`}</span>
+                    </div>
+                  ) : (
+                    <div className="stats-empty" role="status" aria-live="polite">
+                      <p>No daily attempts yet. Play today&apos;s challenge to start your streak.</p>
+                      <Button asChild size="sm">
+                        <Link href="/daily">Play daily challenge</Link>
+                      </Button>
+                    </div>
+                  )}
 
                   <div className="daily-calendar-header">
                     <Button
@@ -3519,6 +3572,10 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
                       );
                     })}
                   </div>
+
+                  {!hasDailyMonthEntries ? (
+                    <p className="stats-empty-copy">No results recorded for this month yet.</p>
+                  ) : null}
 
                   <div className="daily-calendar-legend" aria-label="Daily calendar legend">
                     <span><span className="legend-swatch won" /> Solved</span>

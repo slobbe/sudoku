@@ -725,6 +725,63 @@ textarea {
   font-weight: 600;
 }
 
+.stats-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.stats-kpi-card {
+  margin: 0;
+  padding: 0.6rem;
+  border: 1px solid color-mix(in srgb, var(--line) 65%, transparent);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--surface) 55%, transparent);
+  display: grid;
+  gap: 0.18rem;
+}
+
+.stats-kpi-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--soft-ink);
+}
+
+.stats-kpi-value {
+  font-size: 1.08rem;
+  font-weight: 700;
+  line-height: 1.2;
+  color: var(--ink);
+}
+
+.stats-kpi-meta {
+  font-size: 0.75rem;
+  color: var(--soft-ink);
+}
+
+.stats-empty {
+  display: grid;
+  gap: 0.55rem;
+  justify-items: start;
+  padding: 0.75rem;
+  border: 1px dashed color-mix(in srgb, var(--line-strong) 65%, transparent);
+  border-radius: 0.5rem;
+  background: color-mix(in srgb, var(--surface-2) 45%, transparent);
+}
+
+.stats-empty p {
+  margin: 0;
+  color: var(--soft-ink);
+  font-size: 0.84rem;
+}
+
+.stats-empty-copy {
+  margin: 0;
+  color: var(--soft-ink);
+  font-size: 0.8rem;
+}
+
 .stats-overview-grid {
   display: grid;
   grid-template-columns: minmax(110px, 130px) minmax(0, 1fr);
@@ -754,17 +811,6 @@ textarea {
 .stats-overview-lines {
   display: grid;
   gap: 0.55rem;
-}
-
-.stats-overview-lines p {
-  margin: 0;
-  font-size: 0.86rem;
-  color: var(--soft-ink);
-}
-
-.stats-overview-combo {
-  display: grid;
-  gap: 0.45rem;
 }
 
 .stats-pie-legend {
@@ -1173,6 +1219,10 @@ textarea {
   .stats-overview-grid {
     grid-template-columns: 1fr;
     justify-items: center;
+  }
+
+  .stats-kpi-grid {
+    grid-template-columns: 1fr;
   }
 
   .stats-overview-lines {
