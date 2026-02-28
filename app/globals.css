@@ -663,6 +663,16 @@ textarea {
   color: var(--ink);
 }
 
+:root[data-theme="dark"] .settings-control select {
+  color-scheme: dark;
+}
+
+.settings-control select option,
+.settings-control select optgroup {
+  background-color: var(--paper);
+  color: var(--ink);
+}
+
 .settings-footer {
   padding-top: 0.35rem;
   border-top: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
