@@ -36,14 +36,10 @@ The hosted PWA is available at [slobbe.github.io/sudoku](https://slobbe.github.i
 - `/play`
 - `/daily`
 - `/daily/:date` (example: `/daily/2026-02-26`)
-- `/solver`
-- `/analyzer`
-- `/how-to-play`
 - `/settings`
-- `/statistics`
+- `/statistics/overall`
+- `/statistics/daily`
 - `/profile`
-- `/leaderboard`
-- `/about`
 - `/privacy`
 - `/contact`
 

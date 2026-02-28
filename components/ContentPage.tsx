@@ -16,7 +16,6 @@ export function ContentPage({ title, description, ctaHref, ctaLabel, children }:
     <PageShell>
       <section className="grid gap-6 md:gap-8">
         <header className="grid gap-4">
-          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Sudoku Journal</p>
           <h1 className="font-heading text-balance text-4xl font-semibold leading-tight md:text-5xl xl:text-6xl">
             {title}
           </h1>

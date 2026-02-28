@@ -615,6 +615,17 @@ textarea {
   font-weight: 600;
 }
 
+.stats-section-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.stats-section-nav button,
+.stats-section-nav a {
+  min-height: 1.9rem;
+}
+
 .settings-grid {
   display: grid;
   gap: 0.6rem;
@@ -1130,6 +1141,10 @@ textarea {
     grid-template-columns: 1fr;
   }
 
+  .settings-header {
+    flex-wrap: wrap;
+  }
+
   .settings-control {
     justify-content: flex-start;
   }
@@ -1219,7 +1234,7 @@ textarea {
     max-width: none;
     margin: 0;
     display: grid;
-    grid-template-columns: max-content minmax(0, 33rem) minmax(8.25rem, 10rem);
+    grid-template-columns: minmax(8.25rem, 10rem) minmax(0, 33rem) minmax(8.25rem, 10rem);
     column-gap: 0.35rem;
     justify-content: center;
     align-items: start;
@@ -1260,6 +1275,7 @@ textarea {
 
   .game-center {
     width: 33rem;
+    justify-self: center;
   }
 
   .account-layout {

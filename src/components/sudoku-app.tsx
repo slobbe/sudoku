@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   useCallback,
@@ -1515,9 +1516,10 @@ function syncDialogState(dialog: HTMLDialogElement | null, open: boolean): void 
 type SudokuAppProps = {
   entryPoint?: SudokuEntryPoint;
   dailyDateKey?: string;
+  statisticsSection?: "overall" | "daily";
 };
 
-export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps) {
+export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection = "overall" }: SudokuAppProps) {
   const router = useRouter();
   const [state, setState] = useState<GameState>(createInitialState);
   const stateRef = useRef<GameState>(state);
@@ -3248,8 +3250,18 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
               <div className="stats-card">
                 <div className="settings-header">
                   <h2>Statistics</h2>
+                  <nav className="stats-section-nav" aria-label="Statistics sections">
+                    <Button asChild size="sm" variant={statisticsSection === "overall" ? "default" : "outline"}>
+                      <Link href="/statistics/overall">Overall</Link>
+                    </Button>
+                    <Button asChild size="sm" variant={statisticsSection === "daily" ? "default" : "outline"}>
+                      <Link href="/statistics/daily">Daily</Link>
+                    </Button>
+                  </nav>
                 </div>
                 <section className="stats" aria-label="Puzzle stats">
+                {statisticsSection === "overall" ? (
+                  <>
                 <section className="stats-panel stats-panel-overall" aria-label="Overall finished puzzles">
                   <h3>Overall Finished</h3>
                   <div className="stats-overview-grid">
@@ -3330,8 +3342,11 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
                     ))}
                   </div>
                 </section>
+                  </>
+                ) : null}
 
-                <section className="stats-panel" aria-label="Daily puzzle stats">
+                {statisticsSection === "daily" ? (
+                  <section className="stats-panel" aria-label="Daily puzzle stats">
                   <h3>Daily Challenge</h3>
                   <div className="daily-summary-line">
                     <span>
@@ -3434,6 +3449,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
                     <span><span className="legend-swatch today" /> Today</span>
                   </div>
                 </section>
+                ) : null}
 
                 </section>
               </div>

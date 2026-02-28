@@ -19,8 +19,6 @@ const GITHUB_REPO_URL = "https://github.com/slobbe/sudoku";
 const GITHUB_LICENSE_URL = "https://github.com/slobbe/sudoku/blob/main/LICENSE";
 
 const footerLinks = [
-  { href: "/solver", label: "Solver" },
-  { href: "/about", label: "About" },
   { href: "/privacy", label: "Privacy" },
   { href: "/contact", label: "Contact" },
 ] as const;

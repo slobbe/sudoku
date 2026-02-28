@@ -39,10 +39,12 @@ export function NavBar() {
   const pathSegments = normalizedPathname.split("/").filter(Boolean);
   const lastSegment = pathSegments[pathSegments.length - 1] ?? "";
   const previousSegment = pathSegments[pathSegments.length - 2] ?? "";
+  const isDailyGameplayRoot = lastSegment === "daily" && previousSegment !== "statistics";
+  const isDailyGameplayDate = previousSegment === "daily" && isIsoDateSegment(lastSegment);
   const isGameplayRoute = lastSegment === "play"
     || lastSegment === "puzzle"
-    || lastSegment === "daily"
-    || (previousSegment === "daily" && isIsoDateSegment(lastSegment));
+    || isDailyGameplayRoot
+    || isDailyGameplayDate;
   const profileActive = isLinkActive(pathname, "/profile");
   const playerLabel = name?.trim().length ? name.trim() : "Guest";
 
