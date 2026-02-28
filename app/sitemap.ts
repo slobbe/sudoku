@@ -11,7 +11,6 @@ const routes = [
   "/statistics/daily",
   "/profile",
   "/privacy",
-  "/contact",
 ] as const;
 
 export default function sitemap(): MetadataRoute.Sitemap {

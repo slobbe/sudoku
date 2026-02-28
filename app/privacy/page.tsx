@@ -51,12 +51,6 @@ export default function PrivacyPage() {
           </p>
         </div>
 
-        <div className="grid gap-1.5">
-          <h2 className="text-base font-semibold text-foreground md:text-lg">Questions</h2>
-          <p>
-            If you have privacy questions, please use the contact page.
-          </p>
-        </div>
       </section>
     </ContentPage>
   );

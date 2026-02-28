@@ -41,7 +41,6 @@ The hosted PWA is available at [slobbe.github.io/sudoku](https://slobbe.github.i
 - `/statistics/daily`
 - `/profile`
 - `/privacy`
-- `/contact`
 
 ## Data & Privacy
 
