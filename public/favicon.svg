@@ -1,0 +1,15 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sudoku favicon">
+  <rect width="64" height="64" rx="14" fill="#f5f1e8" />
+  <text
+    x="50%"
+    y="54%"
+    text-anchor="middle"
+    dominant-baseline="middle"
+    fill="#7b68b5"
+    font-size="46"
+    font-family="Iowan Old Style, Georgia, Times New Roman, serif"
+    font-weight="700"
+  >
+    S
+  </text>
+</svg>

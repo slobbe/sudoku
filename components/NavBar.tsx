@@ -2,113 +2,67 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
+import { UserRound } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { useNostrAccount } from "@/lib/nostr";
 import { cn } from "@/lib/utils";
 
 const navLinks = [
   { href: "/play", label: "Play" },
   { href: "/daily", label: "Daily" },
-  { href: "/solver", label: "Solver" },
-  { href: "/techniques", label: "Techniques" },
-  { href: "/profile", label: "Profile" },
-  { href: "/about", label: "About" },
 ] as const;
 
 function isLinkActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
-function NavItems({ pathname, compact = false }: { pathname: string; compact?: boolean }) {
-  return (
-    <>
-      {navLinks.map((link) => (
-        <Link
-          key={link.href}
-          href={link.href}
-          className={cn(
-            "inline-flex min-h-11 items-center rounded-md px-3 text-sm font-medium transition-colors",
-            isLinkActive(pathname, link.href)
-              ? "bg-accent/70 text-foreground"
-              : "text-muted-foreground hover:bg-accent/40 hover:text-foreground",
-            compact && "px-2",
-          )}
-          aria-current={isLinkActive(pathname, link.href) ? "page" : undefined}
-        >
-          {link.label}
-        </Link>
-      ))}
-    </>
-  );
-}
-
 export function NavBar() {
   const pathname = usePathname();
-  const isPlayRoute = pathname === "/play";
+  const { name } = useNostrAccount();
+  const profileActive = isLinkActive(pathname, "/profile");
+  const playerLabel = name?.trim().length ? name.trim() : "Guest";
 
   return (
-    <header
-      className={cn("sticky top-0 z-40 border-b border-border/70 bg-background/90 backdrop-blur", isPlayRoute && "border-b-0")}
-      style={{
-        paddingTop: "env(safe-area-inset-top)",
-      }}
-    >
-      <div className={cn("mx-auto flex w-full max-w-7xl items-center justify-between px-4 lg:px-8", isPlayRoute ? "min-h-14" : "min-h-16") }>
-        <Link href="/" className="inline-flex min-h-11 items-center text-base font-semibold tracking-tight">
+    <header className="sticky top-0 z-40 bg-background/96 backdrop-blur-sm" style={{ paddingTop: "env(safe-area-inset-top)" }}>
+      <div className="mx-auto grid min-h-14 w-full max-w-7xl grid-cols-[1fr_auto_1fr] items-center px-4 md:min-h-16 lg:px-8">
+        <Link href="/" className="justify-self-start font-heading text-xl font-semibold tracking-tight md:text-2xl">
           Sudoku
         </Link>
 
-        {isPlayRoute ? (
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" size="icon" aria-label="Open menu">
-                <Menu className="h-5 w-5" aria-hidden="true" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="right" className="pt-10">
-              <SheetHeader>
-                <SheetTitle>Menu</SheetTitle>
-                <SheetDescription>Navigate Sudoku sections.</SheetDescription>
-              </SheetHeader>
-              <nav className="mt-6 grid gap-2">
-                <NavItems pathname={pathname} compact />
-              </nav>
-            </SheetContent>
-          </Sheet>
-        ) : (
-          <>
-            <nav className="hidden items-center gap-2 md:flex" aria-label="Primary navigation">
-              <NavItems pathname={pathname} />
-            </nav>
-            <div className="md:hidden">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="outline" size="icon" aria-label="Open menu">
-                    <Menu className="h-5 w-5" aria-hidden="true" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="pt-10">
-                  <SheetHeader>
-                    <SheetTitle>Navigate</SheetTitle>
-                    <SheetDescription>Browse Sudoku pages and tools.</SheetDescription>
-                  </SheetHeader>
-                  <nav className="mt-6 grid gap-2">
-                    <NavItems pathname={pathname} />
-                  </nav>
-                </SheetContent>
-              </Sheet>
-            </div>
-          </>
-        )}
+        <nav className="justify-self-center" aria-label="Primary navigation">
+          <div className="flex items-center gap-1 md:gap-2">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={cn(
+                  "inline-flex items-center justify-center px-2 py-2 text-sm text-muted-foreground transition-colors md:px-2.5",
+                  isLinkActive(pathname, link.href) && "font-semibold text-foreground",
+                  !isLinkActive(pathname, link.href) && "hover:text-foreground",
+                )}
+                aria-current={isLinkActive(pathname, link.href) ? "page" : undefined}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </div>
+        </nav>
+
+        <Link
+          href="/profile"
+          className={cn(
+            "inline-flex h-9 items-center justify-center justify-self-end gap-1.5 px-2 text-muted-foreground transition-colors",
+            profileActive && "font-semibold text-foreground",
+            !profileActive && "hover:text-foreground",
+          )}
+          aria-label="Profile"
+          aria-current={profileActive ? "page" : undefined}
+        >
+          <UserRound className="h-4 w-4" aria-hidden="true" />
+          <span className="max-w-24 truncate text-xs font-medium">{playerLabel}</span>
+        </Link>
       </div>
+      <Separator />
     </header>
   );
 }

@@ -9,13 +9,15 @@ import {
   useState,
 } from "react";
 import {
-  BarChart3,
+  CalendarDays,
+  ChevronDown,
   Heart,
   HeartCrack,
   Lightbulb,
   PencilLine,
+  Plus,
+  RotateCcw,
   Redo2,
-  Settings,
   Undo2,
 } from "lucide-react";
 import {
@@ -53,6 +55,7 @@ import {
 import {
   applyThemeToDocument,
   normalizeAppTheme,
+  readThemeFromSavedGame,
   type AppTheme,
 } from "@/lib/theme";
 import {
@@ -73,13 +76,7 @@ import {
 } from "@/lib/scoring/points";
 import {
   loadSavedGamePayloadFromBrowser,
-  readSavedGameStorageDiagnosticsFromBrowser,
   saveSavedGamePayloadToBrowser,
-} from "@/lib/storage/saved-game-repository";
-import type {
-  SavedGameStorageDiagnostics,
-  SavedGameStorageLastSaveResult,
-  SavedGameStorageMigrationStatus,
 } from "@/lib/storage/saved-game-repository";
 import {
   generateGamePuzzle,
@@ -88,9 +85,16 @@ import {
 import {
   NOSTR_RESTORE_COMPLETED_EVENT,
   type NostrRestoreCompletedEventDetail,
-  useNostrAccount,
 } from "@/lib/nostr";
-import { APP_VERSION } from "@/lib/app-version";
+import { AccountSidebar } from "@/components/account-sidebar";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Toggle } from "@/components/ui/toggle";
 
 type Theme = AppTheme;
 type AppView = SudokuAppView;
@@ -273,11 +277,6 @@ const MAX_HINTS_PER_GAME = 9;
 const MIN_LIVES_PER_GAME = 1;
 const MAX_LIVES_PER_GAME = 6;
 
-const APP_NAME = "Sudoku";
-const APP_AUTHOR = "slobbe";
-const APP_REPO_URL = "https://github.com/slobbe/sudoku";
-const APP_LICENSE_URL = "https://github.com/slobbe/sudoku/blob/main/LICENSE";
-
 const DIFFICULTIES: Difficulty[] = ["easy", "medium", "hard", "expert"];
 const DIGITS = [1, 2, 3, 4, 5, 6, 7, 8, 9] as const;
 const WEEKDAY_SHORT_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
@@ -456,6 +455,14 @@ function isBoardShape(board: unknown): board is Board {
 
 function normalizeTheme(theme: unknown): Theme {
   return normalizeAppTheme(theme);
+}
+
+function getThemeFromDocument(): Theme {
+  if (typeof document === "undefined") {
+    return "light";
+  }
+
+  return normalizeTheme(document.documentElement.dataset.theme);
 }
 
 function isDifficulty(value: unknown): value is Difficulty {
@@ -681,7 +688,7 @@ function createInitialState(): GameState {
     notes: createEmptyNotesBoard(),
     showMistakes: true,
     fillModeEntry: "double-tap",
-    theme: "slate",
+    theme: getThemeFromDocument(),
     undoStack: [],
     redoStack: [],
     stats: createDefaultStats(),
@@ -750,6 +757,31 @@ function normalizeDateKey(value: string | undefined): string | null {
   const date = new Date(parsed);
   const normalized = `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, "0")}-${String(date.getUTCDate()).padStart(2, "0")}`;
   return normalized === value ? value : null;
+}
+
+function dateFromDateKeyLocal(value: string | null): Date | null {
+  if (!value) {
+    return null;
+  }
+
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  if (!match) {
+    return null;
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]) - 1;
+  const day = Number(match[3]);
+  const parsed = new Date(year, month, day);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  return parsed;
+}
+
+function dateKeyFromLocalDate(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
 function isPreviousDateKey(previous: string | null, current: string): boolean {
@@ -1100,18 +1132,6 @@ function getCurrentLocalDayKey(referenceTime = Date.now()): string {
   return dateSeed(new Date(referenceTime), "local");
 }
 
-function formatCountdownToNextDaily(referenceTime = Date.now()): string {
-  const now = new Date(referenceTime);
-  const nextMidnight = new Date(now);
-  nextMidnight.setHours(24, 0, 0, 0);
-  const remainingMs = Math.max(0, nextMidnight.getTime() - now.getTime());
-  const totalSeconds = Math.floor(remainingMs / 1000);
-  const hours = Math.floor(totalSeconds / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-  return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
-}
-
 function getMonthKeyFromDate(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
 }
@@ -1176,28 +1196,6 @@ function formatDailyEntryLabel(dateKey: string, entry: DailyHistoryEntry | null,
 
   const resultLabel = entry.result === "won" ? "solved" : "lost";
   return `${dateKey}: ${resultLabel} (${entry.difficulty})${todaySuffix}`;
-}
-
-function formatDateKeyForDisplay(dateKey: string): string {
-  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
-  if (!match) {
-    return dateKey;
-  }
-
-  const year = Number(match[1]);
-  const month = Number(match[2]) - 1;
-  const day = Number(match[3]);
-  const date = new Date(year, month, day);
-
-  if (Number.isNaN(date.getTime())) {
-    return dateKey;
-  }
-
-  return new Intl.DateTimeFormat(undefined, {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  }).format(date);
 }
 
 function isSessionContinuable(session: SessionSnapshot | null): boolean {
@@ -1266,34 +1264,6 @@ function formatRate(won: number, started: number): string {
 
 function formatLine(won: number, started: number): string {
   return `${won}/${started} (${formatRate(won, started)})`;
-}
-
-function formatStorageMigrationStatus(status: SavedGameStorageMigrationStatus): string {
-  if (status === "migrated") {
-    return "Migrated";
-  }
-
-  if (status === "fallback") {
-    return "Fallback";
-  }
-
-  return "Not started";
-}
-
-function formatStorageLastSaveResult(result: SavedGameStorageLastSaveResult): string {
-  if (result === "saved") {
-    return "Saved";
-  }
-
-  if (result === "fallback_saved") {
-    return "Saved via local fallback";
-  }
-
-  if (result === "failed") {
-    return "Failed";
-  }
-
-  return "No recent save";
 }
 
 async function loadSavedGame(): Promise<GameState | null> {
@@ -1455,6 +1425,7 @@ async function loadSavedGame(): Promise<GameState | null> {
       seed: candidate.dailySession.seed,
     }
     : null;
+  const resolvedTheme = await readThemeFromSavedGame();
 
   return {
     mode,
@@ -1472,7 +1443,7 @@ async function loadSavedGame(): Promise<GameState | null> {
     notes: payload.notes ?? createEmptyNotesBoard(),
     showMistakes: true,
     fillModeEntry: payload.fillModeEntry ?? "double-tap",
-    theme: normalizeTheme(payload.theme),
+    theme: resolvedTheme,
     undoStack: [],
     redoStack: [],
     stats: normalizeStats(payload.stats),
@@ -1549,20 +1520,16 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
   const router = useRouter();
   const [state, setState] = useState<GameState>(createInitialState);
   const stateRef = useRef<GameState>(state);
-  const { identity: nostrIdentity, name: nostrName, status: nostrStatus } = useNostrAccount();
 
   const [activeView, setActiveView] = useState<AppView>(() => getInitialViewForEntryPoint(entryPoint));
   const [, setStatusMessage] = useState<string>(() => HOME_STATUS_MESSAGES[0] ?? "");
   const [winPromptOpen, setWinPromptOpen] = useState(false);
   const [losePromptOpen, setLosePromptOpen] = useState(false);
-  const [storageDiagnostics, setStorageDiagnostics] = useState<SavedGameStorageDiagnostics>(
-    () => readSavedGameStorageDiagnosticsFromBrowser(),
-  );
-
-  const [updateStatus, setUpdateStatus] = useState("");
+  const [, setUpdateStatus] = useState("");
   const [isHydrated, setIsHydrated] = useState(false);
   const [hasDailyEntryStarted, setHasDailyEntryStarted] = useState(entryPoint !== "daily");
   const [hasPuzzleEntryStarted, setHasPuzzleEntryStarted] = useState(entryPoint !== "puzzle");
+  const [dailyDatePickerOpen, setDailyDatePickerOpen] = useState(false);
   const [isGeneratingPuzzle, setIsGeneratingPuzzle] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [dailyCalendarMonthKey, setDailyCalendarMonthKey] = useState(() => getMonthKeyFromDate(new Date()));
@@ -1600,10 +1567,6 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
   const setPuzzleGenerationBusy = useCallback((isBusy: boolean) => {
     generationInProgressRef.current = isBusy;
     setIsGeneratingPuzzle(isBusy);
-  }, []);
-
-  const refreshStorageDiagnostics = useCallback(() => {
-    setStorageDiagnostics(readSavedGameStorageDiagnosticsFromBrowser());
   }, []);
 
   const requestExactPuzzle = useCallback(
@@ -1932,18 +1895,6 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
     setActiveView("home");
     setStatusMessage((currentMessage) => pickHomeStatusMessage(currentMessage));
   }, [entryPoint, router]);
-
-  const openProfilePage = useCallback(() => {
-    router.push("/profile/");
-  }, [router]);
-
-  const openSettingsView = useCallback(() => {
-    router.push("/settings/");
-  }, [router]);
-
-  const openStatsView = useCallback(() => {
-    router.push("/statistics/");
-  }, [router]);
 
   const showPreviousDailyMonth = useCallback(() => {
     setDailyCalendarMonthKey((current) => shiftMonthKey(current, -1));
@@ -2427,6 +2378,44 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
   }, [state]);
 
   useEffect(() => {
+    if (state.mode !== "daily" && dailyDatePickerOpen) {
+      setDailyDatePickerOpen(false);
+    }
+  }, [dailyDatePickerOpen, state.mode]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    const root = document.documentElement;
+    const syncThemeFromDocument = () => {
+      const nextTheme = normalizeTheme(root.dataset.theme);
+      const current = stateRef.current;
+      if (current.theme === nextTheme) {
+        return;
+      }
+
+      applyState({
+        ...current,
+        theme: nextTheme,
+      });
+    };
+
+    syncThemeFromDocument();
+
+    const observer = new MutationObserver(syncThemeFromDocument);
+    observer.observe(root, {
+      attributes: true,
+      attributeFilter: ["data-theme"],
+    });
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [applyState]);
+
+  useEffect(() => {
     return () => {
       generationAbortControllerRef.current?.abort();
       generationAbortControllerRef.current = null;
@@ -2496,7 +2485,6 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
       if (restored) {
         applyState(restored);
       }
-      refreshStorageDiagnostics();
       setStatusMessage((currentMessage) => pickHomeStatusMessage(currentMessage));
       setIsHydrated(true);
     })();
@@ -2504,7 +2492,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
     return () => {
       isCancelled = true;
     };
-  }, [applyState, refreshStorageDiagnostics]);
+  }, [applyState]);
 
   useEffect(() => {
     const onNostrRestoreCompleted = (event: Event) => {
@@ -2514,12 +2502,10 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
       void (async () => {
         const restored = await loadSavedGame();
         if (!restored) {
-          refreshStorageDiagnostics();
           return;
         }
 
         applyState(restored);
-        refreshStorageDiagnostics();
 
         if (restoredAt) {
           setStatusMessage(`Restored game data from Nostr backup (${new Date(restoredAt).toLocaleTimeString()}).`);
@@ -2534,7 +2520,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
     return () => {
       window.removeEventListener(NOSTR_RESTORE_COMPLETED_EVENT, onNostrRestoreCompleted as EventListener);
     };
-  }, [applyState, refreshStorageDiagnostics]);
+  }, [applyState]);
 
   useEffect(() => {
     if (!isHydrated) {
@@ -2614,9 +2600,6 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
 
     void (async () => {
       const saved = await saveSavedGamePayloadToBrowser(payload as Record<string, unknown>);
-      if (!isCancelled) {
-        refreshStorageDiagnostics();
-      }
       if (!saved && !isCancelled) {
         setStatusMessage("Autosave is unavailable in this browser.");
       }
@@ -2625,7 +2608,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
     return () => {
       isCancelled = true;
     };
-  }, [isHydrated, refreshStorageDiagnostics, state]);
+  }, [isHydrated, state]);
 
   useEffect(() => {
     if (!("serviceWorker" in navigator)) {
@@ -2732,13 +2715,6 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
   const todayDailyDifficulty = useMemo(() => deriveDailyDifficulty(todayDailyKey), [todayDailyKey]);
   const todayDailySeed = useMemo(() => getDailyPuzzleSeed(todayDailyKey, todayDailyDifficulty), [todayDailyDifficulty, todayDailyKey]);
 
-  const standardSessionForHome = useMemo(() => {
-    if (state.mode === "standard") {
-      return currentSessionSnapshot;
-    }
-    return state.standardSession;
-  }, [currentSessionSnapshot, state.mode, state.standardSession]);
-
   const dailySessionForToday = useMemo(() => {
     if (state.mode === "daily" && state.dailyDate === todayDailyKey && currentSessionSnapshot) {
       return {
@@ -2771,23 +2747,6 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
       }),
     );
   }, [state.board, state.givens, state.showMistakes, state.solution]);
-  const canContinueCurrentPuzzle = isSessionContinuable(standardSessionForHome);
-  const continuePuzzleDifficulty = standardSessionForHome?.difficulty ?? state.difficulty;
-  const continuePuzzleButtonLabel = `Continue Puzzle (${formatDifficultyLabel(continuePuzzleDifficulty)})`;
-  const newPuzzleButtonLabel = `New Puzzle (${formatDifficultyLabel(state.difficulty)})`;
-  const canContinueDailyPuzzle = isSessionContinuable(dailySessionForToday);
-  const dailyResultToday: DailyResult | null = dailySessionForToday?.won
-    ? "won"
-    : dailySessionForToday?.lost
-      ? "lost"
-      : null;
-  const dailyButtonLabel = dailyResultToday === "won"
-    ? `View Daily Puzzle (next in ${formatCountdownToNextDaily(nowTick)})`
-    : dailyResultToday === "lost"
-      ? `Retry Daily Puzzle (new in ${formatCountdownToNextDaily(nowTick)})`
-      : canContinueDailyPuzzle
-        ? "Continue Daily Puzzle"
-        : "Daily Puzzle";
   const isRouteEntryGameLoading = isRouteGameLoading({
     entryPoint,
     hasDailyEntryStarted,
@@ -2936,21 +2895,27 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
     return symbols;
   }, [state.livesLeft, state.livesPerGame]);
 
-  const homeProfileLabel = useMemo(() => {
-    if (nostrStatus === "loading") {
-      return "...";
+  const activeDailyDateKey = state.mode === "daily" ? (state.dailyDate ?? requestedDailyKey) : requestedDailyKey;
+  const activeDailyDate = useMemo(() => dateFromDateKeyLocal(activeDailyDateKey), [activeDailyDateKey]);
+  const activeDailyDateLabel = useMemo(() => {
+    if (!activeDailyDate) {
+      return activeDailyDateKey;
     }
 
-    if (nostrName) {
-      return nostrName;
-    }
+    return new Intl.DateTimeFormat(undefined, {
+      weekday: "short",
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+    }).format(activeDailyDate);
+  }, [activeDailyDate, activeDailyDateKey]);
+  const maxDailyPickerDate = useMemo(() => {
+    const next = new Date();
+    next.setHours(23, 59, 59, 999);
+    return next;
+  }, []);
 
-    if (nostrIdentity) {
-      return "Anonymous";
-    }
-
-    return "Guest";
-  }, [nostrIdentity, nostrName, nostrStatus]);
+  const isCurrentBoardUnplayed = Boolean(state.puzzle && !state.currentGameStarted && !state.won && !state.lost);
 
   return (
     <div className="sudoku-app-root">
@@ -2958,37 +2923,17 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
         {activeView === "home" ? (
           <section className="home-view" aria-label="Home menu">
             <h1 className="view-title">Sudoku</h1>
+            <p className="home-status">Calm, focused puzzles for daily play.</p>
             <div className="home-actions" aria-label="Main actions">
               <div className="home-primary-actions" aria-label="Primary puzzle actions">
-                {canContinueCurrentPuzzle ? (
-                  <button id="continue-current-puzzle" type="button" onClick={() => openPuzzlePage("continue")}>
-                    {continuePuzzleButtonLabel}
-                  </button>
-                ) : null}
-                <button id="new-game" type="button" onClick={() => openPuzzlePage("new")}>
-                  {newPuzzleButtonLabel}
-                </button>
+                <Button id="new-game" type="button" onClick={() => openPuzzlePage("new")}>
+                  Start puzzle
+                </Button>
+                <Button id="daily-game" type="button" variant="secondary" onClick={openDailyPage}>
+                  Daily Challenge
+                </Button>
               </div>
-              <button
-                id="daily-game"
-                type="button"
-                className={dailyResultToday ? "looks-disabled" : undefined}
-                onClick={openDailyPage}
-              >
-                {dailyButtonLabel}
-              </button>
             </div>
-            <nav className="home-bottom-bar" aria-label="Home quick links">
-              <button id="stats-open" type="button" className="icon-button" aria-label="Statistics" title="Statistics" onClick={openStatsView}>
-                <BarChart3 aria-hidden="true" />
-              </button>
-              <button id="profile-open" type="button" onClick={openProfilePage}>
-                {homeProfileLabel}
-              </button>
-              <button id="settings-open" type="button" className="icon-button" aria-label="Settings" title="Settings" onClick={openSettingsView}>
-                <Settings aria-hidden="true" />
-              </button>
-            </nav>
           </section>
         ) : activeView === "game" ? (
           <>
@@ -2999,40 +2944,145 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
                 </div>
               ) : (
                 <div className="board-area">
-                  <div className="board-stack">
-                    <div className="game-subbar" aria-label="Puzzle quick actions">
-                      <div className="game-subbar-left">
-                        <button
-                          id="undo"
-                          type="button"
-                          className="icon-button"
-                          title="Undo"
-                          aria-label="Undo"
-                          disabled={state.lost || state.undoStack.length === 0}
-                          onClick={undoMove}
-                        >
-                          <Undo2 aria-hidden="true" />
-                        </button>
-                        <button
-                          id="redo"
-                          type="button"
-                          className="icon-button"
-                          title="Redo"
-                          aria-label="Redo"
-                          disabled={state.lost || state.redoStack.length === 0}
-                          onClick={redoMove}
-                        >
-                          <Redo2 aria-hidden="true" />
-                        </button>
-                        <button
-                          id="reset-game"
-                          type="button"
-                          disabled={isRouteEntryGameLoading || state.lost}
-                          onClick={resetCurrentGame}
-                        >
-                          Reset
-                        </button>
-                      </div>
+                  <div className="game-layout">
+                    <aside className="game-rail game-rail-left" aria-label="Puzzle actions">
+                      <Button
+                        id="undo"
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="icon-button"
+                        title="Undo"
+                        aria-label="Undo"
+                        disabled={state.lost || state.undoStack.length === 0}
+                        onClick={undoMove}
+                      >
+                        <Undo2 aria-hidden="true" />
+                      </Button>
+                      <Button
+                        id="redo"
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="icon-button"
+                        title="Redo"
+                        aria-label="Redo"
+                        disabled={state.lost || state.redoStack.length === 0}
+                        onClick={redoMove}
+                      >
+                        <Redo2 aria-hidden="true" />
+                      </Button>
+                      <Button
+                        id="reset-game"
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="icon-button"
+                        title="Clear"
+                        aria-label="Clear"
+                        disabled={isRouteEntryGameLoading || state.lost}
+                        onClick={resetCurrentGame}
+                      >
+                        <RotateCcw aria-hidden="true" />
+                      </Button>
+                      <Button
+                        id="new-game-open"
+                        type="button"
+                        size="icon"
+                        variant="outline"
+                        className="icon-button"
+                        title="New puzzle"
+                        aria-label="New puzzle"
+                        disabled={isCurrentBoardUnplayed}
+                        onClick={() => startNewGameAndOpen()}
+                      >
+                        <Plus aria-hidden="true" />
+                      </Button>
+                    </aside>
+
+                    <div className="game-center">
+                      {state.board ? (
+                        <SudokuBoard
+                          id="board"
+                          className="pwa-board-theme"
+                          values={state.board}
+                          notes={boardNotes}
+                          givens={boardGivens}
+                          selectedCell={state.selected}
+                          highlightedDigit={highlighted}
+                          invalidCells={invalidCells}
+                          showSelectionHighlights={showSelectionHighlights}
+                          onSelectCell={onBoardCellSelect}
+                        />
+                      ) : null}
+
+                      <section
+                        className={`numpad${state.fillModeValue !== null ? " fill-mode-active" : ""}${state.annotationMode ? " annotation-mode-active" : ""}`}
+                        aria-label="Number input"
+                        onClick={onNumpadClick}
+                        onPointerDown={onNumpadPointerDown}
+                        onPointerUp={onNumpadPointerRelease}
+                        onPointerLeave={onNumpadPointerRelease}
+                        onPointerCancel={onNumpadPointerRelease}
+                      >
+                        {DIGITS.map((digit) => {
+                          const disabled = state.lost || isDigitCompletedCorrectly(state, digit);
+                          const isFillMode = state.fillModeValue !== null && state.fillModeValue === digit;
+                          const isAnnotationMode = state.annotationMode;
+                          const isCompleted = countDigitOnBoard(state.board, digit) >= 9;
+
+                          return (
+                            <button
+                              key={digit}
+                              type="button"
+                              data-value={digit}
+                              disabled={disabled}
+                              className={isFillMode ? "fill-mode" : isAnnotationMode ? "annotation-mode" : ""}
+                              aria-label={isCompleted ? `Number ${digit} completed` : `Number ${digit}`}
+                            >
+                              {digit}
+                            </button>
+                          );
+                        })}
+                      </section>
+                    </div>
+
+                    <aside className="game-rail game-rail-right" aria-label="Puzzle tools">
+                      {state.mode === "daily" ? (
+                        <DropdownMenu open={dailyDatePickerOpen} onOpenChange={setDailyDatePickerOpen}>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              className="daily-date-trigger"
+                              aria-label="Select daily puzzle date"
+                            >
+                              <CalendarDays className="h-4 w-4" aria-hidden="true" />
+                              <span className="daily-date-label">{activeDailyDateLabel}</span>
+                              <ChevronDown className="h-4 w-4" aria-hidden="true" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="daily-date-content w-auto p-2">
+                            <Calendar
+                              mode="single"
+                              selected={activeDailyDate ?? undefined}
+                              onSelect={(date) => {
+                                if (!date) {
+                                  return;
+                                }
+
+                                const dateKey = dateKeyFromLocalDate(date);
+                                setDailyDatePickerOpen(false);
+                                router.push(`/daily/${dateKey}`);
+                              }}
+                              disabled={(date) => date > maxDailyPickerDate}
+                              initialFocus
+                            />
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      ) : null}
+
+                      <p className="game-rail-label">Lives</p>
                       <p
                         id="lives"
                         className={`lives${state.livesLeft === 0 ? " empty" : ""}`}
@@ -3048,117 +3098,95 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
                           ))}
                         </span>
                       </p>
-                      <div className="game-subbar-right">
-                        <button
-                          id="annotation-mode"
-                          type="button"
-                          disabled={isInputLocked(state)}
-                          className={`icon-button${state.annotationMode ? " annotation-enabled" : ""}`}
-                          title="Notes"
-                          aria-label="Notes"
-                          aria-pressed={state.annotationMode}
-                          onClick={toggleAnnotationMode}
-                        >
-                          <PencilLine aria-hidden="true" />
-                        </button>
-                        <button
-                          id="hint"
-                          type="button"
-                          className="icon-button has-count"
-                          title="Hint"
-                          aria-label={`Hint (${state.hintsLeft} left)`}
-                          disabled={state.hintsLeft <= 0 || isInputLocked(state)}
-                          onClick={handleHint}
-                        >
-                          <Lightbulb aria-hidden="true" />
-                          <span id="hints-left" className="hint-count">{state.hintsLeft}</span>
-                        </button>
-                      </div>
-                    </div>
 
-                    {state.board ? (
-                      <SudokuBoard
-                        id="board"
-                        className="pwa-board-theme"
-                        values={state.board}
-                        notes={boardNotes}
-                        givens={boardGivens}
-                        selectedCell={state.selected}
-                        highlightedDigit={highlighted}
-                        invalidCells={invalidCells}
-                        showSelectionHighlights={showSelectionHighlights}
-                        onSelectCell={onBoardCellSelect}
-                      />
-                    ) : null}
+                      <Toggle
+                        id="annotation-mode"
+                        variant="outline"
+                        size="sm"
+                        disabled={isInputLocked(state)}
+                        className={`icon-button${state.annotationMode ? " annotation-enabled" : ""}`}
+                        title="Notes"
+                        aria-label="Notes"
+                        pressed={state.annotationMode}
+                        onClick={toggleAnnotationMode}
+                      >
+                        <PencilLine aria-hidden="true" />
+                      </Toggle>
+                      <Button
+                        id="hint"
+                        type="button"
+                        variant="outline"
+                        className="icon-button has-count"
+                        title="Hint"
+                        aria-label={`Hint (${state.hintsLeft} left)`}
+                        disabled={state.hintsLeft <= 0 || isInputLocked(state)}
+                        onClick={handleHint}
+                      >
+                        <Lightbulb aria-hidden="true" />
+                        <span id="hints-left" className="hint-count">{state.hintsLeft}</span>
+                      </Button>
 
-                    <section
-                      className={`numpad${state.fillModeValue !== null ? " fill-mode-active" : ""}${state.annotationMode ? " annotation-mode-active" : ""}`}
-                      aria-label="Number input"
-                      onClick={onNumpadClick}
-                      onPointerDown={onNumpadPointerDown}
-                      onPointerUp={onNumpadPointerRelease}
-                      onPointerLeave={onNumpadPointerRelease}
-                      onPointerCancel={onNumpadPointerRelease}
-                    >
-                      {DIGITS.map((digit) => {
-                        const disabled = state.lost || isDigitCompletedCorrectly(state, digit);
-                        const isFillMode = state.fillModeValue !== null && state.fillModeValue === digit;
-                        const isAnnotationMode = state.annotationMode;
-                        const isCompleted = countDigitOnBoard(state.board, digit) >= 9;
-
-                        return (
-                          <button
-                            key={digit}
-                            type="button"
-                            data-value={digit}
-                            disabled={disabled}
-                            className={isFillMode ? "fill-mode" : isAnnotationMode ? "annotation-mode" : ""}
-                            aria-label={isCompleted ? `Number ${digit} completed` : `Number ${digit}`}
-                          >
-                            {digit}
-                          </button>
-                        );
-                      })}
-                    </section>
+                      {state.mode === "standard" && !state.currentGameStarted && !state.won && !state.lost ? (
+                        <section className="difficulty-segment" aria-label="Select puzzle difficulty">
+                          {DIFFICULTIES.map((difficulty) => (
+                            <Button
+                              key={`segment-${difficulty}`}
+                              type="button"
+                              variant={state.difficulty === difficulty ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => {
+                                startNewGameAndOpen(difficulty);
+                              }}
+                            >
+                              {formatDifficultyLabel(difficulty)}
+                            </Button>
+                          ))}
+                        </section>
+                      ) : (
+                        <p className="difficulty-current" aria-label="Current puzzle difficulty">
+                          Difficulty:
+                          {" "}
+                          <span>{formatDifficultyLabel(state.difficulty)}</span>
+                        </p>
+                      )}
+                    </aside>
                   </div>
                 </div>
               )}
             </section>
           </>
         ) : activeView === "settings" ? (
-          <section className="panel-view settings-view" aria-label="Puzzle settings">
-            <div className="settings-card">
-              <div className="settings-header">
-                <h2>Settings</h2>
-                <button id="settings-close" type="button" onClick={goHome}>
-                  Home
-                </button>
-              </div>
-              <div className="settings-grid">
-                <div className="settings-row">
-                  <label htmlFor="difficulty">Difficulty</label>
-                  <div className="settings-control">
-                    <select
-                      id="difficulty"
-                      value={state.difficulty}
-                      onChange={(event) => {
-                        const difficulty = event.target.value as Difficulty;
-                        const current = stateRef.current;
-                        applyState({ ...current, difficulty });
-                        setStatusMessage(`Difficulty set to ${difficulty}.`);
-                      }}
-                    >
-                      <option value="easy">Easy</option>
-                      <option value="medium">Medium</option>
-                      <option value="hard">Hard</option>
-                      <option value="expert">Expert</option>
-                    </select>
-                  </div>
+          <div className="account-layout">
+            <AccountSidebar />
+            <section className="panel-view settings-view account-content" aria-label="Puzzle settings">
+              <div className="settings-card">
+                <div className="settings-header">
+                  <h2>Settings</h2>
                 </div>
+                <div className="settings-grid">
+                  <div className="settings-row">
+                    <label htmlFor="fill-mode-entry">Fill mode trigger</label>
+                    <div className="settings-control">
+                      <select
+                        id="fill-mode-entry"
+                        value={state.fillModeEntry}
+                        onChange={(event) => {
+                          const entry = event.target.value as FillModeEntry;
+                          const current = stateRef.current;
+                          applyState({ ...current, fillModeEntry: entry });
+                          clearLongPressTimer();
+                          resetDoubleTapTracking();
+                        }}
+                      >
+                        <option value="long-press">Long press</option>
+                        <option value="double-tap">Double tap</option>
+                      </select>
+                    </div>
+                  </div>
 
-                <div className="settings-row">
-                  <label htmlFor="hints-per-game">Hints per game</label>
-                  <div className="settings-control">
+                  <div className="settings-row">
+                    <label htmlFor="hints-per-game">Hints per game</label>
+                    <div className="settings-control">
                     <select
                       id="hints-per-game"
                       value={state.configuredHintsPerGame}
@@ -3181,9 +3209,9 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
                   </div>
                 </div>
 
-                <div className="settings-row">
-                  <label htmlFor="lives-per-game">Lives per game</label>
-                  <div className="settings-control">
+                  <div className="settings-row">
+                    <label htmlFor="lives-per-game">Lives per game</label>
+                    <div className="settings-control">
                     <select
                       id="lives-per-game"
                       value={state.configuredLivesPerGame}
@@ -3206,92 +3234,19 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
                   </div>
                 </div>
 
-                <div className="settings-row">
-                  <label htmlFor="fill-mode-entry">Fill mode trigger</label>
-                  <div className="settings-control">
-                    <select
-                      id="fill-mode-entry"
-                      value={state.fillModeEntry}
-                      onChange={(event) => {
-                        const entry = event.target.value as FillModeEntry;
-                        const current = stateRef.current;
-                        applyState({ ...current, fillModeEntry: entry });
-                        clearLongPressTimer();
-                        resetDoubleTapTracking();
-                      }}
-                    >
-                      <option value="long-press">Long press</option>
-                      <option value="double-tap">Double tap</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div className="settings-row">
-                  <label htmlFor="theme">Theme</label>
-                  <div className="settings-control">
-                    <select
-                      id="theme"
-                      value={state.theme}
-                      onChange={(event) => {
-                        const current = stateRef.current;
-                        const nextTheme = normalizeTheme(event.target.value);
-                        applyState({ ...current, theme: nextTheme });
-                      }}
-                    >
-                      <option value="slate">Slate</option>
-                      <option value="dusk">Dusk</option>
-                      <option value="mist">Mist</option>
-                      <option value="amber">Amber</option>
-                      <option value="light">Light</option>
-                    </select>
-                  </div>
                 </div>
               </div>
-
-              <div className="settings-footer" aria-label="App info, source, and update status">
-                <p className="app-info-inline">
-                  <span id="app-info-name">{APP_NAME}</span>
-                  {" "}
-                  <span id="app-info-version">{APP_VERSION}</span>
-                  {" "}
-                  by <span id="app-info-author">{APP_AUTHOR}</span>
-                </p>
-                <p className="app-open-source">
-                  <a href={APP_REPO_URL} target="_blank" rel="noreferrer">Open source</a>
-                  {" "}
-                  under the
-                  {" "}
-                  <a href={APP_LICENSE_URL} target="_blank" rel="noreferrer">MIT License</a>.
-                </p>
-                <p className="app-storage-status">
-                  Storage backend:
-                  {" "}
-                  {storageDiagnostics.activeBackend === "indexeddb" ? "IndexedDB" : "Local storage"}
-                </p>
-                <p className="app-storage-status">
-                  Migration:
-                  {" "}
-                  {formatStorageMigrationStatus(storageDiagnostics.migrationStatus)}
-                </p>
-                <p className="app-storage-status">
-                  Last save:
-                  {" "}
-                  {formatStorageLastSaveResult(storageDiagnostics.lastSaveResult)}
-                </p>
-                <p className="app-update-status">{updateStatus || "Up-to-date"}</p>
-              </div>
-            </div>
-          </section>
+            </section>
+          </div>
         ) : (
-          <section className="panel-view stats-view" aria-label="Puzzle stats">
-            <div className="stats-card">
-              <div className="settings-header">
-                <h2>Statistics</h2>
-                <button id="stats-close" type="button" onClick={goHome}>
-                  Home
-                </button>
-              </div>
-              <section className="stats" aria-label="Puzzle stats">
+          <div className="account-layout">
+            <AccountSidebar />
+            <section className="panel-view stats-view account-content" aria-label="Puzzle stats">
+              <div className="stats-card">
+                <div className="settings-header">
+                  <h2>Statistics</h2>
+                </div>
+                <section className="stats" aria-label="Puzzle stats">
                 <section className="stats-panel stats-panel-overall" aria-label="Overall finished puzzles">
                   <h3>Overall Finished</h3>
                   <div className="stats-overview-grid">
@@ -3406,23 +3361,27 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
                   </div>
 
                   <div className="daily-calendar-header">
-                    <button
+                    <Button
                       id="daily-calendar-prev"
                       type="button"
+                      variant="outline"
+                      size="sm"
                       aria-label="Previous month"
                       onClick={showPreviousDailyMonth}
                     >
                       ←
-                    </button>
+                    </Button>
                     <p className="daily-calendar-month">{dailyCalendarMonthLabel}</p>
-                    <button
+                    <Button
                       id="daily-calendar-next"
                       type="button"
+                      variant="outline"
+                      size="sm"
                       aria-label="Next month"
                       onClick={showNextDailyMonth}
                     >
                       →
-                    </button>
+                    </Button>
                   </div>
 
                   <div className="daily-calendar-weekdays" aria-hidden="true">
@@ -3473,9 +3432,10 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey }: SudokuAppProps)
                   </div>
                 </section>
 
-              </section>
-            </div>
-          </section>
+                </section>
+              </div>
+            </section>
+          </div>
         )}
       </main>
 

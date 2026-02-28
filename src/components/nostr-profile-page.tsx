@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AccountSidebar } from "@/components/account-sidebar";
 import { useNostrAccount } from "@/lib/nostr";
 import {
   buildNostrTroubleshootingHint,
@@ -398,11 +399,13 @@ export function NostrProfilePage() {
 
   return (
     <main className="app app-panel" aria-label="Nostr profile settings">
-      <section className="panel-view profile-view">
-        <div className="settings-header">
-          <h2>Profile</h2>
-          <button id="profile-close" type="button" onClick={() => router.replace("/")}>Home</button>
-        </div>
+      <div className="account-layout">
+        <AccountSidebar />
+
+        <section className="panel-view profile-view account-content">
+          <div className="settings-header">
+            <h2>Profile</h2>
+          </div>
 
         <section className="profile-card" aria-label="Nostr profile basics">
           <h2>Nostr Profile</h2>
@@ -831,9 +834,10 @@ export function NostrProfilePage() {
           </ul>
         </section>
 
-        {error ? <p className="profile-error">{error}</p> : null}
-        {actionMessage ? <p className="profile-status">{actionMessage}</p> : null}
-      </section>
+          {error ? <p className="profile-error">{error}</p> : null}
+          {actionMessage ? <p className="profile-status">{actionMessage}</p> : null}
+        </section>
+      </div>
     </main>
   );
 }

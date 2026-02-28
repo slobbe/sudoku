@@ -6,6 +6,22 @@ import { NavBar } from "@/components/NavBar";
 import "./globals.css";
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "https://slobbe.github.io/sudoku";
+const themeBootScript = `(() => {
+  try {
+    const key = "sudoku-theme-preference";
+    const raw = window.localStorage.getItem(key);
+    const theme = raw === "dark" || raw === "dusk" || raw === "slate" || raw === "mist" || raw === "amber" || raw === "purple"
+      ? "dark"
+      : "light";
+    document.documentElement.dataset.theme = theme;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) {
+      meta.setAttribute("content", theme === "dark" ? "#141311" : "#f5f1e8");
+    }
+  } catch {
+    document.documentElement.dataset.theme = "light";
+  }
+})();`;
 
 export const metadata: Metadata = {
   title: {
@@ -21,6 +37,7 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   icons: {
+    shortcut: "/favicon.svg",
     icon: [
       { url: "/icons/icon-192.svg", type: "image/svg+xml" },
       { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
@@ -33,7 +50,7 @@ export const metadata: Metadata = {
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#101923",
+  themeColor: "#f5f1e8",
 };
 
 type RootLayoutProps = {
@@ -42,8 +59,9 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="en" data-theme="slate" data-scroll-lock="off" suppressHydrationWarning>
-      <body className="flex min-h-svh flex-col bg-background text-foreground antialiased">
+    <html lang="en" data-theme="light" data-scroll-lock="off" suppressHydrationWarning>
+      <body className="font-ui flex min-h-svh flex-col bg-background text-foreground antialiased">
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
         <NostrAccountProvider>
           <NavBar />
           <div className="mx-auto w-full max-w-7xl flex-1">{children}</div>

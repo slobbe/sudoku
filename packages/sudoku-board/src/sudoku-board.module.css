@@ -1,7 +1,7 @@
 .board {
-  --_font-family: var(--sudoku-font-family, "Space Grotesk", system-ui, sans-serif);
+  --_font-family: var(--sudoku-font-family, "IBM Plex Sans", system-ui, sans-serif);
   --_board-border-color: var(--sudoku-board-border-color, #8a939f);
-  --_board-border-width: var(--sudoku-board-border-width, 3px);
+  --_board-border-width: var(--sudoku-board-border-width, 1.5px);
   --_board-border-radius: var(--sudoku-board-border-radius, 0);
   --_square-gap: var(--sudoku-square-gap, 2px);
   --_square-divider-color: var(--sudoku-square-divider-color, #b8c0cb);
@@ -9,8 +9,8 @@
   --_cell-bg: var(--sudoku-cell-bg, #f5f7fa);
   --_cell-bg-alt: var(--sudoku-cell-bg-alt, #e9edf3);
   --_cell-ink: var(--sudoku-cell-ink, #1d2630);
-  --_cell-font-size: var(--sudoku-cell-font-size, clamp(0.72rem, 5.1cqi, 2.05rem));
-  --_cell-font-weight: var(--sudoku-cell-font-weight, 700);
+  --_cell-font-size: var(--sudoku-cell-font-size, clamp(1rem, 5.2cqi, 2.1rem));
+  --_cell-font-weight: var(--sudoku-cell-font-weight, 760);
   --_given-bg: var(--sudoku-given-bg, #dfe6f2);
   --_given-ink: var(--sudoku-given-ink, #1b2430);
   --_active-bg: var(--sudoku-active-bg, #cfe0f8);
@@ -22,7 +22,7 @@
   --_match-ink: var(--sudoku-match-ink, #10243f);
   --_match-ring: var(--sudoku-match-ring, #5f8fd4);
   --_match-ring-width: var(--sudoku-match-ring-width, 1px);
-  --_match-font-weight: var(--sudoku-match-font-weight, 850);
+  --_match-font-weight: var(--sudoku-match-font-weight, 760);
   --_match-scale: var(--sudoku-match-scale, 1);
   --_invalid-ink: var(--sudoku-invalid-ink, #c15454);
   --_focus-ring: var(--sudoku-focus-ring, #4d79bf);
@@ -32,7 +32,7 @@
   --_note-highlight-ink: var(--sudoku-note-highlight-ink, #17345a);
   --_note-highlight-scale: var(--sudoku-note-highlight-scale, 1.4);
   --_selected-note-ink: var(--sudoku-selected-note-ink, #253245);
-  --_cell-transition: var(--sudoku-cell-transition, background 140ms ease, box-shadow 140ms ease, color 120ms ease);
+  --_cell-transition: var(--sudoku-cell-transition, background 150ms ease, box-shadow 150ms ease, color 150ms ease);
   font-family: var(--_font-family);
   width: 100%;
   aspect-ratio: 1 / 1;
@@ -47,48 +47,6 @@
   grid-template-columns: repeat(3, 1fr);
   gap: var(--_square-gap);
   background: var(--_board-border-color);
-}
-
-@media (prefers-color-scheme: dark) {
-  .board[data-sudoku-color-scheme="auto"] {
-    --_board-border-color: var(--sudoku-board-border-color, #5d6773);
-    --_square-divider-color: var(--sudoku-square-divider-color, #47505b);
-    --_cell-bg: var(--sudoku-cell-bg, #1f2731);
-    --_cell-bg-alt: var(--sudoku-cell-bg-alt, #242d38);
-    --_cell-ink: var(--sudoku-cell-ink, #d7dee8);
-    --_given-bg: var(--sudoku-given-bg, #313b48);
-    --_given-ink: var(--sudoku-given-ink, #f0f4fa);
-    --_active-bg: var(--sudoku-active-bg, #324960);
-    --_active-ring: var(--sudoku-active-ring, #83a5cf);
-    --_match-bg: var(--sudoku-match-bg, #7faee633);
-    --_match-ink: var(--sudoku-match-ink, #e9f4ff);
-    --_match-ring: var(--sudoku-match-ring, #8cb7ea);
-    --_invalid-ink: var(--sudoku-invalid-ink, #ff9a9a);
-    --_focus-ring: var(--sudoku-focus-ring, #9cc0ea);
-    --_note-ink: var(--sudoku-note-ink, #9db0c6);
-    --_note-highlight-ink: var(--sudoku-note-highlight-ink, #eef7ff);
-    --_selected-note-ink: var(--sudoku-selected-note-ink, #e6edf7);
-  }
-}
-
-.board[data-sudoku-color-scheme="dark"] {
-  --_board-border-color: var(--sudoku-board-border-color, #5d6773);
-  --_square-divider-color: var(--sudoku-square-divider-color, #47505b);
-  --_cell-bg: var(--sudoku-cell-bg, #1f2731);
-  --_cell-bg-alt: var(--sudoku-cell-bg-alt, #242d38);
-  --_cell-ink: var(--sudoku-cell-ink, #d7dee8);
-  --_given-bg: var(--sudoku-given-bg, #313b48);
-  --_given-ink: var(--sudoku-given-ink, #f0f4fa);
-  --_active-bg: var(--sudoku-active-bg, #324960);
-  --_active-ring: var(--sudoku-active-ring, #83a5cf);
-  --_match-bg: var(--sudoku-match-bg, #7faee633);
-  --_match-ink: var(--sudoku-match-ink, #e9f4ff);
-  --_match-ring: var(--sudoku-match-ring, #8cb7ea);
-  --_invalid-ink: var(--sudoku-invalid-ink, #ff9a9a);
-  --_focus-ring: var(--sudoku-focus-ring, #9cc0ea);
-  --_note-ink: var(--sudoku-note-ink, #9db0c6);
-  --_note-highlight-ink: var(--sudoku-note-highlight-ink, #eef7ff);
-  --_selected-note-ink: var(--sudoku-selected-note-ink, #e6edf7);
 }
 
 .square {
@@ -119,6 +77,7 @@
   color: var(--_cell-ink);
   font-size: var(--_cell-font-size);
   font-weight: var(--_cell-font-weight);
+  font-variant-numeric: tabular-nums;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -193,7 +152,7 @@
   display: grid;
   place-items: center;
   transform: scale(1);
-  transition: transform 120ms ease;
+  transition: transform 150ms ease;
 }
 
 .noteHighlight {
