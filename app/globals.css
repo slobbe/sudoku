@@ -1103,6 +1103,12 @@ textarea {
   gap: 0.3rem;
 }
 
+.profile-name-editor {
+  display: grid;
+  gap: 0.45rem;
+  max-width: 22rem;
+}
+
 .profile-name-edit-button {
   width: 1.65rem;
   height: 1.65rem;
@@ -1201,6 +1207,11 @@ textarea {
   min-height: 2.3rem;
 }
 
+.profile-status-stack {
+  display: grid;
+  gap: 0.3rem;
+}
+
 .profile-auth-dialog {
   max-height: min(85vh, 42rem);
   overflow-y: auto;
@@ -1221,6 +1232,54 @@ textarea {
   font-size: 1rem;
   font-family: var(--font-heading);
   font-weight: 600;
+}
+
+.profile-auth-tabs {
+  display: inline-flex;
+  gap: 0.35rem;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  padding: 0 0.2rem;
+}
+
+.profile-auth-tab {
+  border: 1px solid transparent;
+  border-bottom: 0;
+  border-radius: 0.55rem 0.55rem 0 0;
+  background: transparent;
+  color: var(--soft-ink);
+  padding: 0.4rem 0.75rem 0.5rem;
+  min-height: 2.1rem;
+  margin-bottom: -1px;
+  font: inherit;
+  transition: border-color 150ms ease, background-color 150ms ease, color 150ms ease;
+}
+
+.profile-auth-tab:hover {
+  background: color-mix(in srgb, var(--surface-2) 55%, transparent);
+  border-color: color-mix(in srgb, var(--line-strong) 75%, transparent);
+  color: color-mix(in srgb, var(--accent) 45%, var(--ink));
+}
+
+.profile-auth-tab.is-active {
+  background: color-mix(in srgb, var(--surface-2) 84%, var(--paper));
+  border-color: color-mix(in srgb, var(--line-strong) 80%, transparent);
+  border-bottom-color: color-mix(in srgb, var(--surface-2) 84%, var(--paper));
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.profile-auth-tab:disabled {
+  opacity: 0.52;
+}
+
+.profile-auth-tabpanel {
+  display: grid;
+  gap: 0.55rem;
+  border: 1px solid color-mix(in srgb, var(--line) 75%, transparent);
+  border-top: 0;
+  border-radius: 0 0.55rem 0.55rem 0.55rem;
+  padding: 0.65rem 0.75rem 0.8rem;
+  background: color-mix(in srgb, var(--surface-2) 40%, transparent);
 }
 
 .profile-disclosure {

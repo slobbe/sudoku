@@ -96,7 +96,11 @@ export function NostrProfilePage() {
   const [showSecretKey, setShowSecretKey] = useState(false);
   const [isRestoreConfirmOpen, setIsRestoreConfirmOpen] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const [activeAuthAction, setActiveAuthAction] = useState<"none" | "connect" | "import" | "create" | "unlock" | "protect">("none");
+  const [showLocalAuthTools, setShowLocalAuthTools] = useState(false);
+  const [localKeyTab, setLocalKeyTab] = useState<"import" | "generate">("import");
+  const [activeAuthAction, setActiveAuthAction] = useState<
+    "none" | "connect" | "import" | "create" | "unlock" | "protect"
+  >("none");
 
   useEffect(() => {
     let isCancelled = false;
@@ -125,51 +129,46 @@ export function NostrProfilePage() {
     [getExportableNsec, identity],
   );
   const profileStatusText = useMemo(
-    () => formatNostrActionStatusText(
-      profileStatus,
-      profileMessage,
-      {
-        syncing: "Syncing profile with relays...",
-        synced: "Profile synced to relays.",
-        upToDate: "Profile is up to date.",
-        failed: "Profile sync failed.",
-      },
-    ),
+    () => formatNostrActionStatusText(profileStatus, profileMessage, {
+      syncing: "Syncing profile with relays...",
+      synced: "Profile synced to relays.",
+      upToDate: "Profile is up to date.",
+      failed: "Profile sync failed.",
+    }),
     [profileMessage, profileStatus],
   );
   const backupStatusText = useMemo(
-    () => formatNostrActionStatusText(
-      backupStatus,
-      backupMessage,
-      {
-        syncing: "Backing up encrypted game data to relays...",
-        synced: "Encrypted backup synced.",
-        upToDate: "Encrypted backup is already up to date.",
-        failed: "Encrypted backup failed.",
-      },
-    ),
+    () => formatNostrActionStatusText(backupStatus, backupMessage, {
+      syncing: "Backing up encrypted game data to relays...",
+      synced: "Encrypted backup synced.",
+      upToDate: "Encrypted backup is already up to date.",
+      failed: "Encrypted backup failed.",
+    }),
     [backupMessage, backupStatus],
   );
   const restoreStatusText = useMemo(
-    () => formatNostrActionStatusText(
-      restoreStatus,
-      restoreMessage,
-      {
-        syncing: "Restoring encrypted game data from relays...",
-        synced: "Encrypted backup restored.",
-        upToDate: "No new restore updates.",
-        failed: "Encrypted restore failed.",
-      },
-    ),
+    () => formatNostrActionStatusText(restoreStatus, restoreMessage, {
+      syncing: "Restoring encrypted game data from relays...",
+      synced: "Encrypted backup restored.",
+      upToDate: "No new restore updates.",
+      failed: "Encrypted restore failed.",
+    }),
     [restoreMessage, restoreStatus],
   );
+
   const isBackupRestoreBusy = backupStatus === "syncing" || restoreStatus === "syncing";
   const isProfileFailure = profileStatus === "failed";
   const isBackupFailure = backupStatus === "failed";
   const isRestoreFailure = restoreStatus === "failed";
   const hasNoBackupOnRelays = isNostrNoBackupState(restoreStatus, restoreMessage);
-  const shouldShowRecoveryOptions = Boolean(error) || isProfileFailure || isBackupFailure || isRestoreFailure || hasNoBackupOnRelays;
-  const shouldShowReconnectExtension = identity?.source === "nip07" && (isProfileFailure || isBackupFailure || isRestoreFailure);
+  const shouldShowRecoveryOptions = Boolean(error)
+    || isProfileFailure
+    || isBackupFailure
+    || isRestoreFailure
+    || hasNoBackupOnRelays;
+  const shouldShowReconnectExtension = identity?.source === "nip07"
+    && (isProfileFailure || isBackupFailure || isRestoreFailure);
+
   const profileDisplayName = useMemo(() => {
     const trimmed = name?.trim() ?? "";
     return trimmed.length > 0 ? trimmed : "Sudoku Player";
@@ -179,6 +178,7 @@ export function NostrProfilePage() {
     () => editableAccountName.trim() !== (name ?? "").trim(),
     [editableAccountName, name],
   );
+
   const troubleshootingHint = useMemo(() => buildNostrTroubleshootingHint({
     profileStatus,
     profileMessage,
@@ -235,6 +235,15 @@ export function NostrProfilePage() {
       setIsAuthDialogOpen(false);
     }
   }, [identity]);
+
+  useEffect(() => {
+    if (!isAuthDialogOpen) {
+      setShowLocalAuthTools(false);
+      return;
+    }
+
+    setShowLocalAuthTools(false);
+  }, [isAuthDialogOpen, isLocalKeyLocked]);
 
   const completeAuth = useCallback((message: string) => {
     setActionMessage(message);
@@ -359,10 +368,7 @@ export function NostrProfilePage() {
       return false;
     }
 
-    setActionMessage(
-      result.message
-      ?? (editableAccountName.trim().length > 0 ? "Name updated." : "Name cleared."),
-    );
+    setActionMessage(result.message ?? (editableAccountName.trim().length > 0 ? "Name updated." : "Name cleared."));
     return true;
   }, [editableAccountName, updateLocalAccountName]);
 
@@ -431,6 +437,8 @@ export function NostrProfilePage() {
     }
   }, [troubleshootingHint]);
 
+  const showBusyUi = activeAuthAction !== "none" || isBackupRestoreBusy;
+
   return (
     <main className="app app-panel" aria-label="Nostr profile settings">
       <div className="account-layout">
@@ -440,22 +448,8 @@ export function NostrProfilePage() {
           <div className="settings-header">
             <h2>Profile</h2>
             {identity ? (
-              <button
-                type="button"
-                disabled={isBackupRestoreBusy || activeAuthAction !== "none"}
-                onClick={logout}
-              >
+              <button type="button" disabled={showBusyUi} onClick={logout}>
                 Log Out
-              </button>
-            ) : status === "ready" ? (
-              <button
-                type="button"
-                disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
-                onClick={() => {
-                  setIsAuthDialogOpen(true);
-                }}
-              >
-                {isLocalKeyLocked ? "Unlock Identity" : "Connect Identity"}
               </button>
             ) : null}
           </div>
@@ -463,6 +457,9 @@ export function NostrProfilePage() {
           {status === "loading" ? (
             <p className="profile-status" aria-live="polite">Restoring account session...</p>
           ) : null}
+
+          {error ? <p className="profile-error">{error}</p> : null}
+          {actionMessage ? <p className="profile-status">{actionMessage}</p> : null}
 
           {identity ? (
             <>
@@ -473,8 +470,9 @@ export function NostrProfilePage() {
                     <p className="profile-meta-label">
                       {identity.source === "nip07" ? "Connected with browser extension" : "Connected with local key"}
                     </p>
+
                     {isEditingName ? (
-                      <>
+                      <div className="profile-name-editor">
                         <input
                           id="profile-current-name-input"
                           type="text"
@@ -487,7 +485,33 @@ export function NostrProfilePage() {
                           spellCheck={false}
                           maxLength={64}
                         />
-                      </>
+                        <div className="profile-actions">
+                          <button
+                            type="button"
+                            disabled={profileStatus === "syncing" || showBusyUi || !hasPendingNameChange}
+                            onClick={() => {
+                              void (async () => {
+                                const saved = await handleSaveAccountName();
+                                if (saved) {
+                                  setIsEditingName(false);
+                                }
+                              })();
+                            }}
+                          >
+                            {profileStatus === "syncing" ? "Saving..." : "Save"}
+                          </button>
+                          <button
+                            type="button"
+                            disabled={profileStatus === "syncing" || showBusyUi}
+                            onClick={() => {
+                              setEditableAccountName(name ?? "");
+                              setIsEditingName(false);
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       <div className="profile-name-row">
                         <h2 className="profile-display-name">{profileDisplayName}</h2>
@@ -496,7 +520,7 @@ export function NostrProfilePage() {
                           className="profile-name-edit-button"
                           aria-label="Edit display name"
                           title="Edit display name"
-                          disabled={profileStatus === "syncing" || activeAuthAction !== "none" || isBackupRestoreBusy}
+                          disabled={profileStatus === "syncing" || showBusyUi}
                           onClick={() => {
                             setEditableAccountName(name ?? "");
                             setIsEditingName(true);
@@ -507,45 +531,11 @@ export function NostrProfilePage() {
                         </button>
                       </div>
                     )}
+
                     <p className="profile-npub-row">
                       <span className="profile-mono">{identity.npub}</span>
                     </p>
                   </div>
-                </div>
-                <div className="profile-actions profile-hero-actions">
-                  {isEditingName ? (
-                    <>
-                      <button
-                        type="button"
-                        disabled={
-                          profileStatus === "syncing"
-                          || activeAuthAction !== "none"
-                          || isBackupRestoreBusy
-                          || !hasPendingNameChange
-                        }
-                        onClick={() => {
-                          void (async () => {
-                            const saved = await handleSaveAccountName();
-                            if (saved) {
-                              setIsEditingName(false);
-                            }
-                          })();
-                        }}
-                      >
-                        {profileStatus === "syncing" ? "Saving..." : "Save"}
-                      </button>
-                      <button
-                        type="button"
-                        disabled={profileStatus === "syncing" || activeAuthAction !== "none" || isBackupRestoreBusy}
-                        onClick={() => {
-                          setEditableAccountName(name ?? "");
-                          setIsEditingName(false);
-                        }}
-                      >
-                        Cancel
-                      </button>
-                    </>
-                  ) : null}
                 </div>
 
                 {profileStatusText ? (
@@ -556,30 +546,33 @@ export function NostrProfilePage() {
               <section className="profile-card" aria-label="Game backup">
                 <h2>Game Backup</h2>
                 <p className="profile-helper">
-                  Save your game progress, settings, and stats as encrypted app data on relays.
+                  Save game progress, settings, and stats as encrypted app data on relays.
                 </p>
+
                 <div className="profile-actions">
                   <button
                     type="button"
-                    disabled={isBackupRestoreBusy || activeAuthAction !== "none"}
-                    onClick={() => { void handleBackupGameData(); }}
+                    disabled={showBusyUi}
+                    onClick={() => {
+                      void handleBackupGameData();
+                    }}
                   >
-                    {backupStatus === "syncing" ? "Backing Up..." : "Backup to Nostr"}
+                    {backupStatus === "syncing" ? "Backing Up..." : "Back Up"}
                   </button>
                   <button
                     type="button"
-                    disabled={isBackupRestoreBusy || activeAuthAction !== "none"}
+                    disabled={showBusyUi}
                     onClick={() => {
                       setIsRestoreConfirmOpen(true);
                     }}
                   >
-                    {restoreStatus === "syncing" ? "Restoring..." : "Restore from Nostr"}
+                    {restoreStatus === "syncing" ? "Restoring..." : "Restore"}
                   </button>
                 </div>
 
                 {isRestoreConfirmOpen ? (
                   <div className="profile-restore-confirm" role="group" aria-label="Confirm restore from Nostr">
-                    <p className="profile-warning">Restoring will overwrite current browser data.</p>
+                    <p className="profile-warning">Restore replaces your current browser data.</p>
                     <ul className="profile-info-list">
                       <li>Current puzzle progress and notes</li>
                       <li>Settings (difficulty, hints, lives, theme)</li>
@@ -589,7 +582,9 @@ export function NostrProfilePage() {
                       <button
                         type="button"
                         disabled={isBackupRestoreBusy}
-                        onClick={() => { void handleConfirmRestoreGameData(); }}
+                        onClick={() => {
+                          void handleConfirmRestoreGameData();
+                        }}
                       >
                         {restoreStatus === "syncing" ? "Restoring..." : "Confirm Restore"}
                       </button>
@@ -606,11 +601,13 @@ export function NostrProfilePage() {
                   </div>
                 ) : null}
 
-                {backupStatusText ? <p className="profile-status" aria-live="polite">{backupStatusText}</p> : null}
-                {restoreStatusText ? <p className="profile-status" aria-live="polite">{restoreStatusText}</p> : null}
+                <div className="profile-status-stack">
+                  {backupStatusText ? <p className="profile-status" aria-live="polite">{backupStatusText}</p> : null}
+                  {restoreStatusText ? <p className="profile-status" aria-live="polite">{restoreStatusText}</p> : null}
+                </div>
 
                 <details className="profile-disclosure">
-                  <summary>Backup details</summary>
+                  <summary>Details</summary>
                   <div className="profile-disclosure-content">
                     <p className="profile-helper">Last backup: {formatTimestamp(lastBackupAt)}</p>
                     <p className="profile-helper">Last restore: {formatTimestamp(lastRestoreAt)}</p>
@@ -625,24 +622,28 @@ export function NostrProfilePage() {
                 </details>
               </section>
 
-              <section className="profile-card" aria-label="Key tools">
+              <section className="profile-card" aria-label="Advanced tools">
                 <details className="profile-disclosure" open={shouldShowRecoveryOptions}>
-                  <summary>Key Tools</summary>
+                  <summary>Advanced</summary>
                   <div className="profile-disclosure-content">
                     <h3>Relay tools</h3>
                     <div className="profile-actions">
                       <button
                         type="button"
-                        disabled={profileStatus === "syncing" || activeAuthAction !== "none" || isBackupRestoreBusy}
-                        onClick={() => { void handleRefreshProfile(); }}
+                        disabled={profileStatus === "syncing" || showBusyUi}
+                        onClick={() => {
+                          void handleRefreshProfile();
+                        }}
                       >
                         {profileStatus === "syncing" ? "Refreshing..." : "Refresh from Relays"}
                       </button>
                       {shouldShowReconnectExtension ? (
                         <button
                           type="button"
-                          disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
-                          onClick={() => { void handleReconnectExtension(); }}
+                          disabled={showBusyUi}
+                          onClick={() => {
+                            void handleReconnectExtension();
+                          }}
                         >
                           Reconnect Extension
                         </button>
@@ -653,10 +654,11 @@ export function NostrProfilePage() {
                       <>
                         <h3>Local key controls</h3>
                         {localKeyProtection === "encrypted" ? (
-                          <p className="profile-secret-warning">Your local key is encrypted at rest. Keep your passphrase safe.</p>
+                          <p className="profile-secret-warning">Your local key is encrypted at rest.</p>
                         ) : (
                           <p className="profile-secret-warning profile-warning">Your local key is unencrypted in browser storage.</p>
                         )}
+
                         {localKeyProtection === "unencrypted" ? (
                           <>
                             <label htmlFor="profile-protect-passphrase-input">Add passphrase protection</label>
@@ -673,21 +675,26 @@ export function NostrProfilePage() {
                             />
                             <button
                               type="button"
-                              disabled={activeAuthAction !== "none" || protectPassphrase.trim().length === 0 || isBackupRestoreBusy}
-                              onClick={() => { void handleProtectLocalKey(); }}
+                              disabled={showBusyUi || protectPassphrase.trim().length === 0}
+                              onClick={() => {
+                                void handleProtectLocalKey();
+                              }}
                             >
                               {activeAuthAction === "protect" ? "Protecting..." : "Protect Local Key"}
                             </button>
                           </>
                         ) : null}
+
                         <p className="profile-secret-warning">Back up your private key now. Anyone with it can control your profile.</p>
+
                         {showSecretKey && exportableNsec ? (
                           <p className="profile-mono profile-secret-key">{exportableNsec}</p>
                         ) : null}
+
                         <div className="profile-actions">
                           <button
                             type="button"
-                            disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
+                            disabled={showBusyUi}
                             onClick={() => {
                               setShowSecretKey((current) => !current);
                             }}
@@ -696,16 +703,14 @@ export function NostrProfilePage() {
                           </button>
                           <button
                             type="button"
-                            disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
-                            onClick={() => { void handleCopyNsec(); }}
+                            disabled={showBusyUi}
+                            onClick={() => {
+                              void handleCopyNsec();
+                            }}
                           >
                             Copy Secret Key
                           </button>
-                          <button
-                            type="button"
-                            disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
-                            onClick={handleDownloadNsec}
-                          >
+                          <button type="button" disabled={showBusyUi} onClick={handleDownloadNsec}>
                             Download Secret Key
                           </button>
                         </div>
@@ -719,8 +724,10 @@ export function NostrProfilePage() {
                           {isBackupFailure || hasNoBackupOnRelays ? (
                             <button
                               type="button"
-                              disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
-                              onClick={() => { void handleBackupGameData(); }}
+                              disabled={showBusyUi}
+                              onClick={() => {
+                                void handleBackupGameData();
+                              }}
                             >
                               Retry Backup
                             </button>
@@ -728,7 +735,7 @@ export function NostrProfilePage() {
                           {isRestoreFailure ? (
                             <button
                               type="button"
-                              disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
+                              disabled={showBusyUi}
                               onClick={() => {
                                 setIsRestoreConfirmOpen(true);
                               }}
@@ -738,8 +745,10 @@ export function NostrProfilePage() {
                           ) : null}
                           <button
                             type="button"
-                            disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
-                            onClick={() => { void handleCopyTroubleshootingHint(); }}
+                            disabled={showBusyUi}
+                            onClick={() => {
+                              void handleCopyTroubleshootingHint();
+                            }}
                           >
                             Copy Troubleshooting Hint
                           </button>
@@ -749,31 +758,17 @@ export function NostrProfilePage() {
                   </div>
                 </details>
               </section>
-
-              <section className="profile-card" aria-label="About Nostr in this app">
-                <details className="profile-disclosure">
-                  <summary>About data and privacy</summary>
-                  <div className="profile-disclosure-content">
-                    <ul className="profile-info-list">
-                      <li><strong>npub</strong> is your public profile key and can be shared.</li>
-                      <li><strong>nsec</strong> is your private key and must stay secret.</li>
-                      <li>This app is local-first and only contacts relays on explicit profile actions.</li>
-                      <li>Relay actions include importing a key, saving a name, backup, restore, and manual refresh.</li>
-                    </ul>
-                  </div>
-                </details>
-              </section>
             </>
           ) : (
             <section className="profile-card profile-empty-state" aria-label="Connect identity">
-              <h2>Connect Identity</h2>
+              <h2>{isLocalKeyLocked ? "Unlock identity" : "Connect identity"}</h2>
               <p className="profile-helper">
-                Use the connect modal to sign in. Once connected, this page focuses on your profile and key management.
+                Sign in from one modal. Extension login is fastest, and local key tools are available when needed.
               </p>
               <div className="profile-actions">
                 <button
                   type="button"
-                  disabled={activeAuthAction !== "none" || isBackupRestoreBusy}
+                  disabled={showBusyUi}
                   onClick={() => {
                     setIsAuthDialogOpen(true);
                   }}
@@ -782,20 +777,23 @@ export function NostrProfilePage() {
                 </button>
               </div>
               {isLocalKeyLocked ? (
-                <p className="profile-helper">A local key is saved and locked on this device. Unlock it from the modal.</p>
+                <p className="profile-helper">A local key is saved and locked on this device.</p>
               ) : null}
             </section>
           )}
 
-          {error ? <p className="profile-error">{error}</p> : null}
-          {actionMessage ? <p className="profile-status">{actionMessage}</p> : null}
-
           <Dialog open={isAuthDialogOpen && !identity} onOpenChange={setIsAuthDialogOpen}>
             <DialogContent className="profile-auth-dialog" aria-describedby="profile-auth-dialog-description">
               <DialogHeader>
-                <DialogTitle>{isLocalKeyLocked ? "Unlock or Connect Identity" : "Connect Identity"}</DialogTitle>
+                <DialogTitle>
+                  {showLocalAuthTools
+                    ? "Connect Identity - Local key"
+                    : isLocalKeyLocked
+                      ? "Unlock or Connect Identity"
+                      : "Connect Identity"}
+                </DialogTitle>
                 <DialogDescription id="profile-auth-dialog-description">
-                  Recommended: connect with a browser extension. Local key import and creation are available in Key Tools.
+                  Extension login is recommended. Local key import and creation are available here when needed.
                 </DialogDescription>
               </DialogHeader>
 
@@ -821,120 +819,192 @@ export function NostrProfilePage() {
                   <div className="profile-actions">
                     <button
                       type="button"
-                      disabled={
-                        status === "loading"
-                        || activeAuthAction !== "none"
-                        || unlockPassphrase.trim().length === 0
-                        || isBackupRestoreBusy
-                      }
-                      onClick={() => { void handleUnlockLocalAccount(); }}
+                      disabled={status === "loading" || showBusyUi || unlockPassphrase.trim().length === 0}
+                      onClick={() => {
+                        void handleUnlockLocalAccount();
+                      }}
                     >
                       {activeAuthAction === "unlock" ? "Unlocking..." : "Unlock Key"}
                     </button>
-                    <button type="button" disabled={activeAuthAction !== "none" || isBackupRestoreBusy} onClick={logout}>
+                    <button
+                      type="button"
+                      disabled={showBusyUi}
+                      onClick={() => {
+                        setShowLocalAuthTools((current) => {
+                          const next = !current;
+                          if (next) {
+                            setLocalKeyTab("import");
+                          }
+
+                          return next;
+                        });
+                      }}
+                    >
+                      {showLocalAuthTools ? "Hide Other Methods" : "Use Different Login Method"}
+                    </button>
+                    <button type="button" disabled={showBusyUi} onClick={logout}>
                       Clear Saved Key
                     </button>
                   </div>
                 </section>
               ) : null}
 
-              <section className="profile-auth-section" aria-label="Quick connect with extension">
-                <h3>Quick Connect</h3>
-                <p className="profile-helper">Connect your browser extension account. No key copy and paste needed.</p>
-                <button
-                  type="button"
-                  disabled={!hasNip07 || status === "loading" || activeAuthAction !== "none" || isBackupRestoreBusy}
-                  onClick={() => { void handleNip07Connect(); }}
-                >
-                  {activeAuthAction === "connect"
-                    ? "Connecting..."
-                    : hasNip07
-                      ? "Connect with Extension"
-                      : "Extension Not Detected"}
-                </button>
-                {!hasNip07 ? (
-                  <p className="profile-helper">Install or enable a Nostr extension to use quick connect.</p>
-                ) : null}
-              </section>
-
-              <section className="profile-auth-section" aria-label="Local key tools">
-                <details className="profile-disclosure" open={isLocalKeyLocked}>
-                  <summary>Key Tools</summary>
-                  <div className="profile-disclosure-content">
-                    <h3>Import private key</h3>
-                    <label htmlFor="profile-nsec-input">Nsec key</label>
-                    <input
-                      id="profile-nsec-input"
-                      type="password"
-                      value={nsecInput}
-                      onChange={(event) => {
-                        setNsecInput(event.target.value);
-                      }}
-                      placeholder="nsec1..."
-                      autoComplete="off"
-                      spellCheck={false}
-                    />
-                    <label htmlFor="profile-import-passphrase-input">Optional passphrase</label>
-                    <input
-                      id="profile-import-passphrase-input"
-                      type="password"
-                      value={importPassphrase}
-                      onChange={(event) => {
-                        setImportPassphrase(event.target.value);
-                      }}
-                      placeholder="Passphrase (optional)"
-                      autoComplete="new-password"
-                      spellCheck={false}
-                    />
+              {!isLocalKeyLocked && !showLocalAuthTools ? (
+                <section className="profile-auth-section" aria-label="Quick connect with extension">
+                  <h3>Quick Connect</h3>
+                  <p className="profile-helper">Use your browser extension to sign in fast.</p>
+                  <div className="profile-actions">
                     <button
                       type="button"
-                      disabled={
-                        status === "loading"
-                        || activeAuthAction !== "none"
-                        || nsecInput.trim().length === 0
-                        || isBackupRestoreBusy
-                      }
-                      onClick={() => { void handleImportNsec(); }}
+                      disabled={!hasNip07 || status === "loading" || showBusyUi}
+                      onClick={() => {
+                        void handleNip07Connect();
+                      }}
                     >
-                      {activeAuthAction === "import" ? "Importing..." : "Import Local Key"}
+                      {activeAuthAction === "connect"
+                        ? "Connecting..."
+                        : hasNip07
+                          ? "Connect with Extension"
+                          : "Extension Not Detected"}
                     </button>
-
-                    <h3>Create local key</h3>
-                    <label htmlFor="profile-name-input">Name</label>
-                    <input
-                      id="profile-name-input"
-                      type="text"
-                      value={newAccountName}
-                      onChange={(event) => {
-                        setNewAccountName(event.target.value);
-                      }}
-                      placeholder="sudoku-player"
-                      autoComplete="nickname"
-                      spellCheck={false}
-                      maxLength={64}
-                    />
-                    <label htmlFor="profile-create-passphrase-input">Optional passphrase</label>
-                    <input
-                      id="profile-create-passphrase-input"
-                      type="password"
-                      value={newAccountPassphrase}
-                      onChange={(event) => {
-                        setNewAccountPassphrase(event.target.value);
-                      }}
-                      placeholder="Passphrase (optional)"
-                      autoComplete="new-password"
-                      spellCheck={false}
-                    />
                     <button
                       type="button"
-                      disabled={status === "loading" || activeAuthAction !== "none" || isBackupRestoreBusy}
-                      onClick={() => { void handleCreateAccount(); }}
+                      disabled={showBusyUi}
+                      onClick={() => {
+                        setLocalKeyTab("import");
+                        setShowLocalAuthTools(true);
+                      }}
                     >
-                      {activeAuthAction === "create" ? "Creating..." : "Generate Local Key"}
+                      Use Local Key
                     </button>
                   </div>
-                </details>
-              </section>
+                  {!hasNip07 ? (
+                    <p className="profile-helper">Install or enable a Nostr extension to use quick connect.</p>
+                  ) : null}
+                </section>
+              ) : null}
+
+              {showLocalAuthTools ? (
+                <section className="profile-auth-section" aria-label="Local key tools">
+                  <div className="profile-auth-tabs" role="tablist" aria-label="Local key actions">
+                    <button
+                      type="button"
+                      role="tab"
+                      id="profile-local-tab-import"
+                      aria-controls="profile-local-panel-import"
+                      aria-selected={localKeyTab === "import"}
+                      className={`profile-auth-tab${localKeyTab === "import" ? " is-active" : ""}`}
+                      disabled={showBusyUi}
+                      onClick={() => {
+                        setLocalKeyTab("import");
+                      }}
+                    >
+                      Import key
+                    </button>
+                    <button
+                      type="button"
+                      role="tab"
+                      id="profile-local-tab-generate"
+                      aria-controls="profile-local-panel-generate"
+                      aria-selected={localKeyTab === "generate"}
+                      className={`profile-auth-tab${localKeyTab === "generate" ? " is-active" : ""}`}
+                      disabled={showBusyUi}
+                      onClick={() => {
+                        setLocalKeyTab("generate");
+                      }}
+                    >
+                      Generate key
+                    </button>
+                  </div>
+
+                  {localKeyTab === "import" ? (
+                    <div
+                      className="profile-auth-tabpanel"
+                      role="tabpanel"
+                      id="profile-local-panel-import"
+                      aria-labelledby="profile-local-tab-import"
+                    >
+                      <label htmlFor="profile-nsec-input" className="sr-only">Nsec key</label>
+                      <input
+                        id="profile-nsec-input"
+                        type="password"
+                        value={nsecInput}
+                        onChange={(event) => {
+                          setNsecInput(event.target.value);
+                        }}
+                        placeholder="nsec1..."
+                        autoComplete="off"
+                        spellCheck={false}
+                      />
+                      <label htmlFor="profile-import-passphrase-input" className="sr-only">Optional passphrase</label>
+                      <input
+                        id="profile-import-passphrase-input"
+                        type="password"
+                        value={importPassphrase}
+                        onChange={(event) => {
+                          setImportPassphrase(event.target.value);
+                        }}
+                        placeholder="Passphrase (optional)"
+                        autoComplete="new-password"
+                        spellCheck={false}
+                      />
+                      <button
+                        type="button"
+                        disabled={status === "loading" || showBusyUi || nsecInput.trim().length === 0}
+                        onClick={() => {
+                          void handleImportNsec();
+                        }}
+                      >
+                        {activeAuthAction === "import" ? "Importing..." : "Import Key"}
+                      </button>
+                    </div>
+                  ) : null}
+
+                  {localKeyTab === "generate" ? (
+                    <div
+                      className="profile-auth-tabpanel"
+                      role="tabpanel"
+                      id="profile-local-panel-generate"
+                      aria-labelledby="profile-local-tab-generate"
+                    >
+                      <label htmlFor="profile-name-input" className="sr-only">Name (optional)</label>
+                      <input
+                        id="profile-name-input"
+                        type="text"
+                        value={newAccountName}
+                        onChange={(event) => {
+                          setNewAccountName(event.target.value);
+                        }}
+                        placeholder="sudoku-player"
+                        autoComplete="nickname"
+                        spellCheck={false}
+                        maxLength={64}
+                      />
+                      <label htmlFor="profile-create-passphrase-input" className="sr-only">Optional passphrase</label>
+                      <input
+                        id="profile-create-passphrase-input"
+                        type="password"
+                        value={newAccountPassphrase}
+                        onChange={(event) => {
+                          setNewAccountPassphrase(event.target.value);
+                        }}
+                        placeholder="Passphrase (optional)"
+                        autoComplete="new-password"
+                        spellCheck={false}
+                      />
+                      <button
+                        type="button"
+                        disabled={status === "loading" || showBusyUi}
+                        onClick={() => {
+                          void handleCreateAccount();
+                        }}
+                      >
+                        {activeAuthAction === "create" ? "Creating..." : "Generate Key"}
+                      </button>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
             </DialogContent>
           </Dialog>
         </section>
