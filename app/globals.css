@@ -211,6 +211,49 @@ textarea {
   font-size: 0.86rem;
 }
 
+.app-status {
+  transition: color 140ms ease, background-color 140ms ease, border-color 140ms ease;
+}
+
+.app-status-neutral {
+  color: var(--soft-ink);
+}
+
+.app-status-positive {
+  color: color-mix(in srgb, #3f8f68 78%, var(--ink));
+}
+
+.app-status-warning {
+  color: color-mix(in srgb, var(--error) 88%, var(--ink));
+}
+
+.game-status {
+  margin: 0;
+  width: 100%;
+  max-width: 33rem;
+  min-height: 2rem;
+  border: 1px solid color-mix(in srgb, var(--line) 62%, transparent);
+  border-radius: 0.45rem;
+  background: color-mix(in srgb, var(--surface) 58%, transparent);
+  display: grid;
+  align-items: center;
+  justify-items: center;
+  text-align: center;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.78rem;
+  line-height: 1.2;
+}
+
+.game-status.app-status-warning {
+  border-color: color-mix(in srgb, var(--error) 50%, var(--line));
+  background: color-mix(in srgb, var(--error) 10%, var(--surface));
+}
+
+.game-status.app-status-positive {
+  border-color: color-mix(in srgb, #4cae79 45%, var(--line));
+  background: color-mix(in srgb, #64b88d 12%, var(--surface));
+}
+
 .board-wrap {
   display: grid;
   min-height: 0;

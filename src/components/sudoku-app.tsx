@@ -788,6 +788,35 @@ function formatDateKeyForDisplay(dateKey: string | null): string {
   }).format(date);
 }
 
+function getStatusTone(message: string): "neutral" | "positive" | "warning" {
+  const normalized = message.toLowerCase();
+
+  if (
+    normalized.includes("could not")
+    || normalized.includes("unavailable")
+    || normalized.includes("out of lives")
+    || normalized.includes("wrong number")
+    || normalized.includes("failed")
+  ) {
+    return "warning";
+  }
+
+  if (
+    normalized.includes("ready")
+    || normalized.includes("resumed")
+    || normalized.includes("revealed")
+    || normalized.includes("reset")
+    || normalized.includes("restarted")
+    || normalized.includes("solved")
+    || normalized.includes("restored")
+    || normalized.includes("updated")
+  ) {
+    return "positive";
+  }
+
+  return "neutral";
+}
+
 function dateFromDateKeyLocal(value: string | null): Date | null {
   if (!value) {
     return null;
@@ -1552,7 +1581,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
   const stateRef = useRef<GameState>(state);
 
   const [activeView, setActiveView] = useState<AppView>(() => getInitialViewForEntryPoint(entryPoint));
-  const [, setStatusMessage] = useState<string>(() => HOME_STATUS_MESSAGES[0] ?? "");
+  const [statusMessage, setStatusMessage] = useState<string>(() => HOME_STATUS_MESSAGES[0] ?? "");
   const [winPromptOpen, setWinPromptOpen] = useState(false);
   const [losePromptOpen, setLosePromptOpen] = useState(false);
   const [, setUpdateStatus] = useState("");
@@ -1698,6 +1727,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
     };
 
     applyState(next);
+    setStatusMessage(nextMode ? "Notes mode enabled." : "Notes mode disabled.");
   }, [applyState, clearLongPressTimer, isInputLocked, resetDoubleTapTracking]);
 
   const toggleFillModeForDigit = useCallback(
@@ -1705,8 +1735,10 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
       const current = stateRef.current;
       if (current.fillModeValue === value) {
         setFillMode(null);
+        setStatusMessage("Fill mode cleared.");
       } else {
         setFillMode(value);
+        setStatusMessage(`Fill mode set to ${value}.`);
       }
     },
     [setFillMode],
@@ -2106,6 +2138,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
         next.stats = recordWin(next.stats, next.difficulty, next.mode, next.dailyDate, awardedPoints);
         next.winRecorded = true;
         setWinPromptOpen(true);
+        setStatusMessage("Puzzle solved. Great work.");
       }
 
       if (wrongEntry) {
@@ -2125,8 +2158,6 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
             setStatusMessage("Out of lives. Start a new puzzle.");
           }
         }
-      } else if (!next.won) {
-        setStatusMessage("Keep going.");
       }
 
       applyState(next);
@@ -2212,6 +2243,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
 
     next = syncFillModeAvailability(next);
     applyState(next);
+    setStatusMessage("Move undone.");
   }, [applyState]);
 
   const redoMove = useCallback(() => {
@@ -2238,6 +2270,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
 
     next = syncFillModeAvailability(next);
     applyState(next);
+    setStatusMessage("Move restored.");
   }, [applyState]);
 
   const moveSelection = useCallback(
@@ -2329,9 +2362,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
     }
 
     applyState(next);
-    if (!next.won) {
-      setStatusMessage("Hint revealed.");
-    }
+    setStatusMessage(next.won ? "Puzzle solved. Great work." : "Hint revealed.");
   }, [applyState, isInputLocked]);
 
   const onBoardCellSelect = useCallback(
@@ -2983,6 +3014,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
   }, []);
 
   const isCurrentBoardUnplayed = Boolean(state.puzzle && !state.currentGameStarted && !state.won && !state.lost);
+  const statusTone = getStatusTone(statusMessage);
 
   return (
     <div className="sudoku-app-root">
@@ -2990,7 +3022,7 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
         {activeView === "home" ? (
           <section className="home-view" aria-label="Home menu">
             <h1 className="view-title">Sudoku</h1>
-            <p className="home-status">Calm, focused puzzles for daily play.</p>
+            <p className={`home-status app-status app-status-${statusTone}`} role="status" aria-live="polite">{statusMessage}</p>
             <div className="home-actions" aria-label="Main actions">
               <div className="home-primary-actions" aria-label="Primary puzzle actions">
                 <Button id="new-game" type="button" onClick={() => openPuzzlePage("new")}>
@@ -3220,6 +3252,9 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
                       )}
                     </aside>
                   </div>
+                  <p className={`game-status app-status app-status-${statusTone}`} role="status" aria-live="polite">
+                    {statusMessage}
+                  </p>
                 </div>
               )}
             </section>
