@@ -1,4 +1,5 @@
 import {
+  clearSavedGamePayloadFromBrowser,
   loadSavedGamePayloadFromBrowser,
   readLegacySavedGamePayloadFromBrowser,
   readSavedGameConfigPayloadFromBrowser,
@@ -18,6 +19,9 @@ export function createLocalStorageSavedGameAdapter(): SavedGameStorageAdapter {
     },
     async savePayload(payload: SavedGamePayload) {
       return saveSavedGamePayloadToBrowser(payload);
+    },
+    async clearPayload() {
+      return clearSavedGamePayloadFromBrowser();
     },
     async readConfigPayload() {
       return readSavedGameConfigPayloadFromBrowser();

@@ -670,6 +670,17 @@ textarea {
   gap: 0.2rem;
 }
 
+.settings-reset-confirm {
+  display: grid;
+  gap: 0.45rem;
+}
+
+.settings-reset-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
 .app-info-inline,
 .app-open-source,
 .app-storage-status,

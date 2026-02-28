@@ -15,6 +15,7 @@ export type SavedGameStorageRepository = {
   requestedBackend: StorageBackend | "auto";
   loadSavedGamePayloadFromBrowser(): Promise<SavedGamePayload | null>;
   saveSavedGamePayloadToBrowser(payload: SavedGamePayload): Promise<boolean>;
+  clearSavedGamePayloadFromBrowser(): Promise<boolean>;
   readSavedGameConfigPayloadFromBrowser(): Promise<SavedGamePayload | null>;
   readLegacySavedGamePayloadFromBrowser(): Promise<SavedGamePayload | null>;
   readDiagnostics(): SavedGameStorageDiagnostics;
@@ -219,6 +220,17 @@ export function createSavedGameStorageRepository(
     return false;
   }
 
+  async function clearPayloadWithFallback(): Promise<boolean> {
+    const primaryCleared = await primaryAdapter.clearPayload().catch(() => false);
+
+    if (!secondaryAdapter) {
+      return primaryCleared;
+    }
+
+    const fallbackCleared = await secondaryAdapter.clearPayload().catch(() => false);
+    return primaryCleared && fallbackCleared;
+  }
+
   async function readConfigWithFallback(): Promise<SavedGamePayload | null> {
     try {
       const primaryConfig = await primaryAdapter.readConfigPayload();
@@ -259,6 +271,9 @@ export function createSavedGameStorageRepository(
     saveSavedGamePayloadToBrowser(payload: SavedGamePayload) {
       return savePayloadWithPrimaryWrite(payload);
     },
+    clearSavedGamePayloadFromBrowser() {
+      return clearPayloadWithFallback();
+    },
     readSavedGameConfigPayloadFromBrowser() {
       return readConfigWithFallback();
     },
@@ -285,6 +300,10 @@ export async function loadSavedGamePayloadFromBrowser(): Promise<SavedGamePayloa
 
 export async function saveSavedGamePayloadToBrowser(payload: SavedGamePayload): Promise<boolean> {
   return getBrowserSavedGameStorageRepository().saveSavedGamePayloadToBrowser(payload);
+}
+
+export async function clearSavedGamePayloadFromBrowser(): Promise<boolean> {
+  return getBrowserSavedGameStorageRepository().clearSavedGamePayloadFromBrowser();
 }
 
 export async function readSavedGameConfigPayloadFromBrowser(): Promise<SavedGamePayload | null> {

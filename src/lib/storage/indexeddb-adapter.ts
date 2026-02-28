@@ -110,6 +110,24 @@ export function createIndexedDbSavedGameAdapter(): SavedGameStorageAdapter {
         return false;
       }
     },
+    async clearPayload() {
+      const factory = getIndexedDbFactory();
+      if (!factory) {
+        return false;
+      }
+
+      try {
+        const database = await openDatabase(factory);
+        const transaction = database.transaction(STORE_NAME, "readwrite");
+        const store = transaction.objectStore(STORE_NAME);
+        await waitForRequest(store.delete(RECORD_KEY));
+        await waitForTransaction(transaction);
+        database.close();
+        return true;
+      } catch {
+        return false;
+      }
+    },
     async readConfigPayload() {
       const payload = await this.loadPayload();
       if (!payload) {

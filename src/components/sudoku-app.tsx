@@ -77,6 +77,7 @@ import {
   shouldAwardWinPointsOnTransition,
 } from "@/lib/scoring/points";
 import {
+  clearSavedGamePayloadFromBrowser,
   loadSavedGamePayloadFromBrowser,
   saveSavedGamePayloadToBrowser,
 } from "@/lib/storage/saved-game-repository";
@@ -1533,6 +1534,8 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
   const [hasDailyEntryStarted, setHasDailyEntryStarted] = useState(entryPoint !== "daily");
   const [hasPuzzleEntryStarted, setHasPuzzleEntryStarted] = useState(entryPoint !== "puzzle");
   const [dailyDatePickerOpen, setDailyDatePickerOpen] = useState(false);
+  const [resetLocalDataConfirmOpen, setResetLocalDataConfirmOpen] = useState(false);
+  const [isResettingLocalData, setIsResettingLocalData] = useState(false);
   const [isGeneratingPuzzle, setIsGeneratingPuzzle] = useState(false);
   const [nowTick, setNowTick] = useState(() => Date.now());
   const [dailyCalendarMonthKey, setDailyCalendarMonthKey] = useState(() => getMonthKeyFromDate(new Date()));
@@ -1940,6 +1943,33 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
     setLosePromptOpen(false);
     setStatusMessage("Puzzle reset.");
   }, [applyState]);
+
+  const resetLocalSudokuData = useCallback(async () => {
+    if (isResettingLocalData) {
+      return;
+    }
+
+    setIsResettingLocalData(true);
+
+    try {
+      const resetSucceeded = await clearSavedGamePayloadFromBrowser();
+      if (!resetSucceeded) {
+        setStatusMessage("Could not reset local data in this browser.");
+        return;
+      }
+
+      const nextState = createInitialState();
+      applyState(nextState);
+      setWinPromptOpen(false);
+      setLosePromptOpen(false);
+      setDailyDatePickerOpen(false);
+      setResetLocalDataConfirmOpen(false);
+      setDailyCalendarMonthKey(getMonthKeyFromDate(new Date()));
+      setStatusMessage("Local Sudoku data reset.");
+    } finally {
+      setIsResettingLocalData(false);
+    }
+  }, [applyState, isResettingLocalData]);
 
   const applySelection = useCallback(
     (row: number, col: number) => {
@@ -3238,8 +3268,55 @@ export function SudokuApp({ entryPoint = "home", dailyDateKey, statisticsSection
                     </select>
                   </div>
                 </div>
-
                 </div>
+
+                <div className="settings-footer" aria-label="Local data controls">
+                  <p className="app-storage-status">Reset local Sudoku progress, statistics, and gameplay settings on this device.</p>
+                  {resetLocalDataConfirmOpen ? (
+                    <div className="settings-reset-confirm">
+                      <p className="app-storage-status">This removes current puzzle progress and history from this browser.</p>
+                      <div className="settings-reset-actions">
+                        <Button
+                          id="settings-reset-local-data-confirm"
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          disabled={isResettingLocalData}
+                          onClick={() => {
+                            void resetLocalSudokuData();
+                          }}
+                        >
+                          {isResettingLocalData ? "Resetting..." : "Confirm reset"}
+                        </Button>
+                        <Button
+                          id="settings-reset-local-data-cancel"
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          disabled={isResettingLocalData}
+                          onClick={() => {
+                            setResetLocalDataConfirmOpen(false);
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <Button
+                      id="settings-reset-local-data"
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setResetLocalDataConfirmOpen(true);
+                      }}
+                    >
+                      Reset local data
+                    </Button>
+                  )}
+                </div>
+
               </div>
             </section>
           </div>

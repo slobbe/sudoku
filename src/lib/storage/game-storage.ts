@@ -239,6 +239,16 @@ export function saveSavedGamePayloadToStorage(storage: StorageLike, payload: Sav
   return saveSucceeded;
 }
 
+export function clearSavedGamePayloadFromStorage(storage: StorageLike): boolean {
+  try {
+    clearSavedGameV2FromStorage(storage);
+    storage.removeItem(LEGACY_SAVED_GAME_KEY);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function loadSavedGamePayloadFromBrowser(): SavedGamePayload | null {
   const storage = getLocalStorage();
   if (!storage) {
@@ -260,6 +270,19 @@ export function saveSavedGamePayloadToBrowser(payload: SavedGamePayload): boolea
 
   try {
     return saveSavedGamePayloadToStorage(storage, payload);
+  } catch {
+    return false;
+  }
+}
+
+export function clearSavedGamePayloadFromBrowser(): boolean {
+  const storage = getLocalStorage();
+  if (!storage) {
+    return false;
+  }
+
+  try {
+    return clearSavedGamePayloadFromStorage(storage);
   } catch {
     return false;
   }

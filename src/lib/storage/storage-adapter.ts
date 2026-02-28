@@ -11,6 +11,7 @@ export interface SavedGameStorageAdapter {
   readonly backend: StorageBackend;
   loadPayload(): Promise<SavedGamePayload | null>;
   savePayload(payload: SavedGamePayload): Promise<boolean>;
+  clearPayload(): Promise<boolean>;
   readConfigPayload(): Promise<SavedGamePayload | null>;
   readLegacyPayload(): Promise<SavedGamePayload | null>;
 }

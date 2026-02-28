@@ -16,17 +16,20 @@ type AdapterOptions = {
   configPayload?: SavedGamePayload | null;
   legacyPayload?: SavedGamePayload | null;
   saveResult?: boolean;
+  clearResult?: boolean;
   throwOnLoad?: boolean;
   throwOnSave?: boolean;
+  throwOnClear?: boolean;
 };
 
 function createAdapter(
   backend: typeof SAVED_GAME_STORAGE_BACKEND_LOCAL | typeof SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
   options: AdapterOptions = {},
-): { adapter: SavedGameStorageAdapter; calls: { load: number; save: number; readConfig: number; readLegacy: number } } {
+): { adapter: SavedGameStorageAdapter; calls: { load: number; save: number; clear: number; readConfig: number; readLegacy: number } } {
   const calls = {
     load: 0,
     save: 0,
+    clear: 0,
     readConfig: 0,
     readLegacy: 0,
   };
@@ -36,8 +39,10 @@ function createAdapter(
     configPayload = { theme: "slate" },
     legacyPayload = { legacy: true },
     saveResult = true,
+    clearResult = true,
     throwOnLoad = false,
     throwOnSave = false,
+    throwOnClear = false,
   } = options;
 
   const adapter: SavedGameStorageAdapter = {
@@ -57,6 +62,14 @@ function createAdapter(
       }
 
       return saveResult;
+    },
+    async clearPayload() {
+      calls.clear += 1;
+      if (throwOnClear) {
+        throw new Error("clear failed");
+      }
+
+      return clearResult;
     },
     async readConfigPayload() {
       calls.readConfig += 1;
@@ -161,7 +174,7 @@ describe("saved game storage repository", () => {
   it("backfills indexeddb from local once and keeps later loads idempotent", async () => {
     const { adapter: localAdapter, calls: localCalls } = createAdapter(SAVED_GAME_STORAGE_BACKEND_LOCAL, { payload: { source: "local" } });
     let indexedDbPayload: SavedGamePayload | null = null;
-    const indexedDbCalls = { load: 0, save: 0, readConfig: 0, readLegacy: 0 };
+    const indexedDbCalls = { load: 0, save: 0, clear: 0, readConfig: 0, readLegacy: 0 };
     const indexedDbAdapter: SavedGameStorageAdapter = {
       backend: SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
       async loadPayload() {
@@ -171,6 +184,11 @@ describe("saved game storage repository", () => {
       async savePayload(payload) {
         indexedDbCalls.save += 1;
         indexedDbPayload = payload;
+        return true;
+      },
+      async clearPayload() {
+        indexedDbCalls.clear += 1;
+        indexedDbPayload = null;
         return true;
       },
       async readConfigPayload() {
@@ -271,5 +289,23 @@ describe("saved game storage repository", () => {
     expect(indexedDbCalls.save).toBe(1);
     expect(localCalls.save).toBe(1);
     expect(repository.readDiagnostics().lastSaveResult).toBe("failed");
+  });
+
+  it("clears both primary and fallback storage when indexeddb is active", async () => {
+    const { adapter: localAdapter, calls: localCalls } = createAdapter(SAVED_GAME_STORAGE_BACKEND_LOCAL, { clearResult: true });
+    const { adapter: indexedDbAdapter, calls: indexedDbCalls } = createAdapter(
+      SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
+      { clearResult: true },
+    );
+    const repository = createSavedGameStorageRepository({
+      backend: SAVED_GAME_STORAGE_BACKEND_INDEXEDDB,
+      localAdapter,
+      indexedDbAdapter,
+      supportsIndexedDb: true,
+    });
+
+    await expect(repository.clearSavedGamePayloadFromBrowser()).resolves.toBe(true);
+    expect(indexedDbCalls.clear).toBe(1);
+    expect(localCalls.clear).toBe(1);
   });
 });
