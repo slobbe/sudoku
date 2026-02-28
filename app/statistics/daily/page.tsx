@@ -10,5 +10,13 @@ export const metadata: Metadata = {
 };
 
 export default function StatisticsDailyPage() {
-  return <SudokuApp entryPoint="statistics" statisticsSection="daily" />;
+  return (
+    <>
+      <section className="sr-only">
+        <h1>Daily Statistics</h1>
+        <p>Track daily challenge results, streaks, and monthly performance.</p>
+      </section>
+      <SudokuApp entryPoint="statistics" statisticsSection="daily" />
+    </>
+  );
 }

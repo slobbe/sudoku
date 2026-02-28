@@ -7,5 +7,13 @@ export const metadata: Metadata = {
 };
 
 export default function PuzzlePage() {
-  return <SudokuApp entryPoint="puzzle" />;
+  return (
+    <>
+      <section className="sr-only">
+        <h1>Puzzle</h1>
+        <p>Continue your current Sudoku puzzle or start a new one.</p>
+      </section>
+      <SudokuApp entryPoint="puzzle" />
+    </>
+  );
 }

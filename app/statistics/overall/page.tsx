@@ -10,5 +10,13 @@ export const metadata: Metadata = {
 };
 
 export default function StatisticsOverallPage() {
-  return <SudokuApp entryPoint="statistics" statisticsSection="overall" />;
+  return (
+    <>
+      <section className="sr-only">
+        <h1>Overall Statistics</h1>
+        <p>View overall Sudoku completion and win-rate metrics by difficulty.</p>
+      </section>
+      <SudokuApp entryPoint="statistics" statisticsSection="overall" />
+    </>
+  );
 }

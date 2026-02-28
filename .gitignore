@@ -9,3 +9,5 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 AGENTS.md
+playwright-report/
+test-results/

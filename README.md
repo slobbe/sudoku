@@ -29,6 +29,7 @@ The hosted PWA is available at [slobbe.github.io/sudoku](https://slobbe.github.i
 - `bun run start` - Run production server
 - `bun run lint` - Run lint checks
 - `bun run test` - Run unit tests
+- `bun run test:e2e` - Run Playwright smoke tests
 
 ## Pages / Sitemap
 

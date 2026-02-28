@@ -7,5 +7,13 @@ export const metadata: Metadata = {
 };
 
 export default function SettingsPage() {
-  return <SudokuApp entryPoint="settings" />;
+  return (
+    <>
+      <section className="sr-only">
+        <h1>Settings</h1>
+        <p>Adjust gameplay behavior and local data controls for Sudoku.</p>
+      </section>
+      <SudokuApp entryPoint="settings" />
+    </>
+  );
 }
